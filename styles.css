@@ -1016,3 +1016,14 @@ label>input,label>select,label>textarea{margin-top:7px}
     grid-template-columns:1fr;
   }
 }
+
+
+/* V1.7 管理端入口 */
+.admin-entry-actions{margin-top:14px}
+.admin-link-btn{
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:140px;
+}
