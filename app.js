@@ -33,7 +33,10 @@ const state = {
   template:{template_text:DEFAULT_TEMPLATE},
   receiptSettings:null,
   editingItemId:null,
-  editingShopId:null
+  editingShopId:null,
+  editingCustomerId:null,
+  customerSearch:"",
+  theme:null
 };
 
 const receiptKeys = [
@@ -556,11 +559,13 @@ function populateShopSelectors(){
   $("calcShop").innerHTML=shopOptions;
   $("templateShop").innerHTML=shopOptions;
   $("receiptShop").innerHTML=shopOptions;
+  $("customerShop").innerHTML=shopOptions;
   $("recordShopFilter").innerHTML='<option value="all">全部店铺</option>'+shopOptions;
   if(state.shopId){
     $("calcShop").value=state.shopId;
     $("templateShop").value=state.shopId;
     $("receiptShop").value=state.shopId;
+    $("customerShop").value=state.shopId;
   }
 }
 
@@ -573,7 +578,9 @@ function renderAll(){
   renderTemplate();
   renderReceiptSettings();
   renderRecords();
+  renderCustomerProfiles();
   renderDataSummary();
+  renderThemeControls();
   resetCalculatorVisual();
   applyPriceEditPermissions();
   renderProfile();
@@ -634,6 +641,252 @@ function renderItems(){
 
 function renderCustomerList(){
   $("customerList").innerHTML=state.customers.map(c=>`<option value="${safe(c.name)}"></option>`).join("");
+}
+
+function customerStats(customer){
+  const records=state.records.filter(r=>
+    r.shop_id===state.shopId &&
+    (
+      r.customer_id===customer.id ||
+      (!r.customer_id && String(r.customer_name_snapshot||"")===String(customer.name||""))
+    )
+  );
+
+  const total=records.reduce((sum,r)=>sum+Number(r.amount||0),0);
+  const latest=records[0]||null;
+  return {records,total,latest};
+}
+
+function renderCustomerProfiles(){
+  const list=$("customerProfileList");
+  const empty=$("emptyCustomerProfiles");
+  if(!list||!empty) return;
+
+  const q=(state.customerSearch||"").trim().toLowerCase();
+  const customers=state.customers.filter(customer=>{
+    if(!q) return true;
+    return [customer.name,customer.contact,customer.notes]
+      .some(v=>String(v||"").toLowerCase().includes(q));
+  });
+
+  empty.classList.toggle("hidden",customers.length>0);
+
+  list.innerHTML=customers.map(customer=>{
+    const stats=customerStats(customer);
+    const rate=Number(customer.discount_rate??100);
+    const latest=stats.latest?dateParts(stats.latest.occurred_at).date:"暂无";
+    return `
+      <div class="customer-profile-card">
+        <div class="customer-profile-head">
+          <div>
+            <b>${safe(customer.name)}</b>
+            <p>${safe(customer.contact||"未填写联系方式")}</p>
+          </div>
+          <span class="customer-discount-tag">${safe(discountLabel(rate))}</span>
+        </div>
+        <div class="customer-profile-stats">
+          <div><span>累计消费</span><strong>${money(stats.total)}</strong></div>
+          <div><span>流水</span><strong>${stats.records.length}</strong></div>
+          <div><span>最近</span><strong>${safe(latest)}</strong></div>
+        </div>
+        ${customer.notes?`<p class="customer-profile-notes">${safe(customer.notes)}</p>`:""}
+        <div class="row-actions">
+          <button class="tiny-btn" data-use-customer="${customer.id}" type="button">去派单</button>
+          <button class="tiny-btn" data-edit-customer="${customer.id}" type="button">编辑</button>
+          <button class="tiny-btn danger" data-delete-customer="${customer.id}" type="button">删除</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function resetCustomerProfileForm(){
+  state.editingCustomerId=null;
+  $("customerProfileFormTitle").textContent="建立顾客档案";
+  $("customerProfileName").value="";
+  $("customerProfileContact").value="";
+  $("customerProfileDiscount").value="";
+  $("customerProfileNotes").value="";
+  $("cancelCustomerProfileBtn").classList.add("hidden");
+}
+
+function editCustomerProfile(id){
+  const customer=state.customers.find(c=>c.id===id);
+  if(!customer) return;
+  state.editingCustomerId=id;
+  $("customerProfileFormTitle").textContent="编辑顾客档案";
+  $("customerProfileName").value=customer.name||"";
+  $("customerProfileContact").value=customer.contact||"";
+  const rate=Number(customer.discount_rate??100);
+  $("customerProfileDiscount").value=rate>=100?"":discountLabel(rate);
+  $("customerProfileNotes").value=customer.notes||"";
+  $("cancelCustomerProfileBtn").classList.remove("hidden");
+  $("customerProfileName").focus();
+}
+
+async function saveCustomerProfile(){
+  const name=$("customerProfileName").value.trim();
+  const contact=$("customerProfileContact").value.trim();
+  const notes=$("customerProfileNotes").value.trim();
+  const discountRate=parseDiscountRate($("customerProfileDiscount").value);
+
+  if(!state.shopId){toast("先选择店铺");return}
+  if(!name){toast("先填写顾客昵称");return}
+  if(discountRate===null){toast("折扣格式例如 9折 / 8.5折 / 90%");return}
+
+  const duplicate=state.customers.find(c=>
+    c.id!==state.editingCustomerId &&
+    String(c.name||"").trim().toLowerCase()===name.toLowerCase()
+  );
+  if(duplicate){
+    toast("这个店铺已经有同名顾客档案");
+    return;
+  }
+
+  const payload={
+    shop_id:state.shopId,
+    name,
+    contact:contact||null,
+    notes:notes||null,
+    discount_rate:discountRate
+  };
+
+  let result;
+  if(state.editingCustomerId){
+    result=await supabase.from("customers")
+      .update(payload)
+      .eq("id",state.editingCustomerId)
+      .select().single();
+  }else{
+    result=await supabase.from("customers")
+      .insert(payload)
+      .select().single();
+  }
+
+  if(result.error){
+    toast("保存失败："+result.error.message);
+    return;
+  }
+
+  if(state.editingCustomerId){
+    state.customers=state.customers.map(c=>c.id===result.data.id?result.data:c);
+  }else{
+    state.customers.push(result.data);
+    state.customers.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"zh-CN"));
+  }
+
+  resetCustomerProfileForm();
+  renderCustomerList();
+  renderCustomerProfiles();
+  toast("顾客档案已保存 ♡");
+}
+
+async function deleteCustomerProfile(id){
+  const customer=state.customers.find(c=>c.id===id);
+  if(!customer) return;
+
+  if(!confirm("删除「"+customer.name+"」的顾客档案？历史消费流水会继续保留。")) return;
+
+  const {error}=await supabase.from("customers").delete().eq("id",id);
+  if(error){
+    toast("删除失败："+error.message);
+    return;
+  }
+
+  state.customers=state.customers.filter(c=>c.id!==id);
+  if(state.editingCustomerId===id) resetCustomerProfileForm();
+  renderCustomerList();
+  renderCustomerProfiles();
+  toast("顾客档案已删除");
+}
+
+async function useCustomerProfile(id){
+  const customer=state.customers.find(c=>c.id===id);
+  if(!customer) return;
+  $("customerName").value=customer.name||"";
+  const rate=Number(customer.discount_rate??100);
+  $("customerDiscount").value=rate>=100?"":discountLabel(rate);
+  await refreshCustomerTotal();
+  showPage("calculator");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+const THEME_PRESETS={
+  beige:{bg:"#f6f0e7",accent:"#e58aa7",paper:"#fffdf9",ink:"#4d413d"},
+  pink:{bg:"#fff6fa",accent:"#ef7fa7",paper:"#ffffff",ink:"#523944"},
+  mint:{bg:"#f2f8f3",accent:"#7fb89a",paper:"#fffefb",ink:"#3f4c44"},
+  blue:{bg:"#f2f6fb",accent:"#7ea6cf",paper:"#ffffff",ink:"#3f4752"},
+  lavender:{bg:"#f5f2fa",accent:"#a28cc8",paper:"#fffefe",ink:"#4b4257"}
+};
+
+function applyTheme(theme){
+  const base={...THEME_PRESETS.beige,...(theme||{})};
+  state.theme=base;
+  const root=document.documentElement;
+  root.style.setProperty("--bg",base.bg);
+  root.style.setProperty("--paper",base.paper);
+  root.style.setProperty("--ink",base.ink);
+  root.style.setProperty("--pink",base.accent);
+  root.style.setProperty("--pink-deep",`color-mix(in srgb, ${base.accent} 82%, #5a3040)`);
+  root.style.setProperty("--pink-soft",`color-mix(in srgb, ${base.accent} 14%, ${base.paper})`);
+  root.style.setProperty("--line",`color-mix(in srgb, ${base.accent} 24%, ${base.bg})`);
+  root.style.setProperty("--muted",`color-mix(in srgb, ${base.ink} 62%, ${base.bg})`);
+}
+
+function loadTheme(){
+  try{
+    const saved=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+    applyTheme(saved||THEME_PRESETS.beige);
+  }catch{
+    applyTheme(THEME_PRESETS.beige);
+  }
+}
+
+function renderThemeControls(){
+  if(!$("themeBg")||!state.theme) return;
+  $("themeBg").value=state.theme.bg;
+  $("themeAccent").value=state.theme.accent;
+  $("themePaper").value=state.theme.paper;
+  $("themeInk").value=state.theme.ink;
+
+  document.querySelectorAll("[data-theme-preset]").forEach(btn=>{
+    const preset=THEME_PRESETS[btn.dataset.themePreset];
+    const active=preset &&
+      preset.bg===state.theme.bg &&
+      preset.accent===state.theme.accent &&
+      preset.paper===state.theme.paper &&
+      preset.ink===state.theme.ink;
+    btn.classList.toggle("active",active);
+  });
+}
+
+function themeFromControls(){
+  return {
+    bg:$("themeBg").value,
+    accent:$("themeAccent").value,
+    paper:$("themePaper").value,
+    ink:$("themeInk").value
+  };
+}
+
+function previewThemeFromControls(){
+  applyTheme(themeFromControls());
+  renderThemeControls();
+}
+
+function saveTheme(){
+  const theme=themeFromControls();
+  applyTheme(theme);
+  localStorage.setItem("paimini-theme",JSON.stringify(theme));
+  renderThemeControls();
+  toast("配色已保存 ♡");
+}
+
+function useThemePreset(name,save=true){
+  const preset=THEME_PRESETS[name]||THEME_PRESETS.beige;
+  applyTheme(preset);
+  if(save) localStorage.setItem("paimini-theme",JSON.stringify(preset));
+  renderThemeControls();
 }
 
 function renderPriceManager(){
@@ -1576,6 +1829,39 @@ function bindEvents(){
     renderShopList();
   });
 
+  $("customerShop").addEventListener("change",async()=>{
+    state.shopId=$("customerShop").value;
+    $("calcShop").value=state.shopId;
+    $("templateShop").value=state.shopId;
+    $("receiptShop").value=state.shopId;
+    await loadCurrentShopData();
+    renderAll();
+  });
+
+  $("saveCustomerProfileBtn").addEventListener("click",saveCustomerProfile);
+  $("cancelCustomerProfileBtn").addEventListener("click",resetCustomerProfileForm);
+  $("customerProfileSearch").addEventListener("input",()=>{
+    state.customerSearch=$("customerProfileSearch").value;
+    renderCustomerProfiles();
+  });
+  $("customerProfileList").addEventListener("click",e=>{
+    const use=e.target.closest("[data-use-customer]");
+    const edit=e.target.closest("[data-edit-customer]");
+    const del=e.target.closest("[data-delete-customer]");
+    if(use) useCustomerProfile(use.dataset.useCustomer);
+    if(edit) editCustomerProfile(edit.dataset.editCustomer);
+    if(del) deleteCustomerProfile(del.dataset.deleteCustomer);
+  });
+
+  document.querySelectorAll("[data-theme-preset]").forEach(btn=>{
+    btn.addEventListener("click",()=>useThemePreset(btn.dataset.themePreset,true));
+  });
+  ["themeBg","themeAccent","themePaper","themeInk"].forEach(id=>{
+    $(id).addEventListener("input",previewThemeFromControls);
+  });
+  $("saveThemeBtn").addEventListener("click",saveTheme);
+  $("resetThemeBtn").addEventListener("click",()=>useThemePreset("beige",true));
+
   $("templateShop").addEventListener("change",()=>loadTemplateFor($("templateShop").value));
   $("saveTemplateBtn").addEventListener("click",saveTemplate);
 
@@ -1614,6 +1900,7 @@ function bindEvents(){
   });
 }
 
+loadTheme();
 bindEvents();
 
 const {data,error}=await supabase.auth.getSession();
