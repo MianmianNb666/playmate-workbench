@@ -1712,6 +1712,9 @@ async function saveRecord(){
       customer_id:customer?.id||null,
       item_id:data.item.id||null,
       customer_name_snapshot:data.customer,
+      // 线上 consumption_records 仍有旧版必填 item_name。
+      // 两个字段同时写，兼容旧表和新版快照字段。
+      item_name:data.item.name,
       item_name_snapshot:data.item.name,
       companion_name:data.companion,
       unit_price_snapshot:data.unitPrice,
