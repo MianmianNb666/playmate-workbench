@@ -599,6 +599,12 @@ function filteredItems(){
 function renderItems(){
   const items=filteredItems();
   $("emptyItems").classList.toggle("hidden",items.length>0);
+  if($("calcItemList")){
+    $("calcItemList").innerHTML=state.items
+      .filter(item=>item.is_active!==false)
+      .map(item=>`<option value="${safe(item.name)}">${money(item.unit_price)} / ${safe(item.unit_label||"次")}</option>`)
+      .join("");
+  }
   $("itemWall").innerHTML=items.map(item=>{
     const category=state.categories.find(c=>c.id===item.category_id)?.name||"未分类";
     return `
@@ -713,40 +719,113 @@ function applyPriceEditPermissions(){
 }
 
 function resetCalculatorVisual(){
+  state.selectedItem=null;
+  $("calcItemName").value="";
   $("calcUnitPrice").value="";
-  $("calcUnitPrice").readOnly=true;
+  $("calcUnitPrice").readOnly=false;
   $("calcUnitLabel").value="";
+  $("calcUnitLabel").readOnly=false;
+  $("calcUnitMinutes").value="";
   $("durationInput").value="";
-  $("durationHelp").textContent="选择项目后自动识别计价方式";
-  $("selectedItemText").textContent="还没选择项目";
+  $("customerDiscount").value="";
+  $("discountHelp").textContent="已有老板会自动带出保存的折扣";
+  $("durationHelp").textContent="已有项目自动识别；手动项目按你填写的单位计算";
+  $("selectedItemText").textContent="可以选价格表项目，也可以直接手填";
   $("currencyPrefix").textContent=currentShop()?.currency_symbol||"¥";
   $("calcTotal").textContent=money(0);
-  $("calcFormula").textContent="等待选择项目";
+  $("calcFormula").textContent="等待输入项目和价格";
   $("historyTotal").textContent=money(state.historyTotal);
   $("newTotal").textContent=money(state.historyTotal);
 }
 
-function selectItem(id){
+function inferMinutesFromUnit(raw){
+  const unit=String(raw||"").trim().toLowerCase().replaceAll(" ","");
+  if(["半","半小时","0.5h","0.5小时"].includes(unit)) return 30;
+  if(["小时","h","hr","hour"].includes(unit)) return 60;
+  const m=unit.match(/^(\d+(?:\.\d+)?)(?:分钟|分|min|mins)$/i);
+  return m?Number(m[1]):null;
+}
+
+function effectiveCalcItem(){
+  const name=$("calcItemName").value.trim();
+  if(!name) return null;
+  const unitLabel=$("calcUnitLabel").value.trim()||"次";
+  const rawMinutes=$("calcUnitMinutes").value.trim();
+  const unitMinutes=rawMinutes!=="" ? Number(rawMinutes) : inferMinutesFromUnit(unitLabel);
+  return {
+    id:state.selectedItem?.id||null,
+    name,
+    unit_label:unitLabel,
+    unit_minutes:Number.isFinite(unitMinutes) && unitMinutes>0 ? unitMinutes : null
+  };
+}
+
+function syncExistingItemByName(){
+  const name=$("calcItemName").value.trim();
+  const item=state.items.find(x=>x.is_active!==false && String(x.name||"").trim()===name);
+  if(!item){
+    state.selectedItem=null;
+    $("selectedItemText").textContent=name
+      ? "手动项目 · 不会自动加入价格表"
+      : "可以选价格表项目，也可以直接手填";
+    renderItems();
+    calculate();
+    return;
+  }
+  selectItem(item.id,{preserveItemName:true});
+}
+
+function selectItem(id,options={}){
   const item=state.items.find(x=>x.id===id);
   if(!item) return;
   state.selectedItem=item;
+  if(!options.preserveItemName) $("calcItemName").value=item.name||"";
   $("calcUnitPrice").value=Number(item.unit_price||0);
-  $("calcUnitPrice").readOnly=!item.allow_manual_price;
+  $("calcUnitPrice").readOnly=false;
   $("calcUnitLabel").value=item.unit_label||"次";
-  $("selectedItemText").textContent=`${item.name} · ${money(item.unit_price)} / ${item.unit_label}`;
+  $("calcUnitLabel").readOnly=false;
+  $("calcUnitMinutes").value=item.unit_minutes||"";
+  $("selectedItemText").textContent=`${item.name} · 已从价格表自动带出 ${money(item.unit_price)} / ${item.unit_label}`;
   $("durationInput").placeholder=item.unit_minutes?"例如 3H / 90m / 6":"输入数量，例如 3";
   $("durationHelp").textContent=item.unit_minutes
     ? `每 1 ${item.unit_label} = ${item.unit_minutes} 分钟，支持输入 3H / 90m`
-    : `按「${item.unit_label}」计数`;
+    : `按「${item.unit_label||"次"}」计数`;
   renderItems();
   calculate();
 }
 
+function parseDiscountRate(raw){
+  let text=String(raw||"").trim().toLowerCase();
+  if(!text) return 100;
+  if(["无","无折扣","原价","10折","100%"].includes(text)) return 100;
+
+  let value;
+  if(text.endsWith("折")){
+    value=parseFloat(text.replace("折",""))*10;
+  }else if(text.endsWith("%")){
+    value=parseFloat(text.replace("%",""));
+  }else{
+    value=parseFloat(text);
+    if(value>0 && value<=10) value*=10;
+  }
+
+  if(!Number.isFinite(value)) return null;
+  return Math.max(0,Math.min(100,value));
+}
+
+function discountLabel(rate){
+  const n=Number(rate);
+  if(!Number.isFinite(n)||n>=100) return "10折";
+  const fold=n/10;
+  return `${plainNumber(fold)}折`;
+}
+
 function parseMeasure(){
-  if(!state.selectedItem) return null;
+  const item=effectiveCalcItem();
+  if(!item) return null;
   const raw=$("durationInput").value.trim();
   if(!raw) return null;
-  const item=state.selectedItem;
+
   let quantity=0;
   let minutes=null;
 
@@ -773,30 +852,35 @@ function parseMeasure(){
     if(!Number.isFinite(num)) return null;
     quantity=num;
   }
+
   if(quantity<0) return null;
   return {raw,quantity,minutes};
 }
 
 function calculate(){
-  if(!state.selectedItem){
-    state.calc=null;
-    $("calcTotal").textContent=money(0);
-    $("newTotal").textContent=money(state.historyTotal);
-    return null;
-  }
+  const item=effectiveCalcItem();
   const measure=parseMeasure();
-  const unitPrice=Number($("calcUnitPrice").value||0);
-  if(!measure || !Number.isFinite(unitPrice)){
+  const unitPrice=Number($("calcUnitPrice").value);
+  const discountRate=parseDiscountRate($("customerDiscount").value);
+
+  if(!item || !measure || !Number.isFinite(unitPrice) || unitPrice<0 || discountRate===null){
     state.calc=null;
     $("calcTotal").textContent=money(0);
-    $("calcFormula").textContent="输入时长或数量后自动计算";
+    $("calcFormula").textContent=discountRate===null
+      ? "折扣格式例如：9折 / 8.5折 / 90%"
+      : "输入项目、单价和时长 / 数量后自动计算";
     $("newTotal").textContent=money(state.historyTotal);
     return null;
   }
-  const total=unitPrice*measure.quantity;
-  state.calc={unitPrice,total,...measure};
+
+  const originalTotal=unitPrice*measure.quantity;
+  const total=originalTotal*(discountRate/100);
+  state.calc={unitPrice,originalTotal,discountRate,total,...measure};
+
   $("calcTotal").textContent=money(total);
-  $("calcFormula").textContent=`${plainNumber(unitPrice)} × ${plainNumber(measure.quantity)} = ${plainNumber(total)}`;
+  $("calcFormula").textContent=discountRate<100
+    ? `${plainNumber(unitPrice)} × ${plainNumber(measure.quantity)} = ${plainNumber(originalTotal)} · ${discountLabel(discountRate)} → ${plainNumber(total)}`
+    : `${plainNumber(unitPrice)} × ${plainNumber(measure.quantity)} = ${plainNumber(total)}`;
   $("newTotal").textContent=money(state.historyTotal+total);
   return state.calc;
 }
@@ -804,15 +888,24 @@ function calculate(){
 async function refreshCustomerTotal(){
   const name=$("customerName").value.trim();
   const customer=state.customers.find(c=>c.name===name);
+
   if(!customer){
     state.historyTotal=0;
+    $("customerDiscount").value="";
+    $("discountHelp").textContent="新老板默认 10 折，保存记录时会记住这里的折扣";
   }else{
     const {data,error}=await supabase.from("consumption_records")
       .select("amount")
       .eq("customer_id",customer.id);
     if(error){console.error(error);return}
     state.historyTotal=(data||[]).reduce((sum,r)=>sum+Number(r.amount||0),0);
+    const rate=Number(customer.discount_rate??100);
+    $("customerDiscount").value=rate>=100?"":discountLabel(rate);
+    $("discountHelp").textContent=rate>=100
+      ? "这个老板当前是 10 折"
+      : `已自动带出这个老板的 ${discountLabel(rate)}`;
   }
+
   $("historyTotal").textContent=money(state.historyTotal);
   calculate();
 }
@@ -820,30 +913,43 @@ async function refreshCustomerTotal(){
 function validateCalc(){
   const customer=$("customerName").value.trim();
   const companion=$("companionName").value.trim();
+  const item=effectiveCalcItem();
   const calc=calculate();
+
   if(!state.shopId){toast("请先选择店铺");return null}
   if(!customer){toast("先填写老板 / 顾客");return null}
-  if(!state.selectedItem){toast("先选择消费项目");return null}
+  if(!item){toast("先填写项目名称");return null}
+  if(!Number.isFinite(Number($("calcUnitPrice").value))){toast("先填写单价");return null}
   if(!companion){toast("先填写陪陪");return null}
+  if(parseDiscountRate($("customerDiscount").value)===null){toast("折扣格式请填 9折 / 8.5折 / 90%");return null}
   if(!calc){toast("请输入有效的时长 / 数量");return null}
-  return {customer,companion,calc,note:$("calcNote").value.trim()};
+
+  return {
+    customer,
+    companion,
+    item,
+    calc,
+    note:$("calcNote").value.trim()
+  };
 }
 
 function reportData(){
   const valid=validateCalc();
   if(!valid) return null;
   const shop=currentShop();
-  const item=state.selectedItem;
   const parts=dateParts();
+
   return {
     shop,
     customer:valid.customer,
     companion:valid.companion,
-    item,
+    item:valid.item,
     note:valid.note,
     measure:valid.calc.raw,
     quantity:valid.calc.quantity,
     unitPrice:valid.calc.unitPrice,
+    originalTotal:valid.calc.originalTotal,
+    discountRate:valid.calc.discountRate,
     total:valid.calc.total,
     history:state.historyTotal,
     newTotal:state.historyTotal+valid.calc.total,
@@ -862,6 +968,8 @@ function buildReport(data){
     "{单位}":data.item.unit_label,
     "{时长}":data.measure,
     "{数量}":plainNumber(data.quantity),
+    "{原价}":plainNumber(data.originalTotal??data.total),
+    "{折扣}":discountLabel(data.discountRate??100),
     "{总价}":plainNumber(data.total),
     "{历史累计}":plainNumber(data.history),
     "{累计消费}":plainNumber(data.newTotal),
@@ -883,12 +991,30 @@ async function copyText(text){
   }
 }
 
-async function getOrCreateCustomer(name){
+async function getOrCreateCustomer(name,discountRate=100){
   let customer=state.customers.find(c=>c.name===name);
-  if(customer) return customer;
+
+  if(customer){
+    if(Number(customer.discount_rate??100)!==Number(discountRate)){
+      const {data,error}=await supabase.from("customers")
+        .update({discount_rate:discountRate})
+        .eq("id",customer.id)
+        .select().single();
+      if(error) throw error;
+      customer=data;
+      state.customers=state.customers.map(c=>c.id===data.id?data:c);
+    }
+    return customer;
+  }
+
   const {data,error}=await supabase.from("customers")
-    .insert({shop_id:state.shopId,name})
+    .insert({
+      shop_id:state.shopId,
+      name,
+      discount_rate:discountRate
+    })
     .select().single();
+
   if(error) throw error;
   state.customers.push(data);
   renderCustomerList();
@@ -899,7 +1025,7 @@ async function saveRecord(){
   const data=reportData();
   if(!data) return;
   try{
-    const customer=await getOrCreateCustomer(data.customer);
+    const customer=await getOrCreateCustomer(data.customer,data.discountRate);
     const {data:oldRows,error:oldError}=await supabase.from("consumption_records")
       .select("amount").eq("customer_id",customer.id);
     if(oldError) throw oldError;
@@ -909,7 +1035,7 @@ async function saveRecord(){
     const {error}=await supabase.from("consumption_records").insert({
       shop_id:state.shopId,
       customer_id:customer.id,
-      item_id:data.item.id,
+      item_id:data.item.id||null,
       customer_name_snapshot:data.customer,
       item_name_snapshot:data.item.name,
       companion_name:data.companion,
@@ -918,6 +1044,8 @@ async function saveRecord(){
       unit_minutes_snapshot:data.item.unit_minutes,
       quantity:data.quantity,
       duration_input:data.measure,
+      original_amount:data.originalTotal,
+      discount_rate_snapshot:data.discountRate,
       amount:data.total,
       previous_total:previous,
       new_total:previous+data.total,
@@ -959,8 +1087,9 @@ function sampleReceiptData(){
   };
   return {
     shop,customer:"老板昵称",companion:"A",item:{name:"语聊",unit_label:"半小时"},
-    note:"谢谢支持 ♡",measure:"3H",quantity:6,unitPrice:25,total:150,
-    history:300,newTotal:450,...dateParts()
+    note:"谢谢支持 ♡",measure:"3H",quantity:6,unitPrice:25,
+    originalTotal:150,discountRate:90,total:135,
+    history:300,newTotal:435,...dateParts()
   };
 }
 
@@ -975,6 +1104,10 @@ function receiptHtml(data,settings){
   if(settings.show_companion) lines.push(["陪陪",data.companion||""]);
   if(settings.show_unit_price) lines.push(["单价",`${money(data.unitPrice,shop)} / ${data.item?.unit_label||""}`]);
   if(settings.show_quantity) lines.push(["时长 / 数量",data.measure||plainNumber(data.quantity)]);
+  if(Number(data.discountRate??100)<100){
+    lines.push(["老板折扣",discountLabel(data.discountRate)]);
+    lines.push(["折前金额",money(data.originalTotal??data.total,shop)]);
+  }
   if(settings.show_total_spent) lines.push(["累计消费",money(data.newTotal,shop)]);
   if(settings.show_note && data.note) lines.push(["备注",data.note]);
   if(settings.show_time) lines.push(["时间",`${data.date} ${data.time}`]);
@@ -1300,11 +1433,27 @@ async function reuseRecord(id){
   $("customerName").value=record.customer_name_snapshot||"";
   $("companionName").value=record.companion_name||"";
   $("calcNote").value=record.note||"";
+
   const item=state.items.find(i=>i.id===record.item_id);
-  if(item) selectItem(item.id);
+  if(item){
+    selectItem(item.id);
+  }else{
+    state.selectedItem=null;
+    $("calcItemName").value=record.item_name_snapshot||"";
+    $("calcUnitLabel").value=record.unit_label_snapshot||"次";
+    $("calcUnitMinutes").value=record.unit_minutes_snapshot||"";
+  }
+
   $("calcUnitPrice").value=record.unit_price_snapshot||0;
+  $("customerDiscount").value=Number(record.discount_rate_snapshot??100)<100
+    ? discountLabel(record.discount_rate_snapshot)
+    : "";
   $("durationInput").value=record.duration_input||plainNumber(record.quantity);
   await refreshCustomerTotal();
+
+  if(Number(record.discount_rate_snapshot??100)<100){
+    $("customerDiscount").value=discountLabel(record.discount_rate_snapshot);
+  }
   calculate();
   showPage("calculator");
   window.scrollTo({top:0,behavior:"smooth"});
@@ -1338,7 +1487,20 @@ function bindEvents(){
     clearTimeout(bindEvents.customerTimer);
     bindEvents.customerTimer=setTimeout(refreshCustomerTotal,250);
   });
+  $("calcItemName").addEventListener("input",()=>{
+    clearTimeout(bindEvents.itemNameTimer);
+    bindEvents.itemNameTimer=setTimeout(syncExistingItemByName,120);
+  });
   $("calcUnitPrice").addEventListener("input",calculate);
+  $("calcUnitLabel").addEventListener("input",()=>{
+    if(!$("calcUnitMinutes").value){
+      const inferred=inferMinutesFromUnit($("calcUnitLabel").value);
+      if(inferred) $("calcUnitMinutes").value=inferred;
+    }
+    calculate();
+  });
+  $("calcUnitMinutes").addEventListener("input",calculate);
+  $("customerDiscount").addEventListener("input",calculate);
   $("durationInput").addEventListener("input",calculate);
   $("itemSearch").addEventListener("input",()=>{
     state.itemSearch=$("itemSearch").value;
