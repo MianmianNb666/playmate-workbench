@@ -2384,3 +2384,18 @@ html.pre-top body:not(.booting){
     z-index:90;
   }
 }
+
+
+/* V3.1 启动画面派mini恢复原尺寸 */
+@media(max-width:720px){
+  .boot-mark{
+    font-size:30px;
+    letter-spacing:-1px;
+    opacity:1;
+  }
+}
+@media(max-width:420px){
+  .boot-mark{
+    font-size:30px;
+  }
+}
