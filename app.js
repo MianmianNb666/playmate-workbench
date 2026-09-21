@@ -310,7 +310,7 @@ function registerPaiMiniPwa(){
 
   if("serviceWorker" in navigator){
     window.addEventListener("load",()=>{
-      navigator.serviceWorker.register("./sw.js?v=2",{updateViaCache:"none"})
+      navigator.serviceWorker.register("./sw.js?v=3",{updateViaCache:"none"})
         .then(reg=>reg.update().catch(()=>{}))
         .catch(error=>{
           console.warn("Service worker registration failed",error);
