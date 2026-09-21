@@ -319,6 +319,26 @@ function registerPaiMiniPwa(){
   }
 }
 
+window.paiMiniOrderBridge={
+  getContext(){
+    return {
+      supabase,
+      state,
+      shop:currentShop(),
+      customerName:$("customerName")?.value.trim()||"",
+      note:$("calcNote")?.value.trim()||"",
+      discountRate:parseDiscountRate($("customerDiscount")?.value)??100
+    };
+  },
+  async refreshAfterSave(){
+    await loadRecords();
+    renderRecords();
+    renderDataSummary();
+    await refreshCustomerTotal();
+  },
+  toast
+};
+
 function toast(message){
   const el=$("toast");
   el.textContent=message;
