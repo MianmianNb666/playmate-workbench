@@ -1749,6 +1749,8 @@ function bindEvents(){
     state.shopId=$("calcShop").value;
     $("templateShop").value=state.shopId;
     $("receiptShop").value=state.shopId;
+    $("customerShop").value=state.shopId;
+    resetCustomerProfileForm();
     await loadCurrentShopData();
     renderAll();
   });
