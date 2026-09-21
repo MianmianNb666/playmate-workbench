@@ -5,17 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff6fa">
   <title>陪玩工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-1432">
+  <link rel="stylesheet" href="./styles.css?v=20260921-1446">
 </head>
-<body>\n  <!-- deploy-version:20260921-1432 -->
+<body>
+  <!-- deploy-version:20260921-1446 -->
   <main class="app-shell">
     <section class="hero-card">
       <div class="hero-top">
         <div>
-          <h1 class="brand">陪<span>玩</span>工作台 <i>🐾</i></h1>
+          <h1 class="brand">陪<span>玩</span>工作台 <i>♡</i></h1>
           <p class="tagline">和可爱的人一起，创造更多快乐 ♡</p>
         </div>
-        <button id="accountBtn" class="round-btn" type="button" aria-label="账号">🐱</button>
+        <button id="accountBtn" class="round-btn" type="button" aria-label="账号">
+          <svg viewBox="0 0 40 40" aria-hidden="true">
+            <path d="M11 18c-1-7 3-12 8-12s9 5 8 12c5 2 7 6 6 10-2 5-8 7-14 6S7 30 7 25c0-3 2-6 4-7Z" fill="#fff" stroke="#6f4d59" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M12 14 9 7l7 4M27 13l4-6 1 8" fill="#fff" stroke="#6f4d59" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15 22c1 1 2 1 3 0m5 0c1 1 2 1 3 0m-6 3c2 2 4 2 6 0" fill="none" stroke="#6f4d59" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="14" cy="26" r="2.5" fill="#ffc6d8"/><circle cx="28" cy="26" r="2.5" fill="#ffc6d8"/>
+          </svg>
+        </button>
       </div>
 
       <div class="hero-content">
@@ -25,25 +33,90 @@
         </div>
 
         <div class="cat-scene" aria-hidden="true">
-          <span class="float-heart h1">♡</span>
-          <span class="float-heart h2">♥</span>
-          <span class="float-paw">🐾</span>
-          <div class="cat-card">
-            <div class="bow">🎀</div>
-            <div class="cat-emoji">🐱</div>
-            <div class="tiny-friend">🧸</div>
-          </div>
-          <div class="blanket"></div>
+          <svg class="hero-illustration" viewBox="0 0 620 360">
+            <defs>
+              <linearGradient id="pillowGrad" x1="0" x2="1">
+                <stop offset="0" stop-color="#ffd8e6"/>
+                <stop offset="1" stop-color="#ffc8dc"/>
+              </linearGradient>
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+                <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#b16a83" flood-opacity=".12"/>
+              </filter>
+            </defs>
+
+            <g opacity=".9">
+              <path d="M75 94c8-20 34-18 38 2 3-19 30-25 40-7 12 22-17 45-39 61-18-13-49-33-39-56Z" fill="none" stroke="#ff8fb4" stroke-width="8" stroke-linecap="round"/>
+              <path d="M510 79c8-17 30-14 33 3 2-15 24-19 32-4 8 18-15 35-32 47-14-10-39-25-33-46Z" fill="#ff9dbc" opacity=".8"/>
+              <g stroke="#f0a1ba" stroke-width="7" stroke-linecap="round">
+                <path d="M470 157l-11-6M480 150l2-12M488 158l10-8"/>
+              </g>
+            </g>
+
+            <g filter="url(#softShadow)">
+              <path d="M216 285c18-74 116-112 237-91 70 12 115 47 133 91H216Z" fill="url(#pillowGrad)" stroke="#e99cb7" stroke-width="5"/>
+              <path d="M252 212v73M322 200v85M394 198v87M468 207v78M535 225v60" stroke="#fff" stroke-opacity=".7" stroke-width="8"/>
+              <path d="M232 243h335M222 270h354" stroke="#fff" stroke-opacity=".72" stroke-width="8"/>
+            </g>
+
+            <g transform="translate(260 72)">
+              <path d="M38 78 65 24 92 73" fill="#fffdfc" stroke="#64444f" stroke-width="7" stroke-linejoin="round"/>
+              <path d="M164 75 205 25 211 95" fill="#fffdfc" stroke="#64444f" stroke-width="7" stroke-linejoin="round"/>
+              <path d="M50 58 65 35l12 30M183 55l18-19 3 29" fill="#ffc9d9"/>
+              <path d="M63 73c42-34 111-28 143 8 31 34 26 93 2 122-20 24-53 35-94 34-45 0-83-14-101-43-21-35-15-91 13-121 11-12 24-20 37-26Z" fill="#fffdfc" stroke="#64444f" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M96 72c6-14 18-21 29-10M126 66c7-12 18-15 28-4" fill="none" stroke="#d7d6d4" stroke-width="11" stroke-linecap="round"/>
+              <path d="M72 128c4-9 13-13 21-8M161 119c7-7 18-5 23 3" fill="none" stroke="#51363f" stroke-width="7" stroke-linecap="round"/>
+              <path d="M123 142c7 8 15 8 22 0" fill="none" stroke="#51363f" stroke-width="5" stroke-linecap="round"/>
+              <path d="M134 141v9" stroke="#51363f" stroke-width="4" stroke-linecap="round"/>
+              <circle cx="65" cy="151" r="11" fill="#ffcbd9" opacity=".9"/>
+              <circle cx="188" cy="148" r="11" fill="#ffcbd9" opacity=".9"/>
+              <path d="M39 184c9 28 44 34 64 8 10 19 47 22 62-2" fill="#fffdfc" stroke="#64444f" stroke-width="7" stroke-linecap="round"/>
+              <g transform="translate(169 20) rotate(8)">
+                <path d="M0 14C9 1 22 7 25 17c4-11 17-15 25-7 9 10-4 26-23 31C14 35-7 28 0 14Z" fill="#f7b1c8" stroke="#d87c9b" stroke-width="4"/>
+              </g>
+            </g>
+
+            <g transform="translate(492 205)">
+              <circle cx="32" cy="31" r="28" fill="#f0d1ad" stroke="#745548" stroke-width="4"/>
+              <circle cx="12" cy="10" r="10" fill="#f0d1ad" stroke="#745548" stroke-width="4"/>
+              <circle cx="51" cy="10" r="10" fill="#f0d1ad" stroke="#745548" stroke-width="4"/>
+              <circle cx="22" cy="29" r="3" fill="#60483f"/><circle cx="41" cy="29" r="3" fill="#60483f"/>
+              <path d="M28 38c3 3 6 3 9 0" fill="none" stroke="#60483f" stroke-width="3" stroke-linecap="round"/>
+              <path d="M12 52c-8 10-7 27 3 35m34-35c8 10 8 26 0 35" fill="none" stroke="#745548" stroke-width="4" stroke-linecap="round"/>
+              <path d="M22 54c3 10 16 11 20 0" fill="#f4c0cf" opacity=".8"/>
+            </g>
+          </svg>
         </div>
       </div>
     </section>
 
     <section class="feature-card">
       <div class="feature-visual" aria-hidden="true">
-        <div class="cat-round">🐱</div>
-        <div class="calc-icon">🧮</div>
-        <span class="spark s1">✦</span>
-        <span class="spark s2">♡</span>
+        <svg class="calculator-cat" viewBox="0 0 430 300">
+          <g transform="translate(38 35)">
+            <path d="M30 84 58 29 87 80M145 79l38-49 8 64" fill="#fffdfc" stroke="#60414c" stroke-width="7" stroke-linejoin="round"/>
+            <path d="M51 60 59 42l12 26M161 55l18-18 4 30" fill="#ffc9d8"/>
+            <path d="M47 73c39-25 95-19 123 11 25 27 22 77 2 103-19 25-52 35-88 33-43-2-72-16-84-43-16-34-4-81 25-104 7-6 15-10 22-13Z" fill="#fffdfc" stroke="#60414c" stroke-width="7"/>
+            <circle cx="51" cy="126" r="8" fill="#4f343d"/>
+            <path d="M118 122c5-6 13-6 19 0" fill="none" stroke="#4f343d" stroke-width="6" stroke-linecap="round"/>
+            <path d="M83 142c6 6 13 6 19 0" fill="none" stroke="#4f343d" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="34" cy="147" r="9" fill="#ffcbd8"/><circle cx="143" cy="145" r="9" fill="#ffcbd8"/>
+            <path d="M17 178c11 28 43 32 60 8" fill="#fffdfc" stroke="#60414c" stroke-width="7" stroke-linecap="round"/>
+          </g>
+          <g transform="translate(162 100) rotate(7)">
+            <rect x="0" y="0" width="150" height="166" rx="27" fill="#ffb8cf" stroke="#d96f93" stroke-width="6"/>
+            <rect x="20" y="19" width="110" height="31" rx="10" fill="#fff8fb" stroke="#ee9bb7" stroke-width="3"/>
+            <text x="75" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="#7b5663">GOOD♡</text>
+            <g fill="#fff6fa" stroke="#e98aa9" stroke-width="3">
+              <rect x="19" y="65" width="29" height="29" rx="8"/><rect x="60" y="65" width="29" height="29" rx="8"/><rect x="101" y="65" width="29" height="29" rx="8"/>
+              <rect x="19" y="105" width="29" height="29" rx="8"/><rect x="60" y="105" width="29" height="29" rx="8"/><rect x="101" y="105" width="29" height="29" rx="8"/>
+            </g>
+            <path d="M27 77h13M68 78h13M109 78h13M33 112v14M74 112v14M109 119h13" stroke="#f28aaa" stroke-width="4" stroke-linecap="round"/>
+          </g>
+          <path d="M76 85c9-16 26-9 27 5 5-13 23-14 28-2 7 17-12 33-27 43-13-8-37-26-28-46Z" fill="#ff92b4"/>
+          <g stroke="#eda0b9" stroke-width="6" stroke-linecap="round">
+            <path d="M335 65l11-13M352 76l17-5M331 81l-12-9"/>
+          </g>
+        </svg>
       </div>
       <div class="feature-copy">
         <small>快速算单 · 轻松报价～</small>
@@ -80,7 +153,7 @@
       <div class="section-title">
         <div>
           <span>QUICK CALCULATOR</span>
-          <h2>算一单看看 🐾</h2>
+          <h2>算一单看看 ♡</h2>
         </div>
         <span class="mini-paw">♡</span>
       </div>
@@ -116,13 +189,27 @@
     </section>
 
     <section class="bottom-banner">
-      <div class="sleepy-cat">🐱</div>
-      <div class="little-duck">🐥</div>
+      <svg class="sleepy-illustration" viewBox="0 0 310 140" aria-hidden="true">
+        <path d="M30 112c16-46 92-63 145-33 24 13 37 28 45 33H30Z" fill="#ffdbe7"/>
+        <g transform="translate(48 22)">
+          <path d="M20 48 38 16 59 44M95 43l28-28 5 40" fill="#fffdfc" stroke="#60414c" stroke-width="5"/>
+          <path d="M32 40c30-17 68-10 83 15 14 23 7 61-16 75-22 13-58 10-76-7C5 106 5 64 32 40Z" fill="#fffdfc" stroke="#60414c" stroke-width="5"/>
+          <path d="M43 81c5 6 12 6 17 0m28 0c5 6 12 6 17 0" fill="none" stroke="#4f343d" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="39" cy="95" r="7" fill="#ffcbd8"/><circle cx="110" cy="94" r="7" fill="#ffcbd8"/>
+        </g>
+        <g transform="translate(177 66)">
+          <circle cx="30" cy="30" r="24" fill="#ffe8a6" stroke="#8b6f47" stroke-width="4"/>
+          <path d="M11 15c3-10 12-14 20-9" fill="none" stroke="#8b6f47" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="23" cy="28" r="2.7" fill="#574733"/><circle cx="38" cy="28" r="2.7" fill="#574733"/>
+          <path d="M29 36c3 3 6 3 9 0" fill="none" stroke="#574733" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <text x="236" y="35" font-size="18" fill="#9b7483">z z z</text>
+      </svg>
       <div class="banner-copy">
         <h3>陪伴，让快乐更简单 ♡</h3>
         <p>先把小工具做顺手，后面再慢慢长成完整的陪玩团系统。</p>
       </div>
-      <span class="leaf">🌷</span>
+      <span class="leaf">♡</span>
     </section>
 
     <nav class="bottom-nav" aria-label="底部导航">
@@ -131,7 +218,7 @@
         <b>工作台</b>
       </button>
       <button class="nav-item" id="myNavBtn" type="button">
-        <span>🐱</span>
+        <span>♡</span>
         <b>我的</b>
       </button>
     </nav>
@@ -140,7 +227,13 @@
   <dialog id="accountDialog" class="account-dialog">
     <form method="dialog" class="dialog-card" onsubmit="return false">
       <button id="closeAccount" class="dialog-close" type="button" aria-label="关闭">×</button>
-      <div class="dialog-cat">🐱</div>
+      <svg class="dialog-cat" viewBox="0 0 90 80" aria-hidden="true">
+        <path d="M18 33 28 9 40 29M53 29 68 10 70 37" fill="#fffdfc" stroke="#654550" stroke-width="4"/>
+        <path d="M24 29c17-13 39-9 48 5 10 15 5 36-10 43-17 8-41 3-49-13-7-14-2-27 11-35Z" fill="#fffdfc" stroke="#654550" stroke-width="4"/>
+        <circle cx="32" cy="48" r="3.5" fill="#513640"/><circle cx="58" cy="48" r="3.5" fill="#513640"/>
+        <path d="M41 58c4 4 8 4 12 0" fill="none" stroke="#513640" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="25" cy="58" r="5" fill="#ffcbd9"/><circle cx="65" cy="58" r="5" fill="#ffcbd9"/>
+      </svg>
       <h2>我的账号</h2>
       <p class="dialog-sub">账号底座先保留着，陪玩团管理功能之后单独做。</p>
 
@@ -176,6 +269,6 @@
     </form>
   </dialog>
 
-  <script type="module" src="./app.js?v=20260921-1432"></script>
+  <script type="module" src="./app.js?v=20260921-1446"></script>
 </body>
 </html>
