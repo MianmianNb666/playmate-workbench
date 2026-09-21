@@ -2592,3 +2592,23 @@ html.pre-top body:not(.booting){
     grid-column:1/-1;
   }
 }
+
+/* Multi-order module: isolated from login/bootstrap */
+.multi-order-card{margin-top:16px}
+.multi-order-card .card-title{align-items:center;gap:12px}
+.order-line-list{display:grid;gap:10px}
+.order-line{display:grid;grid-template-columns:minmax(120px,1.2fr) minmax(160px,2fr) auto auto;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:var(--paper)}
+.order-line-main b,.order-line-item b{display:block}
+.order-line small{display:block;margin-top:3px;opacity:.65}
+.order-line-price{font-weight:800;white-space:nowrap}
+.order-line-remove{border:0;background:transparent;color:var(--accent);font-size:20px;cursor:pointer;padding:8px}
+.multi-order-total{display:flex;justify-content:space-between;align-items:end;margin-top:12px;padding:16px 18px;border-radius:18px;background:color-mix(in srgb,var(--accent) 9%,var(--paper))}
+.multi-order-total strong{font-size:28px;color:var(--accent)}
+@media(max-width:700px){
+ .order-line{grid-template-columns:1fr auto}
+ .order-line-item{grid-column:1/2}
+ .order-line-price{grid-column:1/2}
+ .order-line-remove{grid-column:2;grid-row:1/4}
+ .multi-order-card .card-title{align-items:flex-start;flex-direction:column}
+ #addOrderLineBtn{width:100%}
+}
