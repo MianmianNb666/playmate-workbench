@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v24">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v25">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -459,6 +459,28 @@
             </div>
           </div>
         </div>
+        <div class="card desktop-settings-card">
+          <div class="card-title"><div><b>桌面图标与名称</b></div></div>
+          <div class="desktop-app-editor">
+            <div class="desktop-app-preview">
+              <img id="desktopIconPreview" src="./icon.svg" alt="">
+              <span id="desktopNamePreview">派mini</span>
+            </div>
+            <div class="desktop-app-fields">
+              <label>桌面名称
+                <input id="desktopAppName" maxlength="20" placeholder="例如 派mini / 我的派单">
+              </label>
+              <label>桌面图标
+                <input id="desktopIconFile" type="file" accept="image/png,image/jpeg,image/webp">
+              </label>
+              <div class="mini-actions desktop-app-actions">
+                <button id="resetDesktopAppBtn" class="btn ghost" type="button">恢复默认</button>
+                <button id="saveDesktopAppBtn" class="btn primary" type="button">保存桌面样式</button>
+              </div>
+              <button id="settingsInstallAppBtn" class="btn soft full-btn" type="button">添加到主屏幕</button>
+            </div>
+          </div>
+        </div>
         <div class="card access-settings-card">
           <div class="card-title"><div><b>使用期限</b></div></div>
           <div class="access-status-line">
@@ -560,7 +582,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v26"></script>
+  <script type="module" src="./app.js?v=20260921-v27"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
