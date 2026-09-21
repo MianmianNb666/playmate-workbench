@@ -454,4 +454,213 @@ $$;
 revoke all on function public.admin_create_invite_code(text,integer,text,integer,text,timestamptz)
 from public, anon, authenticated;
 
+-- 到期后数据库层也停止业务数据读写；续费 RPC 和期限状态仍可使用。
+drop policy if exists shops_select_authenticated on public.shops;
+create policy shops_select_authenticated
+on public.shops for select to authenticated
+using (
+  public.has_active_access()
+  and (is_active = true or user_id = (select auth.uid()))
+);
+
+drop policy if exists shops_insert_own on public.shops;
+create policy shops_insert_own
+on public.shops for insert to authenticated
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists shops_update_own on public.shops;
+create policy shops_update_own
+on public.shops for update to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+)
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists shops_delete_own on public.shops;
+create policy shops_delete_own
+on public.shops for delete to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists price_categories_select_authenticated on public.price_categories;
+create policy price_categories_select_authenticated
+on public.price_categories for select to authenticated
+using (
+  public.has_active_access()
+  and (
+    user_id = (select auth.uid())
+    or (
+      is_active = true
+      and exists (
+        select 1 from public.shops s
+        where s.id = price_categories.shop_id
+          and s.is_active = true
+      )
+    )
+  )
+);
+
+drop policy if exists price_items_select_authenticated on public.price_items;
+create policy price_items_select_authenticated
+on public.price_items for select to authenticated
+using (
+  public.has_active_access()
+  and (
+    user_id = (select auth.uid())
+    or (
+      is_active = true
+      and exists (
+        select 1 from public.shops s
+        where s.id = price_items.shop_id
+          and s.is_active = true
+      )
+    )
+  )
+);
+
+do $
+declare
+  t text;
+begin
+  foreach t in array array[
+    'customers','consumption_records','report_templates',
+    'receipt_settings'
+  ]
+  loop
+    execute format('drop policy if exists %I on public.%I',t||'_select_own',t);
+    execute format('drop policy if exists %I on public.%I',t||'_insert_own',t);
+    execute format('drop policy if exists %I on public.%I',t||'_update_own',t);
+    execute format('drop policy if exists %I on public.%I',t||'_delete_own',t);
+
+    execute format(
+      'create policy %I on public.%I for select to authenticated using (public.has_active_access() and user_id = (select auth.uid()))',
+      t||'_select_own',t
+    );
+    execute format(
+      'create policy %I on public.%I for insert to authenticated with check (public.has_active_access() and user_id = (select auth.uid()))',
+      t||'_insert_own',t
+    );
+    execute format(
+      'create policy %I on public.%I for update to authenticated using (public.has_active_access() and user_id = (select auth.uid())) with check (public.has_active_access() and user_id = (select auth.uid()))',
+      t||'_update_own',t
+    );
+    execute format(
+      'create policy %I on public.%I for delete to authenticated using (public.has_active_access() and user_id = (select auth.uid()))',
+      t||'_delete_own',t
+    );
+  end loop;
+end $;
+
+drop policy if exists user_profiles_select_own on public.user_profiles;
+create policy user_profiles_select_own
+on public.user_profiles for select to authenticated
+using (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists user_profiles_insert_own on public.user_profiles;
+create policy user_profiles_insert_own
+on public.user_profiles for insert to authenticated
+with check (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists user_profiles_update_own on public.user_profiles;
+create policy user_profiles_update_own
+on public.user_profiles for update to authenticated
+using (public.has_active_access() and user_id = (select auth.uid()))
+with check (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists user_profiles_delete_own on public.user_profiles;
+create policy user_profiles_delete_own
+on public.user_profiles for delete to authenticated
+using (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists saved_shops_select_own on public.saved_shops;
+create policy saved_shops_select_own
+on public.saved_shops for select to authenticated
+using (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists saved_shops_insert_own on public.saved_shops;
+create policy saved_shops_insert_own
+on public.saved_shops for insert to authenticated
+with check (public.has_active_access() and user_id = (select auth.uid()));
+
+drop policy if exists saved_shops_delete_own on public.saved_shops;
+create policy saved_shops_delete_own
+on public.saved_shops for delete to authenticated
+using (public.has_active_access() and user_id = (select auth.uid()));
+
+-- 价格表写入仍然只允许店铺创建者，且账号必须在有效期内。
+drop policy if exists price_categories_insert_own on public.price_categories;
+create policy price_categories_insert_own
+on public.price_categories for insert to authenticated
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+  and exists (
+    select 1 from public.shops s
+    where s.id = price_categories.shop_id
+      and s.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists price_categories_update_own on public.price_categories;
+create policy price_categories_update_own
+on public.price_categories for update to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+)
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists price_categories_delete_own on public.price_categories;
+create policy price_categories_delete_own
+on public.price_categories for delete to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists price_items_insert_own on public.price_items;
+create policy price_items_insert_own
+on public.price_items for insert to authenticated
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+  and exists (
+    select 1 from public.shops s
+    where s.id = price_items.shop_id
+      and s.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists price_items_update_own on public.price_items;
+create policy price_items_update_own
+on public.price_items for update to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+)
+with check (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
+drop policy if exists price_items_delete_own on public.price_items;
+create policy price_items_delete_own
+on public.price_items for delete to authenticated
+using (
+  public.has_active_access()
+  and user_id = (select auth.uid())
+);
+
 commit;
