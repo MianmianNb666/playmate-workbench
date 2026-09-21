@@ -420,7 +420,7 @@ function renderProfile(){
   const message=state.profile.home_message || "今天也要轻松一点，慢慢来就很好 ♡";
 
   $("topDisplayName").innerHTML=`${safe(name)} <i>♡</i>`;
-  $("topAccountLine").textContent="陪玩工作台 · 只属于你的派单主页";
+  $("topAccountLine").textContent="派mini · 只属于你的派单主页";
   $("welcomeName").textContent=`今天好呀，${name} ♡`;
   $("welcomeMessage").textContent=message;
   $("profileDisplayName").value=name;
