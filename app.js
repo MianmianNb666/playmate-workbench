@@ -2257,8 +2257,10 @@ const {data,error}=await supabase.auth.getSession();
 if(error){
   setConnection("Supabase 连接失败",false);
   setAuthHint(error.message,true);
+  document.body.classList.remove("booting");
 }else{
   await applySession(data.session);
+  document.body.classList.remove("booting");
 }
 
 supabase.auth.onAuthStateChange(async (_event,session)=>{
