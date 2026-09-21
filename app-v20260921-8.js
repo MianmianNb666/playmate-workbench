@@ -651,16 +651,20 @@ async function applySession(session){
 
 async function refreshAdminEntry(){
   const card=$("adminEntryCard");
-  if(!card || !state.session) return;
+  const dataCard=$("adminDataSummaryCard");
+  if(!state.session) return;
   try{
     const {data,error}=await supabase.rpc("is_app_admin");
     if(error){
-      card.classList.add("hidden");
+      card?.classList.add("hidden");
+      dataCard?.classList.add("hidden");
       return;
     }
-    card.classList.toggle("hidden",!data);
+    card?.classList.toggle("hidden",!data);
+    dataCard?.classList.toggle("hidden",!data);
   }catch{
-    card.classList.add("hidden");
+    card?.classList.add("hidden");
+    dataCard?.classList.add("hidden");
   }
 }
 
