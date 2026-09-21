@@ -384,7 +384,7 @@
       </div>
       <div class="settings-grid profile-settings-grid">
         <div class="card profile-settings-card">
-          <div class="card-title"><div><b>我的主页</b><small>打开工作台时，先看到喜欢的自己 ♡</small></div></div>
+          <div class="card-title"><div><b>我的主页</b></div></div>
           <div class="profile-editor">
             <div id="settingsAvatarPreview" class="profile-avatar large">
               <img id="settingsAvatarImg" class="hidden" alt="">
@@ -405,7 +405,7 @@
           </div>
         </div>
         <div class="card access-settings-card">
-          <div class="card-title"><div><b>使用期限</b><small>注册固定 7 天试用，之后可用续费邀请码加时</small></div></div>
+          <div class="card-title"><div><b>使用期限</b></div></div>
           <div class="access-status-line">
             <span id="accessStatusBadge" class="status-tag">读取中</span>
             <strong id="accessDaysLeft">--</strong>
@@ -420,17 +420,20 @@
         <div class="card">
           <b>账号</b>
           <p id="settingsEmail" class="muted"></p>
-          <p class="muted">陪玩账号与莓桃工作台完全分开。</p>
+
         </div>
         <div class="card">
           <b>当前数据</b>
           <p id="dataSummary" class="muted">正在读取…</p>
           <button id="refreshDataBtn" class="btn soft" type="button">刷新数据</button>
         </div>
-        <div class="card">
-          <b>V1 范围</b>
-          <p class="muted">派单计算、价格表、消费记录、店铺模板、小票设置、设置。陪陪档案、聊天、排班、提成等以后再做。</p>
+        <div id="adminEntryCard" class="card hidden">
+          <b>我的管理端</b>
+          <div class="admin-entry-actions">
+            <a class="btn primary admin-link-btn" href="./admin.html">进入管理端</a>
+          </div>
         </div>
+
       </div>
     </section>
   </main>
@@ -466,7 +469,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v16"></script>
+  <script type="module" src="./app.js?v=20260921-v17"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
