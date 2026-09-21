@@ -1302,3 +1302,47 @@ textarea,
 .customer-profile-notes{
   background:color-mix(in srgb,var(--bg) 58%,var(--paper));
 }
+
+
+/* V2.1 首页快捷入口 + 添加到主屏幕 */
+.welcome-copy{min-width:0}
+.home-quick-actions{
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+.home-quick-btn{
+  min-height:36px;
+  padding:0 13px;
+  border-radius:12px;
+  border:1px solid color-mix(in srgb,var(--pink) 38%,var(--line));
+  background:var(--paper);
+  color:var(--pink-deep);
+  font-size:10px;
+  font-weight:900;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.home-quick-btn:hover{
+  background:var(--pink-soft);
+}
+.install-help{
+  padding:8px 4px 2px;
+}
+.install-help b{
+  display:block;
+  font-size:18px;
+}
+.install-help p{
+  margin:10px 0 0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.75;
+}
+@media(max-width:700px){
+  .home-quick-actions{margin-top:14px}
+  .home-quick-btn{flex:1 1 auto}
+}
