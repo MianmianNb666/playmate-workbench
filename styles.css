@@ -2558,3 +2558,37 @@ html.pre-top body:not(.booting){
     grid-column:span 6;
   }
 }
+
+
+/* V3.3 价格项目操作按钮优化 */
+.price-row .row-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+  width:100%;
+  margin-top:auto;
+}
+
+.price-row .row-actions .tiny-btn{
+  width:100%;
+  min-width:0;
+  min-height:34px;
+  padding:0 8px;
+  white-space:nowrap;
+}
+
+.price-row .row-actions .tiny-btn.danger{
+  border-color:#f0c9d4;
+  background:#fff4f7;
+  color:#b94f6a;
+}
+
+@media(max-width:720px){
+  .price-row .row-actions{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .price-row .row-actions .tiny-btn.danger{
+    grid-column:1/-1;
+  }
+}
