@@ -16,6 +16,10 @@
       <p>独立派单计算器</p>
       <label>邮箱<input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label>
       <label>密码<input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位"></label>
+      <label>注册邀请码
+        <input id="signupInviteCode" autocomplete="off" placeholder="注册时填写 · 登录不用">
+      </label>
+      <p class="auth-mini-note">新账号使用 7 天试用邀请码注册；登录已有账号不需要邀请码。</p>
       <div class="auth-actions">
         <button id="signInBtn" class="btn primary" type="button">登录</button>
         <button id="signUpBtn" class="btn soft" type="button">注册</button>
@@ -24,6 +28,22 @@
       <div id="connectionStatus" class="connection-pill">
         <span class="dot"></span><span id="connectionText">正在连接 Supabase…</span>
       </div>
+    </div>
+  </section>
+
+  <section id="accessGate" class="auth-gate hidden">
+    <div class="auth-panel access-panel">
+      <div class="auth-brand">使用期已到 ♡</div>
+      <p id="expiredAccessText">输入续费邀请码即可继续使用。</p>
+      <div class="duration-pills">
+        <span>7天</span><span>30天</span><span>90天</span><span>365天</span>
+      </div>
+      <label>续费邀请码
+        <input id="expiredRenewalCode" autocomplete="off" placeholder="输入续费邀请码">
+      </label>
+      <button id="expiredRenewBtn" class="btn primary full-btn" type="button">兑换并继续使用</button>
+      <button id="expiredSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
+      <p id="expiredHint" class="hint"></p>
     </div>
   </section>
 
@@ -372,6 +392,19 @@
             </div>
           </div>
         </div>
+        <div class="card access-settings-card">
+          <div class="card-title"><div><b>使用期限</b><small>注册固定 7 天试用，之后可用续费邀请码加时</small></div></div>
+          <div class="access-status-line">
+            <span id="accessStatusBadge" class="status-tag">读取中</span>
+            <strong id="accessDaysLeft">--</strong>
+          </div>
+          <p id="accessValidUntil" class="muted"></p>
+          <label>续费邀请码
+            <input id="settingsRenewalCode" autocomplete="off" placeholder="7 / 30 / 90 / 365 天">
+          </label>
+          <button id="settingsRenewBtn" class="btn primary full-btn" type="button">兑换续费</button>
+          <p id="settingsRenewHint" class="hint"></p>
+        </div>
         <div class="card">
           <b>账号</b>
           <p id="settingsEmail" class="muted"></p>
@@ -411,7 +444,7 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v13"></script>
+  <script type="module" src="./app.js?v=20260921-v15"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v14"></script>
 </body>
