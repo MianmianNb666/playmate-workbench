@@ -1718,7 +1718,9 @@ async function saveRecord(){
       item_name_snapshot:data.item.name,
       companion_name:data.companion,
       unit_price_snapshot:data.unitPrice,
-      unit_label_snapshot:data.item.unit_label,
+      // 兼容旧表仍为 NOT NULL 的 unit_label。
+      unit_label:data.item.unit_label||"次",
+      unit_label_snapshot:data.item.unit_label||"次",
       unit_minutes_snapshot:data.item.unit_minutes,
       quantity:data.quantity,
       duration_input:data.measure,
