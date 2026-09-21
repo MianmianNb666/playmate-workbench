@@ -51,6 +51,17 @@ create table if not exists public.invite_redemptions (
   redeemed_at timestamptz not null default now()
 );
 
+-- 兼容当前已经存在的测试账号：
+-- 第一次部署邀请码系统时，已有账号统一从“现在”开始获得 7 天试用，
+-- 避免部署后把正在使用的账号直接锁在外面。
+insert into public.user_access(user_id,valid_from,valid_until)
+select u.id,now(),now()+interval '7 days'
+from auth.users u
+where not exists(
+  select 1 from public.user_access ua where ua.user_id=u.id
+)
+on conflict(user_id) do nothing;
+
 alter table public.invite_codes
   drop constraint if exists invite_codes_purpose_check;
 alter table public.invite_codes
