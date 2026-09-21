@@ -30,15 +30,13 @@ const state = {
   itemSearch:"",
   historyTotal:0,
   calc:null,
-  multiOrder:{groups:[],active:false},
   template:{template_text:DEFAULT_TEMPLATE},
   receiptSettings:null,
   editingItemId:null,
   editingShopId:null,
   editingCustomerId:null,
   customerSearch:"",
-  theme:null,
-  multiBound:false
+  theme:null
 };
 
 const receiptKeys = [
@@ -680,7 +678,6 @@ async function bootstrap(){
     await loadCurrentShopData();
     await loadRecords();
     renderAll();
-    bindMultiOrder();
     renderProfile();
     renderDesktopPrefs();
     await refreshAdminEntry();
@@ -1491,10 +1488,6 @@ function parseMeasure(){
 }
 
 function calculate(){
-  if(state.multiOrder?.active){
-    updateMultiTotalsUI();
-    return {multi:true,...multiTotals()};
-  }
   const item=effectiveCalcItem();
   const measure=parseMeasure();
   const priceText=$("calcUnitPrice").value.trim();
@@ -1548,136 +1541,6 @@ async function refreshCustomerTotal(){
   calculate();
 }
 
-
-function multiNewLine(){
-  return {id:crypto.randomUUID?.()||String(Date.now()+Math.random()),item:"",price:"",unit:"半",unitMinutes:"30",measure:""};
-}
-function multiNewGroup(){
-  return {id:crypto.randomUUID?.()||String(Date.now()+Math.random()),companion:"",lines:[multiNewLine()]};
-}
-function ensureMultiOrder(){
-  if(!state.multiOrder.groups.length) state.multiOrder.groups=[multiNewGroup()];
-}
-function multiParseQuantity(line){
-  const raw=String(line.measure||"").trim().toLowerCase().replaceAll(" ","");
-  if(!raw) return null;
-  const mins=Number(line.unitMinutes||0);
-  if(mins>0){
-    if(/小时|h$/.test(raw)){const n=parseFloat(raw.replace(/小时|h$/g,""));return Number.isFinite(n)?n*60/mins:null}
-    if(/分钟|m$/.test(raw)){const n=parseFloat(raw.replace(/分钟|m$/g,""));return Number.isFinite(n)?n/mins:null}
-  }
-  const n=parseFloat(raw); return Number.isFinite(n)?n:null;
-}
-function multiTotals(){
-  let original=0;
-  const details=[];
-  for(const g of state.multiOrder.groups){
-    let groupTotal=0;
-    for(const line of g.lines){
-      const q=multiParseQuantity(line),p=Number(line.price);
-      const subtotal=q!==null&&Number.isFinite(p)&&p>=0?Math.max(0,q)*p:0;
-      original+=subtotal;groupTotal+=subtotal;
-      if(line.item.trim() && q!==null) details.push({...line,companion:g.companion.trim(),quantity:q,subtotal});
-    }
-    g.total=groupTotal;
-  }
-  const rate=parseDiscountRate($("customerDiscount").value)??100;
-  return {original,rate,total:original*rate/100,details};
-}
-function renderMultiOrder(){
-  ensureMultiOrder();
-  const root=$("multiCompanionGroups"); if(!root) return;
-  const esc=s=>String(s??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-  root.innerHTML=state.multiOrder.groups.map((g,gi)=>`
-    <div class="multi-companion" data-multi-group="${g.id}">
-      <div class="multi-companion-head">
-        <label>陪玩昵称<input data-multi-companion value="${esc(g.companion)}" placeholder="例如 A"></label>
-        ${state.multiOrder.groups.length>1?'<button class="multi-remove" data-remove-group type="button" title="删除陪玩">×</button>':""}
-      </div>
-      <div class="multi-lines">
-        ${g.lines.map(line=>`
-          <div class="multi-line" data-multi-line="${line.id}">
-            <label>项目<input data-ml="item" list="calcItemList" value="${esc(line.item)}" placeholder="语聊 / 游戏…"></label>
-            <label>单价<input data-ml="price" type="number" min="0" step=".01" value="${esc(line.price)}" placeholder="0.00"></label>
-            <label>单位<input data-ml="unit" value="${esc(line.unit)}" placeholder="半 / 小时"></label>
-            <label>时长 / 数量<input data-ml="measure" value="${esc(line.measure)}" placeholder="2 / 3H"></label>
-            <div class="multi-line-subtotal">¥0.00</div>
-            <button class="multi-remove" data-remove-line type="button" title="删除项目">×</button>
-          </div>`).join("")}
-      </div>
-      <button class="tiny-btn multi-add-item" data-add-line type="button">＋ 添加项目</button>
-      <div class="multi-companion-total">陪玩小计 <b>¥0.00</b></div>
-    </div>`).join("");
-  updateMultiTotalsUI();
-}
-function syncMultiItem(line){
-  const item=state.items.find(x=>x.name===line.item && x.is_active!==false);
-  if(!item) return;
-  line.price=String(item.price??"");
-  line.unit=item.unit_label||"";
-  line.unitMinutes=String(item.unit_minutes??inferMinutesFromUnit(item.unit_label)||"");
-}
-function updateMultiTotalsUI(){
-  const totals=multiTotals();
-  document.querySelectorAll("[data-multi-group]").forEach(groupEl=>{
-    const g=state.multiOrder.groups.find(x=>x.id===groupEl.dataset.multiGroup); if(!g)return;
-    groupEl.querySelectorAll("[data-multi-line]").forEach(lineEl=>{
-      const line=g.lines.find(x=>x.id===lineEl.dataset.multiLine); if(!line)return;
-      const q=multiParseQuantity(line),p=Number(line.price);
-      const subtotal=q!==null&&Number.isFinite(p)?q*p:0;
-      lineEl.querySelector(".multi-line-subtotal").textContent=money(subtotal);
-    });
-    groupEl.querySelector(".multi-companion-total b").textContent=money(g.total||0);
-  });
-  $("multiOriginalTotal").textContent=money(totals.original);
-  $("multiDiscountLabel").textContent=discountLabel(totals.rate);
-  $("multiGrandTotal").textContent=money(totals.total);
-  if(state.multiOrder.active){
-    $("calcTotal").textContent=money(totals.total);
-    $("calcFormula").textContent=`${totals.details.length} 个项目合计${totals.rate<100?" · "+discountLabel(totals.rate):""}`;
-    $("newTotal").textContent=money(state.historyTotal+totals.total);
-  }
-}
-function multiOrderData(){
-  const totals=multiTotals();
-  if(!state.multiOrder.active || !totals.details.length) return null;
-  if(totals.details.some(d=>!d.companion)){toast("多明细里还有陪玩昵称没填");return null}
-  const itemNames=[...new Set(totals.details.map(d=>d.item))];
-  const companions=[...new Set(totals.details.map(d=>d.companion))];
-  const detailText=totals.details.map(d=>`${d.companion}｜${d.item} ¥${plainNumber(d.price)}/${d.unit||"项"} × ${d.measure} = ¥${plainNumber(d.subtotal)}`).join("\n");
-  return {totals,itemNames,companions,detailText};
-}
-function bindMultiOrder(){
-  if(state.multiBound) return;
-  state.multiBound=true;
-  ensureMultiOrder(); renderMultiOrder();
-  $("addCompanionGroupBtn")?.addEventListener("click",()=>{state.multiOrder.groups.push(multiNewGroup());renderMultiOrder()});
-  $("clearMultiOrderBtn")?.addEventListener("click",()=>{state.multiOrder={groups:[multiNewGroup()],active:false};document.body.classList.remove("multi-order-active");renderMultiOrder();calculate()});
-  $("useMultiOrderBtn")?.addEventListener("click",()=>{
-    const t=multiTotals();
-    if(!t.details.length){toast("先添加至少一个完整项目");return}
-    if(t.details.some(d=>!d.companion)){toast("先填写每位陪玩的昵称");return}
-    state.multiOrder.active=true;document.body.classList.add("multi-order-active");updateMultiTotalsUI();toast("已使用多陪玩 / 多项目明细 ♡");
-  });
-  $("multiCompanionGroups")?.addEventListener("input",e=>{
-    const ge=e.target.closest("[data-multi-group]"),le=e.target.closest("[data-multi-line]");
-    const g=state.multiOrder.groups.find(x=>x.id===ge?.dataset.multiGroup); if(!g)return;
-    if(e.target.matches("[data-multi-companion]")) g.companion=e.target.value;
-    if(le){
-      const line=g.lines.find(x=>x.id===le.dataset.multiLine); const key=e.target.dataset.ml;
-      if(line&&key){line[key]=e.target.value;if(key==="unit")line.unitMinutes=String(inferMinutesFromUnit(line.unit)||"");if(key==="item"){syncMultiItem(line);renderMultiOrder();return}}
-    }
-    updateMultiTotalsUI();
-  });
-  $("multiCompanionGroups")?.addEventListener("click",e=>{
-    const ge=e.target.closest("[data-multi-group]"),g=state.multiOrder.groups.find(x=>x.id===ge?.dataset.multiGroup);if(!g)return;
-    if(e.target.closest("[data-add-line]")){g.lines.push(multiNewLine());renderMultiOrder()}
-    if(e.target.closest("[data-remove-group]")){state.multiOrder.groups=state.multiOrder.groups.filter(x=>x.id!==g.id);renderMultiOrder()}
-    const le=e.target.closest("[data-multi-line]");
-    if(le&&e.target.closest("[data-remove-line]")){g.lines=g.lines.filter(x=>x.id!==le.dataset.multiLine);if(!g.lines.length)g.lines=[multiNewLine()];renderMultiOrder()}
-  });
-}
-
 function validateCalc(){
   const customer=$("customerName").value.trim();
   const companion=$("companionName").value.trim();
@@ -1702,29 +1565,6 @@ function validateCalc(){
 }
 
 function reportData(){
-  const multi=multiOrderData();
-  if(multi){
-    const customer=$("customerName").value.trim();
-    if(!state.shopId){toast("请先选择店铺");return null}
-    if(!customer){toast("先填写老板 / 顾客");return null}
-    const parts=dateParts(),shop=currentShop();
-    const first=multi.totals.details[0];
-    return {
-      shop,customer,
-      companion:multi.companions.join("、"),
-      item:{id:null,name:multi.itemNames.join("、"),unit_label:"多项目",unit_minutes:null},
-      note:[$("calcNote").value.trim(),multi.detailText].filter(Boolean).join("\n"),
-      measure:`${multi.totals.details.length}项`,
-      quantity:multi.totals.details.length,
-      unitPrice:multi.totals.original,
-      originalTotal:multi.totals.original,
-      discountRate:multi.totals.rate,
-      total:multi.totals.total,
-      history:state.historyTotal,newTotal:state.historyTotal+multi.totals.total,
-      date:parts.date,time:parts.time,
-      multiDetails:multi.totals.details
-    };
-  }
   const valid=validateCalc();
   if(!valid) return null;
   const shop=currentShop();
@@ -1915,11 +1755,6 @@ async function saveRecord(){
     if(result.error) throw result.error;
 
     state.historyTotal=previous+data.total;
-    if(state.multiOrder?.active){
-      state.multiOrder={groups:[multiNewGroup()],active:false};
-      document.body.classList.remove("multi-order-active");
-      renderMultiOrder();
-    }
     await loadRecords();
     renderRecords();
     renderDataSummary();
@@ -2391,9 +2226,6 @@ async function deleteRecord(id){
 }
 
 async function reuseRecord(id){
-  state.multiOrder={groups:[multiNewGroup()],active:false};
-  document.body.classList.remove("multi-order-active");
-  renderMultiOrder();
   const record=state.records.find(r=>r.id===id);
   if(!record) return;
   if(state.shopId!==record.shop_id) await useShop(record.shop_id);
@@ -2494,7 +2326,7 @@ function bindEvents(){
     calculate();
   });
   $("calcUnitMinutes").addEventListener("input",calculate);
-  $("customerDiscount").addEventListener("input",()=>{calculate();updateMultiTotalsUI()});
+  $("customerDiscount").addEventListener("input",calculate);
   $("durationInput").addEventListener("input",calculate);
   $("itemSearch").addEventListener("input",()=>{
     state.itemSearch=$("itemSearch").value;
@@ -2645,7 +2477,6 @@ if(error){
   document.body.classList.remove("booting");
 }else{
   await applySession(data.session);
-  clearTimeout(window.__paiminiBootWatch);
   document.body.classList.remove("booting");
 }
 
