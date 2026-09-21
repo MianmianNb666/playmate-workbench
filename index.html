@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v27">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v28">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -86,6 +86,7 @@
     </section>
 
     <nav class="section-nav" aria-label="功能分区">
+      <button id="verticalNavCollapseBtn" class="vertical-nav-collapse-btn" type="button" aria-label="收起左侧导航" title="收起左侧导航">‹</button>
       <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
       <button class="nav-tab" data-page="shops" type="button">我的店铺</button>
       <button class="nav-tab" data-page="prices" type="button">价格表</button>
@@ -499,6 +500,14 @@
           <p id="settingsEmail" class="muted"></p>
           <button id="settingsSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
         </div>
+        <div class="card mobile-nav-settings-card">
+          <div class="card-title"><div><b>手机导航布局</b></div></div>
+          <div class="mobile-nav-mode-row">
+            <button class="theme-preset" data-mobile-nav-mode="top" type="button">顶部横向</button>
+            <button class="theme-preset" data-mobile-nav-mode="left" type="button">左侧竖向</button>
+          </div>
+          <p class="muted">左侧竖向模式和美工端一样，可以随时收起导航。</p>
+        </div>
         <div class="card theme-settings-card">
           <div class="card-title"><div><b>配色</b></div></div>
           <div class="theme-presets">
@@ -582,7 +591,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v28"></script>
+  <script type="module" src="./app.js?v=20260921-v29"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
