@@ -1890,66 +1890,138 @@ async function downloadCanvasPng(canvas,filename){
 }
 
 async function captureElementPng(el,filename){
-  if(!window.html2canvas) throw new Error("html2canvas unavailable");
+  // 不再使用 html2canvas，也不创建/复制任何 DOM。
+  // 直接用 Canvas 画小票，导出过程不会碰主页面，所以不会再改动派单表单布局。
+  const shop=el.querySelector(".receipt-head h3")?.textContent?.trim()||"派mini";
+  const subtitle=el.querySelector(".receipt-head p")?.textContent?.trim()||"消费小票";
+  const rows=[...el.querySelectorAll(".receipt-line")].map(row=>({
+    label:row.querySelector("span")?.textContent?.trim()||"",
+    value:row.querySelector("b")?.textContent?.trim()||""
+  }));
+  const totalLabel=el.querySelector(".receipt-total span")?.textContent?.trim()||"本单金额";
+  const total=el.querySelector(".receipt-total strong")?.textContent?.trim()||"";
+  const message=el.querySelector(".receipt-message")?.textContent?.trim()||"";
+  const footer=(el.querySelector(".receipt-footer")?.innerText||"").trim();
 
-  // 用纯 HTML 重建一张“导出专用小票”，不再克隆预览 DOM。
-  // 这样主页面任何 CSS、媒体查询、dialog 样式都无法污染导出结果。
-  const source={
-    shop:el.querySelector(".receipt-head h3")?.textContent||"",
-    subtitle:el.querySelector(".receipt-head p")?.textContent||"",
-    rows:[...el.querySelectorAll(".receipt-line")].map(row=>({
-      label:row.querySelector("span")?.textContent||"",
-      value:row.querySelector("b")?.textContent||""
-    })),
-    totalLabel:el.querySelector(".receipt-total span")?.textContent||"本单金额",
-    total:el.querySelector(".receipt-total strong")?.textContent||"",
-    message:el.querySelector(".receipt-message")?.textContent||"",
-    footer:el.querySelector(".receipt-footer")?.innerText||""
+  const W=380, PAD=24, scale=2;
+  const canvas=document.createElement("canvas");
+  const ctx=canvas.getContext("2d");
+
+  const font=(size,weight=400)=>`${weight} ${size}px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif`;
+  const wrap=(text,maxWidth,size=12,weight=400)=>{
+    ctx.font=font(size,weight);
+    const chars=[...String(text||"")];
+    const lines=[]; let line="";
+    for(const ch of chars){
+      if(ch==="\n"){lines.push(line);line="";continue}
+      const test=line+ch;
+      if(line && ctx.measureText(test).width>maxWidth){lines.push(line);line=ch}
+      else line=test;
+    }
+    if(line||!lines.length) lines.push(line);
+    return lines;
   };
 
-  const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  // 先计算高度。
+  let h=24+28+18+14+1+16;
+  const rowLayouts=rows.map(row=>{
+    const valueLines=wrap(row.value,210,13,700);
+    const rh=Math.max(20,valueLines.length*19);
+    h+=rh+7;
+    return {...row,valueLines,rh};
+  });
+  h+=12+58;
+  const messageLines=message?wrap(message,W-PAD*2,12,400):[];
+  if(messageLines.length) h+=16+messageLines.length*18;
+  const footerLines=footer?wrap(footer,W-PAD*2,11,400):[];
+  if(footerLines.length) h+=16+footerLines.length*17;
+  h+=24;
 
-  const stage=document.createElement("div");
-  stage.style.cssText="position:fixed;left:-10000px;top:0;width:380px;background:#fffaf8;z-index:-9999;pointer-events:none;";
-  stage.innerHTML=`
-    <div style="width:380px;padding:24px;box-sizing:border-box;border:1px solid #eadbc9;border-radius:20px;background:#fffaf8;color:#57454b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif;">
-      <div style="text-align:center;padding-bottom:14px;border-bottom:1px dashed #d8c8bc;">
-        <div style="font-size:20px;font-weight:800;line-height:1.3;">${esc(source.shop)}</div>
-        <div style="margin-top:6px;font-size:11px;color:#a08c82;">${esc(source.subtitle)}</div>
-      </div>
-      <div style="padding:15px 0;">
-        ${source.rows.map(row=>`
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin:0 0 9px;font-size:13px;line-height:1.45;">
-            <span style="color:#907f78;white-space:nowrap;">${esc(row.label)}</span>
-            <b style="color:#57454b;text-align:right;word-break:break-word;">${esc(row.value)}</b>
-          </div>`).join("")}
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:14px 10px;border-top:1px dashed #d8c8bc;background:#fff4f7;">
-        <span style="font-size:13px;">${esc(source.totalLabel)}</span>
-        <strong style="font-size:27px;line-height:1;color:#dd6a91;">${esc(source.total)}</strong>
-      </div>
-      ${source.message?`<div style="padding:12px 0;text-align:center;font-size:12px;line-height:1.6;color:#7f7070;">${esc(source.message)}</div>`:""}
-      <div style="padding-top:12px;border-top:1px dashed #d8c8bc;text-align:center;font-size:11px;line-height:1.6;color:#98847c;white-space:pre-line;">${esc(source.footer)}</div>
-    </div>`;
-  document.body.appendChild(stage);
+  canvas.width=W*scale;
+  canvas.height=Math.ceil(h)*scale;
+  canvas.style.width=W+"px";
+  canvas.style.height=h+"px";
+  ctx.scale(scale,scale);
 
-  try{
-    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const canvas=await window.html2canvas(stage.firstElementChild,{
-      scale:2,
-      useCORS:false,
-      allowTaint:false,
-      backgroundColor:"#fffaf8",
-      logging:false,
-      width:380,
-      height:Math.ceil(stage.firstElementChild.scrollHeight),
-      windowWidth:1200,
-      windowHeight:1200
-    });
-    await downloadCanvasPng(canvas,filename);
-  }finally{
-    stage.remove();
+  // 背景与卡片。
+  ctx.fillStyle="#fffaf8";
+  ctx.fillRect(0,0,W,h);
+  ctx.strokeStyle="#eadbc9";
+  ctx.lineWidth=1;
+  if(ctx.roundRect){
+    ctx.beginPath();ctx.roundRect(.5,.5,W-1,h-1,20);ctx.stroke();
   }
+
+  let y=24;
+  ctx.textAlign="center";
+  ctx.textBaseline="top";
+  ctx.fillStyle="#57454b";
+  ctx.font=font(20,800);
+  ctx.fillText(shop,W/2,y);
+  y+=30;
+  ctx.fillStyle="#a08c82";
+  ctx.font=font(11,400);
+  ctx.fillText(subtitle,W/2,y);
+  y+=25;
+
+  ctx.setLineDash([5,5]);
+  ctx.strokeStyle="#d8c8bc";
+  ctx.beginPath();ctx.moveTo(PAD,y+.5);ctx.lineTo(W-PAD,y+.5);ctx.stroke();
+  ctx.setLineDash([]);
+  y+=16;
+
+  ctx.textAlign="left";
+  for(const row of rowLayouts){
+    ctx.fillStyle="#907f78";
+    ctx.font=font(13,400);
+    ctx.fillText(row.label,PAD,y);
+
+    ctx.fillStyle="#57454b";
+    ctx.font=font(13,700);
+    ctx.textAlign="right";
+    row.valueLines.forEach((line,index)=>ctx.fillText(line,W-PAD,y+index*19));
+    ctx.textAlign="left";
+    y+=row.rh+7;
+  }
+
+  y+=5;
+  ctx.fillStyle="#fff4f7";
+  ctx.fillRect(PAD,y,W-PAD*2,58);
+  ctx.fillStyle="#57454b";
+  ctx.font=font(13,400);
+  ctx.fillText(totalLabel,PAD+10,y+21);
+  ctx.textAlign="right";
+  ctx.fillStyle="#dd6a91";
+  ctx.font=font(27,800);
+  ctx.fillText(total,W-PAD-10,y+15);
+  ctx.textAlign="left";
+  y+=58;
+
+  if(messageLines.length){
+    y+=14;
+    ctx.textAlign="center";
+    ctx.fillStyle="#7f7070";
+    ctx.font=font(12,400);
+    messageLines.forEach((line,index)=>ctx.fillText(line,W/2,y+index*18));
+    y+=messageLines.length*18;
+    ctx.textAlign="left";
+  }
+
+  if(footerLines.length){
+    y+=12;
+    ctx.setLineDash([5,5]);
+    ctx.strokeStyle="#d8c8bc";
+    ctx.beginPath();ctx.moveTo(PAD,y+.5);ctx.lineTo(W-PAD,y+.5);ctx.stroke();
+    ctx.setLineDash([]);
+    y+=12;
+    ctx.textAlign="center";
+    ctx.fillStyle="#98847c";
+    ctx.font=font(11,400);
+    footerLines.forEach((line,index)=>ctx.fillText(line,W/2,y+index*17));
+    ctx.textAlign="left";
+  }
+
+  await downloadCanvasPng(canvas,filename);
 }
 async function exportReceipt(){
   if(!renderReceiptForCurrentCalc("receiptCapture")) return;
