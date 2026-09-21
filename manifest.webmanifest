@@ -1,0 +1,18 @@
+{
+  "name": "派mini",
+  "short_name": "派mini",
+  "description": "轻量派单计算、价格表、顾客档案与小票工具",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbf8f2",
+  "theme_color": "#e8a0b5",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
