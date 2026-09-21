@@ -538,7 +538,7 @@ using (
   )
 );
 
-do $
+do $$
 declare
   t text;
 begin
@@ -569,7 +569,7 @@ begin
       t||'_delete_own',t
     );
   end loop;
-end $;
+end $$;
 
 drop policy if exists user_profiles_select_own on public.user_profiles;
 create policy user_profiles_select_own
