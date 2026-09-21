@@ -686,3 +686,101 @@ label>input,label>select,label>textarea{margin-top:7px}
   .shop-library-card .card-title{align-items:stretch;flex-direction:column}
   .shop-search{width:100%;flex-basis:auto}
 }
+
+
+/* V1.3 老板留言 + 老板流水 */
+.receipt-message-label{margin-top:14px}
+.receipt-mode-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:14px;
+}
+.receipt-mode{
+  min-height:40px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  color:#8a707b;
+  font-size:11px;
+  font-weight:800;
+}
+.receipt-mode.active{
+  background:#ffeaf1;
+  color:#d9608b;
+  border-color:#efbdd0;
+}
+.boss-summary-card{margin-bottom:14px}
+.boss-summary-list{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.boss-summary-item{
+  border:1px solid #efdbe3;
+  border-radius:18px;
+  background:#fffafb;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.boss-summary-item b{font-size:14px}
+.boss-summary-item p{
+  margin:0;
+  color:#987f89;
+  font-size:10px;
+  line-height:1.55;
+}
+.boss-summary-item strong{
+  font-size:22px;
+  color:#e46995;
+}
+.boss-summary-item .row-actions{margin-top:auto}
+.statement-paper{width:min(100%,560px)}
+.statement-meta{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:12px 0;
+  padding:10px 0;
+  border-top:1px dashed #d8c8bc;
+  border-bottom:1px dashed #d8c8bc;
+}
+.statement-meta div{font-size:10px;color:#8f7d76}
+.statement-meta b{display:block;margin-top:3px;font-size:12px;color:#5d4b51}
+.statement-list{display:flex;flex-direction:column;gap:7px}
+.statement-row{
+  display:grid;
+  grid-template-columns:82px 1fr auto;
+  gap:10px;
+  align-items:start;
+  padding:8px 0;
+  border-bottom:1px dashed #eadfd8;
+}
+.statement-row:last-child{border-bottom:0}
+.statement-row time{
+  font-size:9px;
+  color:#a28d84;
+  line-height:1.5;
+}
+.statement-row div b{display:block;font-size:11px}
+.statement-row div span{display:block;margin-top:2px;font-size:9px;color:#9a8580}
+.statement-row strong{font-size:12px;color:#d96890}
+.receipt-message{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:#fff1f5;
+  color:#8a6573;
+  font-size:10px;
+  line-height:1.65;
+  text-align:center;
+}
+@media(max-width:900px){
+  .boss-summary-list{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:620px){
+  .boss-summary-list{grid-template-columns:1fr}
+  .statement-row{grid-template-columns:68px 1fr auto}
+}
