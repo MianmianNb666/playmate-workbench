@@ -1915,44 +1915,34 @@ async function captureElementPng(el,filename){
   });
   document.body.appendChild(clone);
 
-  // html2canvas 当前不认识 CSS Color 4 的 color-mix()。
-  // 截图前把副本里的所有颜色计算成浏览器已经解析好的 rgb/rgba 值。
-  const colorProps=[
-    "color","backgroundColor","borderTopColor","borderRightColor",
-    "borderBottomColor","borderLeftColor","outlineColor","textDecorationColor"
-  ];
-  const sourceNodes=[el,...el.querySelectorAll("*")];
-  const cloneNodes=[clone,...clone.querySelectorAll("*")];
-
-  cloneNodes.forEach((node,index)=>{
-    const source=sourceNodes[index];
-    if(!source || !(node instanceof HTMLElement)) return;
-    const computed=getComputedStyle(source);
-
-    colorProps.forEach(prop=>{
-      const value=computed[prop];
-      if(value && !/color-mix|oklch|lab\(|lch\(/i.test(value)){
-        node.style[prop]=value;
+  // html2canvas 当前版本不认识 CSS color-mix()。
+  // 截图时临时禁用含 color-mix 的主题样式表，并给小票副本使用安全的普通 CSS。
+  const disabledSheets=[];
+  [...document.styleSheets].forEach(sheet=>{
+    try{
+      const rules=[...sheet.cssRules];
+      if(rules.some(rule=>String(rule.cssText||"").includes("color-mix("))){
+        const owner=sheet.ownerNode;
+        if(owner && "disabled" in owner){
+          disabledSheets.push([owner,owner.disabled]);
+          owner.disabled=true;
+        }
       }
-    });
-
-    // 阴影里也可能含 color-mix，截图副本里直接使用已计算值；
-    // Safari 仍返回新颜色语法时就去掉阴影，不影响小票内容。
-    for(const prop of ["boxShadow","textShadow"]){
-      const value=computed[prop];
-      node.style[prop]=value && !/color-mix|oklch|lab\(|lch\(/i.test(value)) ? value : "none";
-    }
-
-    // html2canvas 会继续读取 CSS 自定义变量，副本中统一覆盖为传统 rgb/hex。
-    node.style.setProperty("--pink","#d9779a");
-    node.style.setProperty("--pink-deep","#b85d7e");
-    node.style.setProperty("--pink-soft","#fbeef3");
-    node.style.setProperty("--line","#efd6df");
-    node.style.setProperty("--paper","#ffffff");
-    node.style.setProperty("--bg","#fbf8f2");
-    node.style.setProperty("--ink","#4b4543");
-    node.style.setProperty("--muted","#8c8380");
+    }catch{}
   });
+
+  const safeStyle=document.createElement("style");
+  safeStyle.textContent=`
+    .receipt-card,.receipt-preview,.receipt-capture{background:#fff;color:#4f4745;border:1px solid #eadde0;box-shadow:none}
+    .receipt-head{border-bottom:1px solid #eadde0}
+    .receipt-head h3,.receipt-line b{color:#4f4745}
+    .receipt-head p,.receipt-line span,.receipt-footer,.receipt-message{color:#8c7d80}
+    .receipt-line{border-bottom:1px solid #f1e7e9}
+    .receipt-total{background:#fff3f6;color:#4f4745}
+    .receipt-total strong{color:#d86f91}
+    .receipt-logo{box-shadow:none}
+  `;
+  document.head.appendChild(safeStyle);
 
   try{
     let canvas;
@@ -1979,6 +1969,8 @@ async function captureElementPng(el,filename){
     }
     await downloadCanvasPng(canvas,filename);
   }finally{
+    safeStyle.remove();
+    disabledSheets.forEach(([owner,wasDisabled])=>{owner.disabled=wasDisabled});
     clone.remove();
   }
 }
