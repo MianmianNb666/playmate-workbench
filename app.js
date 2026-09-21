@@ -119,6 +119,49 @@ function dateParts(dateValue=new Date()){
   };
 }
 
+async function checkAuthService(){
+  try{
+    const response=await fetch(SUPABASE_URL+"/auth/v1/settings",{
+      method:"GET",
+      headers:{
+        apikey:SUPABASE_PUBLISHABLE_KEY,
+        Authorization:"Bearer "+SUPABASE_PUBLISHABLE_KEY
+      },
+      cache:"no-store"
+    });
+
+    if(!response.ok){
+      return {
+        ok:false,
+        reason:"HTTP "+response.status
+      };
+    }
+
+    const settings=await response.json().catch(()=>({}));
+    return {
+      ok:true,
+      signupEnabled:settings.disable_signup!==true,
+      settings
+    };
+  }catch(error){
+    return {
+      ok:false,
+      reason:String(error?.message||error||"Load failed")
+    };
+  }
+}
+
+function authNetworkHint(reason){
+  const raw=String(reason||"");
+  const inApp=/MicroMessenger|WeChat|FBAN|FBAV|Instagram|Line\//i.test(navigator.userAgent||"");
+  if(/load failed|failed to fetch|network|fetch/i.test(raw)){
+    return inApp
+      ? "当前内置浏览器连接不到注册服务。请点右上角「…」后用 Safari / Chrome 打开再注册。"
+      : "当前设备连接不到注册服务。请切换网络或用 Safari / Chrome 重试。";
+  }
+  return raw;
+}
+
 async function signUp(){
   const email=$("email").value.trim();
   const password=$("password").value;
@@ -130,6 +173,19 @@ async function signUp(){
   }
   if(!inviteCode){
     setAuthHint("注册需要 7 天试用邀请码。",true);
+    return;
+  }
+
+  setAuthHint("正在检查注册服务…");
+  const service=await checkAuthService();
+
+  if(!service.ok){
+    setAuthHint("注册失败："+authNetworkHint(service.reason),true);
+    return;
+  }
+
+  if(service.signupEnabled===false){
+    setAuthHint("注册失败：当前 Supabase Auth 已关闭新用户注册。",true);
     return;
   }
 
@@ -145,9 +201,11 @@ async function signUp(){
 
   if(error){
     const message=String(error.message||"");
-    const friendly=/database error|saving new user|invite|邀请码/i.test(message)
-      ? "邀请码无效、已使用、已达使用上限或已过期。"
-      : message;
+    const friendly=/load failed|failed to fetch|network/i.test(message)
+      ? authNetworkHint(message)
+      : (/database error|saving new user|invite|邀请码/i.test(message)
+        ? "邀请码无效、已使用、已达使用上限或已过期。"
+        : message);
     setAuthHint("注册失败："+friendly,true);
     return;
   }
@@ -1933,12 +1991,18 @@ function bindEvents(){
 loadTheme();
 bindEvents();
 
+const serviceCheck=await checkAuthService();
+if(!serviceCheck.ok){
+  setConnection("注册服务连接失败",false);
+}else{
+  setConnection("Supabase 已连接 ✓",true);
+}
+
 const {data,error}=await supabase.auth.getSession();
 if(error){
   setConnection("Supabase 连接失败",false);
   setAuthHint(error.message,true);
 }else{
-  setConnection("Supabase 已连接 ✓",true);
   await applySession(data.session);
 }
 
