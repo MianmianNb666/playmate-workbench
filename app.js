@@ -15,6 +15,7 @@ const DEFAULT_TEMPLATE = `消费项目：{项目}
 
 const state = {
   session:null,
+  access:null,
   profile:null,
   savedShopIds:[],
   shopSearch:"",
@@ -113,17 +114,40 @@ function dateParts(dateValue=new Date()){
 async function signUp(){
   const email=$("email").value.trim();
   const password=$("password").value;
+  const inviteCode=$("signupInviteCode").value.trim().toUpperCase();
+
   if(!email || password.length<6){
     setAuthHint("请输入邮箱，密码至少 6 位。",true);
     return;
   }
-  setAuthHint("正在注册…");
+  if(!inviteCode){
+    setAuthHint("注册需要 7 天试用邀请码。",true);
+    return;
+  }
+
+  setAuthHint("正在验证邀请码并注册…");
   const {data,error}=await supabase.auth.signUp({
-    email,password,
-    options:{emailRedirectTo:new URL("./",window.location.href).href}
+    email,
+    password,
+    options:{
+      emailRedirectTo:new URL("./",window.location.href).href,
+      data:{invite_code:inviteCode}
+    }
   });
-  if(error){setAuthHint("注册失败："+error.message,true);return}
-  setAuthHint(data.session?"注册成功 ✓":"注册成功，请先完成邮箱确认。");
+
+  if(error){
+    const message=String(error.message||"");
+    const friendly=/database error|saving new user|invite|邀请码/i.test(message)
+      ? "邀请码无效、已使用、已达使用上限或已过期。"
+      : message;
+    setAuthHint("注册失败："+friendly,true);
+    return;
+  }
+
+  setAuthHint(data.session
+    ? "注册成功，7 天试用已开始 ✓"
+    : "注册成功，7 天试用已开通。请先完成邮箱确认。"
+  );
 }
 
 async function signIn(){
@@ -140,12 +164,120 @@ async function signOut(){
   await supabase.auth.signOut();
 }
 
+function formatAccessDate(value){
+  if(!value) return "";
+  const d=new Date(value);
+  return d.toLocaleString("zh-CN",{
+    year:"numeric",month:"2-digit",day:"2-digit",
+    hour:"2-digit",minute:"2-digit"
+  });
+}
+
+async function loadAccessStatus(){
+  const {data,error}=await supabase.rpc("get_access_status");
+  if(error){
+    console.error(error);
+    state.access=null;
+    throw error;
+  }
+  state.access=data||null;
+  renderAccessStatus();
+  return state.access;
+}
+
+function renderAccessStatus(){
+  const access=state.access;
+  if(!access) return;
+
+  const active=!!access.has_access;
+  const days=Math.max(0,Number(access.days_left||0));
+  const badge=$("accessStatusBadge");
+  const left=$("accessDaysLeft");
+  const until=$("accessValidUntil");
+
+  if(badge){
+    badge.textContent=active?"使用中":"已到期";
+    badge.classList.toggle("off",!active);
+  }
+  if(left) left.textContent=active?(days+" 天"):"0 天";
+  if(until){
+    until.textContent=access.valid_until
+      ? "有效期至："+formatAccessDate(access.valid_until)
+      : "";
+  }
+
+  if($("expiredAccessText")){
+    $("expiredAccessText").textContent=access.valid_until
+      ? "你的使用期已于 "+formatAccessDate(access.valid_until)+" 到期。输入续费邀请码即可继续使用。"
+      : "输入续费邀请码即可继续使用。";
+  }
+}
+
+function renewalReasonText(reason){
+  const map={
+    ALREADY_USED_BY_USER:"这个邀请码你已经使用过了。",
+    INVALID_OR_USED:"邀请码无效、已使用、已达使用上限或已过期。"
+  };
+  return map[reason]||"续费失败，请检查邀请码。";
+}
+
+async function redeemRenewal(inputId,hintId){
+  const input=$(inputId);
+  const hint=$(hintId);
+  const code=input?.value.trim().toUpperCase()||"";
+
+  if(!code){
+    if(hint){
+      hint.textContent="请输入续费邀请码。";
+      hint.style.color="var(--bad)";
+    }
+    return;
+  }
+
+  if(hint){
+    hint.textContent="正在兑换…";
+    hint.style.color="var(--muted)";
+  }
+
+  const {data,error}=await supabase.rpc("redeem_renewal_code",{p_code:code});
+  if(error){
+    if(hint){
+      hint.textContent="续费失败："+error.message;
+      hint.style.color="var(--bad)";
+    }
+    return;
+  }
+
+  if(!data?.success){
+    if(hint){
+      hint.textContent=renewalReasonText(data?.reason);
+      hint.style.color="var(--bad)";
+    }
+    return;
+  }
+
+  input.value="";
+  await loadAccessStatus();
+
+  if(hint){
+    hint.textContent="续费成功，已增加 "+data.added_days+" 天 ♡";
+    hint.style.color="var(--good)";
+  }
+  toast("续费成功，+"+data.added_days+" 天 ♡");
+
+  if(state.access?.has_access && !$("accessGate").classList.contains("hidden")){
+    await applySession(state.session);
+  }
+}
+
 async function applySession(session){
   state.session=session;
   setConnection("Supabase 已连接 ✓",true);
 
   if(!session){
+    state.access=null;
     $("authGate").classList.remove("hidden");
+    $("accessGate").classList.add("hidden");
     $("appRoot").classList.add("hidden");
     return;
   }
@@ -160,10 +292,28 @@ async function applySession(session){
   }catch{}
 
   $("authGate").classList.add("hidden");
+  $("accessGate").classList.add("hidden");
   $("appRoot").classList.add("hidden");
 
   $("accountEmail").textContent=session.user.email||"";
   $("settingsEmail").textContent=session.user.email||"";
+
+  try{
+    const access=await loadAccessStatus();
+    if(!access?.has_access){
+      $("accessGate").classList.remove("hidden");
+      return;
+    }
+  }catch(error){
+    console.error(error);
+    toast("使用期限系统还没部署，请先运行邀请码 SQL");
+    $("accessGate").classList.remove("hidden");
+    if($("expiredHint")){
+      $("expiredHint").textContent="使用期限系统尚未部署。";
+      $("expiredHint").style.color="var(--bad)";
+    }
+    return;
+  }
 
   await bootstrap();
 
@@ -1170,6 +1320,9 @@ function bindEvents(){
   $("signUpBtn").addEventListener("click",signUp);
   $("signInBtn").addEventListener("click",signIn);
   $("signOutBtn").addEventListener("click",signOut);
+  $("expiredSignOutBtn").addEventListener("click",signOut);
+  $("expiredRenewBtn").addEventListener("click",()=>redeemRenewal("expiredRenewalCode","expiredHint"));
+  $("settingsRenewBtn").addEventListener("click",()=>redeemRenewal("settingsRenewalCode","settingsRenewHint"));
 
   document.querySelectorAll(".nav-tab").forEach(btn=>btn.addEventListener("click",()=>showPage(btn.dataset.page)));
 
@@ -1267,7 +1420,10 @@ function bindEvents(){
 
   $("closeReceiptDialog").addEventListener("click",()=>$("receiptDialog").close());
   $("dialogExportBtn").addEventListener("click",exportReceipt);
-  $("refreshDataBtn").addEventListener("click",bootstrap);
+  $("refreshDataBtn").addEventListener("click",async()=>{
+    await loadAccessStatus();
+    await bootstrap();
+  });
   $("saveProfileBtn").addEventListener("click",saveProfile);
   $("profileAvatarFile").addEventListener("change",()=>{
     const file=$("profileAvatarFile").files?.[0];
