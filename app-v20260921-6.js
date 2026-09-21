@@ -1892,79 +1892,66 @@ async function downloadCanvasPng(canvas,filename){
 async function captureElementPng(el,filename){
   if(!window.html2canvas) throw new Error("html2canvas unavailable");
 
-  // 小票导出使用独立、固定尺寸的干净容器。
-  // 不再继承整个网页的响应式布局，避免导出成“整张网页”或字体巨大。
-  const stage=document.createElement("div");
-  stage.className="receipt-export-stage";
-  stage.style.cssText=[
-    "position:fixed","left:-10000px","top:0","z-index:-1",
-    "width:380px","padding:24px","box-sizing:border-box",
-    "background:#ffffff","color:#514947","font-family:Arial, sans-serif",
-    "font-size:14px","line-height:1.45","pointer-events:none"
-  ].join(";");
+  // 直接在一个隔离的 iframe 中渲染小票。
+  // 这样 html2canvas 完全看不到主网页 CSS，避免把整页布局/响应式样式一起画进去。
+  const frame=document.createElement("iframe");
+  frame.setAttribute("aria-hidden","true");
+  frame.style.cssText="position:fixed;left:-10000px;top:0;width:420px;height:900px;border:0;opacity:0;pointer-events:none;";
+  document.body.appendChild(frame);
 
-  const clone=el.cloneNode(true);
-  clone.removeAttribute("id");
-  clone.removeAttribute("class");
-  clone.style.cssText="display:block;width:100%;box-sizing:border-box;background:#ffffff;color:#514947;";
+  const doc=frame.contentDocument;
+  doc.open();
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#fff}
+    body{width:420px;padding:20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;color:#57454b}
+    #ticket{width:380px;padding:24px;border:1px solid #eadbc9;border-radius:20px;background:#fffaf8}
+    .receipt-head{text-align:center;border-bottom:1px dashed #d8c8bc;padding-bottom:14px}
+    .receipt-logo{width:54px;height:54px;border-radius:18px;object-fit:cover;margin:0 auto 8px;display:block;border:1px solid #eadbc9}
+    .receipt-head h3{margin:0;font-size:20px;line-height:1.3}
+    .receipt-head p{margin:6px 0 0;font-size:11px;color:#a08c82}
+    .receipt-lines{display:flex;flex-direction:column;gap:10px;padding:16px 0}
+    .receipt-line{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;font-size:13px;line-height:1.45}
+    .receipt-line span{color:#907f78;flex:0 0 auto}
+    .receipt-line b{color:#57454b;text-align:right;word-break:break-word}
+    .receipt-total{display:flex;justify-content:space-between;align-items:flex-end;padding:14px 0;border-top:1px dashed #d8c8bc;background:#fff4f7}
+    .receipt-total span{font-size:13px}
+    .receipt-total strong{font-size:27px;line-height:1;color:#dd6a91}
+    .receipt-message{padding:12px 0;text-align:center;font-size:12px;color:#7f7070;line-height:1.6}
+    .receipt-footer{padding-top:12px;border-top:1px dashed #d8c8bc;text-align:center;font-size:11px;color:#98847c;line-height:1.6}
+  </style></head><body><div id="ticket"></div></body></html>`);
+  doc.close();
 
-  // 只保留同源 / data / blob 图片；外链 Logo 失败也不能影响整张小票。
-  clone.querySelectorAll("img").forEach(img=>{
+  const ticket=doc.getElementById("ticket");
+  ticket.innerHTML=el.innerHTML;
+
+  // 外链 Logo 仍然不让它拖垮导出。
+  ticket.querySelectorAll("img").forEach(img=>{
     const src=img.getAttribute("src")||"";
     try{
       const absolute=new URL(src,location.href);
       if(absolute.origin!==location.origin && !src.startsWith("data:") && !src.startsWith("blob:")) img.remove();
-    }catch{ img.remove(); }
+    }catch{img.remove()}
   });
-
-  stage.appendChild(clone);
-  document.body.appendChild(stage);
-
-  // 给小票内部直接写安全样式，彻底绕开页面里的 color-mix() 与移动端媒体查询。
-  const head=clone.querySelector(".receipt-head");
-  if(head) head.style.cssText="text-align:center;border-bottom:1px dashed #d8c8bc;padding-bottom:14px;";
-  const logo=clone.querySelector(".receipt-logo");
-  if(logo) logo.style.cssText="width:54px;height:54px;border-radius:18px;object-fit:cover;margin:0 auto 8px;display:block;border:1px solid #eadbc9;";
-  const title=clone.querySelector(".receipt-head h3");
-  if(title) title.style.cssText="margin:0;font-size:20px;color:#514947;";
-  const sub=clone.querySelector(".receipt-head p");
-  if(sub) sub.style.cssText="margin:5px 0 0;font-size:11px;color:#8f807b;";
-  const lines=clone.querySelector(".receipt-lines");
-  if(lines) lines.style.cssText="display:flex;flex-direction:column;gap:8px;padding:14px 0;";
-  clone.querySelectorAll(".receipt-line").forEach(row=>{
-    row.style.cssText="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;font-size:13px;border:0;";
-    const span=row.querySelector("span");
-    const bold=row.querySelector("b");
-    if(span) span.style.cssText="color:#907f78;font-weight:400;";
-    if(bold) bold.style.cssText="color:#514947;font-weight:700;text-align:right;";
-  });
-  const total=clone.querySelector(".receipt-total");
-  if(total){
-    total.style.cssText="display:flex;justify-content:space-between;align-items:flex-end;padding:13px 0;border-top:1px dashed #d8c8bc;background:#fff7fa;";
-    const span=total.querySelector("span");
-    const strong=total.querySelector("strong");
-    if(span) span.style.cssText="font-size:13px;color:#514947;";
-    if(strong) strong.style.cssText="font-size:27px;color:#dd6a91;font-weight:800;";
-  }
-  const message=clone.querySelector(".receipt-message");
-  if(message) message.style.cssText="padding:12px 0;text-align:center;font-size:12px;color:#7f7070;";
-  const footer=clone.querySelector(".receipt-footer");
-  if(footer) footer.style.cssText="padding-top:12px;border-top:1px dashed #d8c8bc;text-align:center;font-size:11px;color:#98847c;line-height:1.6;";
 
   try{
-    const canvas=await window.html2canvas(stage,{
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const height=Math.ceil(ticket.scrollHeight);
+    frame.style.height=(height+40)+"px";
+
+    const canvas=await window.html2canvas(ticket,{
       scale:2,
       useCORS:false,
       allowTaint:false,
-      backgroundColor:"#ffffff",
+      backgroundColor:"#fffaf8",
       logging:false,
       imageTimeout:0,
       width:380,
-      windowWidth:380
+      height
     });
     await downloadCanvasPng(canvas,filename);
   }finally{
-    stage.remove();
+    frame.remove();
   }
 }
 async function exportReceipt(){
