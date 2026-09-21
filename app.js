@@ -44,7 +44,7 @@ async function signUp(){
     return;
   }
   setAuthHint("正在注册…");
-  const { data, error } = await supabase.auth.signUp({email,password});
+  const { data, error } = await supabase.auth.signUp({\n    email,\n    password,\n    options: {\n      emailRedirectTo: new URL("./", window.location.href).href\n    }\n  });
   if(error){
     setAuthHint("注册失败："+error.message,true);
     return;
