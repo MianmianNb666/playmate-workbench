@@ -1489,6 +1489,10 @@ function parseMeasure(){
 }
 
 function calculate(){
+  if(state.multiOrder?.active){
+    updateMultiTotalsUI();
+    return {multi:true,...multiTotals()};
+  }
   const item=effectiveCalcItem();
   const measure=parseMeasure();
   const priceText=$("calcUnitPrice").value.trim();
@@ -1907,6 +1911,11 @@ async function saveRecord(){
     if(result.error) throw result.error;
 
     state.historyTotal=previous+data.total;
+    if(state.multiOrder?.active){
+      state.multiOrder={groups:[multiNewGroup()],active:false};
+      document.body.classList.remove("multi-order-active");
+      renderMultiOrder();
+    }
     await loadRecords();
     renderRecords();
     renderDataSummary();
@@ -2378,6 +2387,9 @@ async function deleteRecord(id){
 }
 
 async function reuseRecord(id){
+  state.multiOrder={groups:[multiNewGroup()],active:false};
+  document.body.classList.remove("multi-order-active");
+  renderMultiOrder();
   const record=state.records.find(r=>r.id===id);
   if(!record) return;
   if(state.shopId!==record.shop_id) await useShop(record.shop_id);
