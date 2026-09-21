@@ -560,3 +560,129 @@ label>input,label>select,label>textarea{margin-top:7px}
   .action-row{grid-template-columns:1fr}
   .switch-list{grid-template-columns:1fr}
 }
+
+/* V1.2 个人主页 + 公开店铺大厅 */
+.top-identity{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+}
+.profile-avatar{
+  width:56px;
+  height:56px;
+  flex:0 0 56px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  overflow:hidden;
+  background:#ffe8f0;
+  border:1px solid #efcfdb;
+  color:#df6c95;
+  font-size:28px;
+  font-weight:900;
+  box-shadow:0 8px 20px rgba(216,107,148,.08);
+}
+.profile-avatar.large{
+  width:92px;
+  height:92px;
+  flex-basis:92px;
+  border-radius:26px;
+  font-size:40px;
+}
+.profile-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.profile-settings-grid{
+  grid-template-columns:1.35fr .75fr .9fr;
+}
+.profile-settings-card{
+  min-width:0;
+}
+.profile-editor{
+  display:flex;
+  align-items:flex-start;
+  gap:18px;
+}
+.profile-fields{
+  flex:1;
+  display:grid;
+  gap:10px;
+  min-width:0;
+}
+.profile-fields .btn{
+  justify-self:start;
+  padding-inline:18px;
+}
+.shop-library-card{
+  margin-top:14px;
+}
+.shop-library-card .card-title{
+  align-items:end;
+}
+.shop-search{
+  width:min(280px,100%);
+  flex:0 0 280px;
+}
+.shop-card.favorite{
+  border-color:#ef9ab8;
+  box-shadow:0 10px 28px rgba(225,108,151,.08);
+}
+.shop-card .shop-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.shop-owner-tag,
+.shop-favorite-tag{
+  display:inline-flex;
+  align-items:center;
+  min-height:22px;
+  padding:0 8px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:800;
+}
+.shop-owner-tag{
+  background:#fff0f5;
+  color:#d96992;
+}
+.shop-favorite-tag{
+  background:#fff5d9;
+  color:#a47a24;
+}
+.readonly-note{
+  margin-bottom:14px;
+  padding:11px 12px;
+  border-radius:14px;
+  background:#fff8e9;
+  color:#94753e;
+  font-size:11px;
+  line-height:1.6;
+  border:1px solid #f0dfb8;
+}
+.owner-tools-hidden{
+  display:none!important;
+}
+
+@media(max-width:900px){
+  .profile-settings-grid{grid-template-columns:1fr 1fr}
+  .profile-settings-card{grid-column:1/-1}
+}
+@media(max-width:700px){
+  .top-identity{gap:10px}
+  .profile-avatar{
+    width:48px;height:48px;flex-basis:48px;border-radius:15px;font-size:24px
+  }
+  .top-identity h1{font-size:30px}
+  .profile-settings-grid{grid-template-columns:1fr}
+  .profile-settings-card{grid-column:auto}
+  .profile-editor{flex-direction:column}
+  .profile-avatar.large{width:82px;height:82px;flex-basis:82px}
+  .shop-library-card .card-title{align-items:stretch;flex-direction:column}
+  .shop-search{width:100%;flex-basis:auto}
+}
