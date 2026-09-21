@@ -1,15 +1,15 @@
 :root{
-  --ink:#523944;
-  --muted:#927884;
-  --pink:#f47fa7;
-  --pink-deep:#e56392;
-  --pink-soft:#fdebf2;
+  --ink:#4d413d;
+  --muted:#887d76;
+  --pink:#e58aa7;
+  --pink-deep:#d56f94;
+  --pink-soft:#f8e9ee;
   --cream:#fff4dc;
   --mint:#eaf7ef;
   --blue:#eaf4ff;
-  --line:#efd9e2;
-  --paper:#ffffff;
-  --bg:#fff8fb;
+  --line:#e5d9ca;
+  --paper:#fffdf9;
+  --bg:#f6f0e7;
   --good:#62a985;
   --bad:#c95b74;
   --shadow:0 16px 38px rgba(192,95,133,.09);
@@ -179,7 +179,7 @@ label>input,label>select,label>textarea{margin-top:7px}
   margin:16px 0 20px;
   padding:7px;
   display:grid;
-  grid-template-columns:repeat(6,1fr);
+  grid-template-columns:repeat(7,1fr);
   gap:6px;
   border:1px solid var(--line);
   border-radius:20px;
@@ -1026,4 +1026,149 @@ label>input,label>select,label>textarea{margin-top:7px}
   align-items:center;
   justify-content:center;
   min-width:140px;
+}
+
+
+/* V1.8 派mini 米白主题 + 顾客档案 */
+body{background:var(--bg)}
+.auth-gate{
+  background:
+    radial-gradient(circle at 15% 15%,color-mix(in srgb,var(--pink) 18%,var(--bg)) 0 0,transparent 28%),
+    radial-gradient(circle at 90% 85%,#f4ead8 0 0,transparent 24%),
+    var(--bg);
+}
+.auth-panel,
+.card,
+.shop-card,
+.icon-btn,
+.section-nav,
+.dialog-shell{
+  background:var(--paper);
+}
+.welcome-strip{
+  background:color-mix(in srgb,var(--pink) 11%,var(--paper));
+}
+input,select,textarea,
+.tiny-btn,
+.check-label,
+.switch-list label{
+  background:var(--paper);
+}
+.manager-row,.price-row,.record-row{
+  background:color-mix(in srgb,var(--paper) 92%,var(--pink-soft));
+}
+.customer-total{
+  background:color-mix(in srgb,var(--pink) 11%,var(--paper));
+}
+
+.customer-page-grid{align-items:start}
+.customer-profile-list{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+}
+.customer-profile-card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  background:color-mix(in srgb,var(--paper) 95%,var(--pink-soft));
+}
+.customer-profile-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+}
+.customer-profile-head b{font-size:15px}
+.customer-profile-head p{
+  margin:5px 0 0;
+  color:var(--muted);
+  font-size:10px;
+}
+.customer-discount-tag{
+  flex:0 0 auto;
+  min-height:24px;
+  padding:0 9px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  background:var(--pink-soft);
+  color:var(--pink-deep);
+  font-size:9px;
+  font-weight:900;
+}
+.customer-profile-stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin:12px 0;
+}
+.customer-profile-stats div{
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:9px;
+  background:var(--paper);
+}
+.customer-profile-stats span{
+  display:block;
+  color:var(--muted);
+  font-size:8px;
+}
+.customer-profile-stats strong{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+}
+.customer-profile-notes{
+  margin:0 0 10px;
+  padding:10px 11px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--bg) 65%,var(--paper));
+  color:var(--muted);
+  font-size:10px;
+  line-height:1.6;
+}
+
+.theme-presets{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+}
+.theme-preset{
+  min-height:34px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--paper);
+  color:var(--muted);
+  font-size:10px;
+  font-weight:800;
+}
+.theme-preset.active{
+  background:var(--pink-soft);
+  color:var(--pink-deep);
+  border-color:color-mix(in srgb,var(--pink) 55%,var(--line));
+}
+.theme-color-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:12px;
+}
+.theme-color-grid input[type="color"]{
+  padding:4px;
+  min-height:42px;
+}
+.theme-settings-card .mini-actions{margin-top:12px}
+
+@media(max-width:900px){
+  .section-nav{grid-template-columns:repeat(4,1fr)}
+  .theme-color-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:700px){
+  .customer-page-grid{grid-template-columns:1fr}
+}
+@media(max-width:520px){
+  .section-nav{grid-template-columns:repeat(2,1fr)}
+  .customer-profile-stats{grid-template-columns:1fr 1fr 1fr}
 }
