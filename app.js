@@ -60,6 +60,119 @@ const defaultReceipt = () => ({
 
 let deferredInstallPrompt=null;
 
+function desktopPrefsKey(){
+  return "paimini-desktop-"+(state.session?.user?.id||"guest");
+}
+
+function defaultDesktopPrefs(){
+  return {name:"派mini",icon:"./icon.svg"};
+}
+
+function loadDesktopPrefs(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(desktopPrefsKey())||"null");
+    return {...defaultDesktopPrefs(),...(saved||{})};
+  }catch{
+    return defaultDesktopPrefs();
+  }
+}
+
+function updateDesktopManifest(prefs){
+  const name=(prefs?.name||"派mini").trim()||"派mini";
+  const icon=prefs?.icon||"./icon.svg";
+
+  document.title=name;
+
+  let apple=document.querySelector('link[rel="apple-touch-icon"]');
+  if(!apple){
+    apple=document.createElement("link");
+    apple.rel="apple-touch-icon";
+    document.head.appendChild(apple);
+  }
+  apple.href=icon;
+
+  const manifest={
+    name,
+    short_name:name.slice(0,12),
+    description:"轻量派单计算、价格表、顾客档案与小票工具",
+    start_url:"./",
+    scope:"./",
+    display:"standalone",
+    background_color:"#fbf8f2",
+    theme_color:state.theme?.accent||"#e8a0b5",
+    icons:[{
+      src:icon,
+      sizes:"any",
+      type:icon.startsWith("data:image/png")?"image/png":
+           icon.startsWith("data:image/jpeg")?"image/jpeg":
+           icon.startsWith("data:image/webp")?"image/webp":"image/svg+xml",
+      purpose:"any maskable"
+    }]
+  };
+
+  const encoded="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(manifest));
+  let link=document.querySelector('link[rel="manifest"]');
+  if(!link){
+    link=document.createElement("link");
+    link.rel="manifest";
+    document.head.appendChild(link);
+  }
+  link.href=encoded;
+}
+
+function renderDesktopPrefs(){
+  const prefs=loadDesktopPrefs();
+  const nameInput=$("desktopAppName");
+  const iconPreview=$("desktopIconPreview");
+  const namePreview=$("desktopNamePreview");
+  if(nameInput) nameInput.value=prefs.name||"派mini";
+  if(iconPreview) iconPreview.src=prefs.icon||"./icon.svg";
+  if(namePreview) namePreview.textContent=prefs.name||"派mini";
+  updateDesktopManifest(prefs);
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||""));
+    reader.onerror=()=>reject(reader.error||new Error("读取图片失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveDesktopPrefs(){
+  const name=($("desktopAppName")?.value||"").trim()||"派mini";
+  let prefs=loadDesktopPrefs();
+  prefs.name=name;
+
+  const file=$("desktopIconFile")?.files?.[0];
+  if(file){
+    if(file.size>2*1024*1024){
+      toast("桌面图标不能超过 2MB");
+      return;
+    }
+    try{
+      prefs.icon=await fileToDataUrl(file);
+    }catch(error){
+      toast("读取图标失败");
+      return;
+    }
+  }
+
+  localStorage.setItem(desktopPrefsKey(),JSON.stringify(prefs));
+  if($("desktopIconFile")) $("desktopIconFile").value="";
+  renderDesktopPrefs();
+  toast("桌面名称和图标已保存 ♡");
+}
+
+function resetDesktopPrefs(){
+  localStorage.removeItem(desktopPrefsKey());
+  if($("desktopIconFile")) $("desktopIconFile").value="";
+  renderDesktopPrefs();
+  toast("已恢复派mini默认桌面样式");
+}
+
+
 function isStandaloneMode(){
   return window.matchMedia?.("(display-mode: standalone)")?.matches
     || window.navigator.standalone===true;
@@ -71,7 +184,7 @@ function installHelpText(){
   const isWeChat=/MicroMessenger/i.test(ua);
 
   if(isStandaloneMode()){
-    return "派mini 已经添加到主屏幕，可以直接从桌面打开。";
+    return "已经添加到主屏幕，可以直接从桌面打开。";
   }
 
   if(isWeChat){
@@ -484,6 +597,7 @@ async function bootstrap(){
     await loadRecords();
     renderAll();
     renderProfile();
+    renderDesktopPrefs();
     await refreshAdminEntry();
   }catch(error){
     console.error(error);
@@ -1893,6 +2007,18 @@ function bindEvents(){
   $("signOutBtn").addEventListener("click",signOut);
   $("settingsSignOutBtn").addEventListener("click",signOut);
   $("installAppBtn").addEventListener("click",installPaiMini);
+  $("settingsInstallAppBtn").addEventListener("click",installPaiMini);
+  $("saveDesktopAppBtn").addEventListener("click",saveDesktopPrefs);
+  $("resetDesktopAppBtn").addEventListener("click",resetDesktopPrefs);
+  $("desktopAppName").addEventListener("input",()=>{
+    $("desktopNamePreview").textContent=$("desktopAppName").value.trim()||"派mini";
+  });
+  $("desktopIconFile").addEventListener("change",()=>{
+    const file=$("desktopIconFile").files?.[0];
+    if(!file) return;
+    const url=URL.createObjectURL(file);
+    $("desktopIconPreview").src=url;
+  });
   $("closeInstallHelpDialog").addEventListener("click",()=>$("installHelpDialog").close());
   $("expiredSignOutBtn").addEventListener("click",signOut);
   $("expiredRenewBtn").addEventListener("click",()=>redeemRenewal("expiredRenewalCode","expiredHint"));
@@ -2058,6 +2184,7 @@ function bindEvents(){
 }
 
 loadTheme();
+renderDesktopPrefs();
 registerPaiMiniPwa();
 bindEvents();
 
