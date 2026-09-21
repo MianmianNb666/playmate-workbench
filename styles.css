@@ -1925,3 +1925,37 @@ textarea,
     max-width:44vw;
   }
 }
+
+
+/* V2.6 刷新防闪屏 */
+.boot-splash{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:none;
+  place-items:center;
+  background:var(--bg);
+}
+.boot-mark{
+  font-size:30px;
+  font-weight:900;
+  letter-spacing:-1px;
+  color:var(--ink);
+}
+.boot-mark span{color:var(--pink)}
+
+body.booting .boot-splash{
+  display:grid;
+}
+body.booting #authGate,
+body.booting #accessGate,
+body.booting #appRoot{
+  visibility:hidden!important;
+}
+
+html.pre-left body:not(.booting){
+  --pre-nav-mode:left;
+}
+html.pre-top body:not(.booting){
+  --pre-nav-mode:top;
+}
