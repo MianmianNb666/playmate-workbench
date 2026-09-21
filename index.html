@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
   <title>陪玩工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v12">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v13">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -188,6 +188,14 @@
         <div><small>HISTORY</small><h2>消费记录</h2></div>
         <span class="head-heart">♡</span>
       </div>
+      <div class="card boss-summary-card">
+        <div class="card-title">
+          <div><b>老板档案</b><small>点进某个老板，可以查看并导出这个老板的全部流水</small></div>
+        </div>
+        <div id="bossSummaryList" class="boss-summary-list"></div>
+        <div id="emptyBossSummary" class="empty-state hidden">还没有老板记录。</div>
+      </div>
+
       <div class="card">
         <div class="record-toolbar">
           <input id="recordSearch" placeholder="搜索老板 / 项目 / 陪陪">
@@ -253,6 +261,16 @@
         <div class="card">
           <div class="card-title"><div><b>显示内容</b><small>内部报备和老板小票分开控制</small></div></div>
           <label>店铺<select id="receiptShop"></select></label>
+
+          <label class="receipt-message-label">给老板留言
+            <textarea id="bossMessage" rows="3" maxlength="180" placeholder="例如：谢谢老板支持，祝你今天也开心 ♡"></textarea>
+          </label>
+
+          <div class="receipt-mode-tabs">
+            <button id="previewCurrentReceiptTab" class="receipt-mode active" type="button">本次小票</button>
+            <button id="previewBossStatementTab" class="receipt-mode" type="button">老板流水</button>
+          </div>
+
           <div class="switch-list">
             <label><input id="showCustomer" type="checkbox">老板昵称</label>
             <label><input id="showCompanion" type="checkbox">陪陪</label>
@@ -268,7 +286,7 @@
         </div>
 
         <div class="card preview-card">
-          <div class="card-title"><div><b>模板预览</b><small>第一版先固定一套奶油小票</small></div></div>
+          <div class="card-title"><div><b id="receiptPreviewTitle">本次小票预览</b><small>本次订单和老板完整流水都可以导出</small></div></div>
           <div id="receiptPreviewInline" class="receipt-paper"></div>
         </div>
       </div>
@@ -329,7 +347,17 @@
     </div>
   </dialog>
 
+  <dialog id="bossStatementDialog" class="receipt-dialog">
+    <div class="dialog-shell">
+      <button id="closeBossStatementDialog" class="dialog-close" type="button">×</button>
+      <div id="bossStatementCapture" class="receipt-paper statement-paper"></div>
+      <div class="dialog-actions">
+        <button id="exportBossStatementBtn" class="btn primary" type="button">导出老板全部流水 PNG</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v12"></script>
+  <script type="module" src="./app.js?v=20260921-v13"></script>
 </body>
 </html>
