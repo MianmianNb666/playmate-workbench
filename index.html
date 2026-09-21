@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
   <title>陪玩工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v13">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v14">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -144,6 +144,59 @@
       <div class="page-head">
         <div><small>PRICE BOOK</small><h2>价格表</h2></div>
         <span class="head-heart">♡</span>
+      </div>
+
+      <div class="card price-import-card">
+        <div class="card-title">
+          <div>
+            <b>图片识别导入 ♡</b>
+            <small>上传现成价格表图片，自动提取项目和价格，再确认后导入</small>
+          </div>
+          <span class="local-only-tag">仅本地识别 · 原图不保存</span>
+        </div>
+
+        <div class="import-layout">
+          <div class="import-upload-box">
+            <label class="image-drop">
+              <input id="priceImageInput" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="image-drop-title">选择价格表图片</span>
+              <small>PNG / JPG / WEBP · 图片不会上传到 Supabase</small>
+            </label>
+
+            <div id="priceImagePreviewWrap" class="price-image-preview hidden">
+              <img id="priceImagePreview" alt="价格表预览">
+            </div>
+
+            <div class="import-actions">
+              <button id="recognizePriceImageBtn" class="btn primary" type="button">开始识别</button>
+              <button id="clearPriceImageBtn" class="btn ghost" type="button">清除</button>
+            </div>
+
+            <div id="ocrProgressWrap" class="ocr-progress-wrap hidden">
+              <div class="ocr-progress-track"><span id="ocrProgressBar"></span></div>
+              <p id="ocrProgressText">准备识别…</p>
+            </div>
+          </div>
+
+          <div class="import-result-box">
+            <div class="import-result-head">
+              <div>
+                <b>识别结果</b>
+                <small>先检查，错的可以直接改，确认后才会写入价格表</small>
+              </div>
+              <button id="reparseOcrBtn" class="tiny-btn" type="button">重新整理文字</button>
+            </div>
+
+            <textarea id="ocrRawText" rows="6" placeholder="识别出的文字会显示在这里，也可以手动修改后重新整理"></textarea>
+
+            <div id="ocrRows" class="ocr-rows"></div>
+            <div id="ocrEmpty" class="empty-state">还没有识别结果。</div>
+
+            <button id="importRecognizedPricesBtn" class="btn primary full-btn" type="button" disabled>
+              确认导入当前店铺
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="two-col">
@@ -360,5 +413,6 @@
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script type="module" src="./app.js?v=20260921-v13"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
+  <script type="module" src="./price-import.js?v=20260921-v14"></script>
 </body>
 </html>
