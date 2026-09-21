@@ -1346,3 +1346,59 @@ textarea,
   .home-quick-actions{margin-top:14px}
   .home-quick-btn{flex:1 1 auto}
 }
+
+
+/* V2.2 桌面图标与名称 */
+.desktop-app-editor{
+  display:grid;
+  grid-template-columns:110px minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+}
+.desktop-app-preview{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:9px;
+  padding:14px 10px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--paper);
+}
+.desktop-app-preview img{
+  width:72px;
+  height:72px;
+  object-fit:cover;
+  border-radius:18px;
+  border:1px solid var(--line);
+  box-shadow:0 8px 20px color-mix(in srgb,var(--pink) 10%,transparent);
+}
+.desktop-app-preview span{
+  max-width:90px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:11px;
+  font-weight:800;
+  color:var(--ink);
+}
+.desktop-app-fields{
+  min-width:0;
+}
+.desktop-app-fields label+label{
+  margin-top:10px;
+}
+.desktop-app-actions{
+  margin-top:12px;
+}
+@media(max-width:560px){
+  .desktop-app-editor{
+    grid-template-columns:86px minmax(0,1fr);
+    gap:12px;
+  }
+  .desktop-app-preview img{
+    width:62px;
+    height:62px;
+    border-radius:16px;
+  }
+}
