@@ -49,7 +49,8 @@ const defaultReceipt = () => ({
   show_note:true,
   show_time:true,
   show_logo:true,
-  show_footer:true
+  show_footer:true,
+  boss_message:"谢谢支持，祝你今天也开心 ♡"
 });
 
 function toast(message){
@@ -541,6 +542,7 @@ function receiptSettingValue(key){
 function renderReceiptSettings(){
   if($("receiptShop").value!==state.shopId) return;
   receiptKeys.forEach(key=>$(key).checked=receiptSettingValue(key));
+  if($("bossMessage")) $("bossMessage").value=state.receiptSettings?.boss_message || "谢谢支持，祝你今天也开心 ♡";
   renderInlineReceipt();
 }
 
@@ -796,7 +798,8 @@ function currentReceiptSettingsFromControls(){
     show_note:$("showNote").checked,
     show_time:$("showTime").checked,
     show_logo:$("showLogo").checked,
-    show_footer:$("showFooter").checked
+    show_footer:$("showFooter").checked,
+    boss_message:$("bossMessage")?.value.trim() || ""
   };
 }
 
@@ -1081,6 +1084,7 @@ async function loadReceiptFor(shopId){
     const dbKey=key.replace(/[A-Z]/g,m=>"_"+m.toLowerCase());
     $(key).checked=settings[dbKey]??true;
   });
+  if($("bossMessage")) $("bossMessage").value=settings.boss_message || "谢谢支持，祝你今天也开心 ♡";
   renderInlineReceipt();
 }
 
