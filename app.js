@@ -1,146 +1,1046 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js";
 
-const $ = (id) => document.getElementById(id);
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  }
+  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 
-const money = (value) => {
-  const n = Number(value || 0);
-  return "¥" + (Number.isFinite(n) ? n : 0).toFixed(2);
+const $ = (id) => document.getElementById(id);
+const DEFAULT_TEMPLATE = `消费项目：{项目}
+陪陪：{陪陪}
+单价：{单价}/{单位}
+时长/数量：{时长}
+总价：{总价}
+累计消费：{累计消费}`;
+
+const state = {
+  session:null,
+  shops:[],
+  shopId:null,
+  categories:[],
+  items:[],
+  customers:[],
+  records:[],
+  selectedItem:null,
+  categoryFilter:"all",
+  itemSearch:"",
+  historyTotal:0,
+  calc:null,
+  template:{template_text:DEFAULT_TEMPLATE},
+  receiptSettings:null,
+  editingItemId:null,
+  editingShopId:null
 };
 
-function updateCalculator(){
-  const unit = Math.max(0, Number($("unitPrice").value || 0));
-  const qty = Math.max(0, Number($("quantity").value || 0));
-  const extra = Math.max(0, Number($("extraFee").value || 0));
-  $("totalPrice").textContent = money(unit * qty + extra);
-}
+const receiptKeys = [
+  "showCustomer","showCompanion","showUnitPrice","showQuantity",
+  "showTotalSpent","showNote","showTime","showLogo","showFooter"
+];
 
-["unitPrice","quantity","extraFee"].forEach(id => $(id).addEventListener("input", updateCalculator));
-
-$("clearCalc").addEventListener("click", () => {
-  $("unitPrice").value = "";
-  $("quantity").value = "1";
-  $("extraFee").value = "0";
-  $("copyHint").textContent = "";
-  updateCalculator();
+const defaultReceipt = () => ({
+  show_customer:true,
+  show_companion:true,
+  show_unit_price:true,
+  show_quantity:true,
+  show_total_spent:true,
+  show_note:true,
+  show_time:true,
+  show_logo:true,
+  show_footer:true
 });
 
-$("copyQuote").addEventListener("click", async () => {
-  const unit = Math.max(0, Number($("unitPrice").value || 0));
-  const qty = Math.max(0, Number($("quantity").value || 0));
-  const extra = Math.max(0, Number($("extraFee").value || 0));
-  const total = unit * qty + extra;
-  const text = `派单报价：单价 ${money(unit)} × ${qty}，额外费用 ${money(extra)}，合计 ${money(total)}`;
-  try{
-    await navigator.clipboard.writeText(text);
-    $("copyHint").textContent = "已复制报价 ♡";
-  }catch{
-    $("copyHint").textContent = text;
-  }
-});
-
-$("jumpCalculator").addEventListener("click", () => {
-  $("calculator").scrollIntoView({behavior:"smooth",block:"start"});
-});
-
-const dialog = $("accountDialog");
-function openAccount(){
-  if(typeof dialog.showModal === "function") dialog.showModal();
-  else dialog.setAttribute("open","");
-}
-function closeAccount(){
-  if(typeof dialog.close === "function") dialog.close();
-  else dialog.removeAttribute("open");
-}
-$("accountBtn").addEventListener("click", openAccount);
-$("myNavBtn").addEventListener("click", openAccount);
-$("closeAccount").addEventListener("click", closeAccount);
-dialog.addEventListener("click", (event) => {
-  if(event.target === dialog) closeAccount();
-});
-
-function setConnection(text, ok=true){
-  const box = $("connectionStatus");
-  box.className = "connection-pill " + (ok ? "good" : "bad");
-  $("connectionText").textContent = text;
-}
-function setAuthHint(text, bad=false){
-  $("authHint").textContent = text || "";
-  $("authHint").style.color = bad ? "var(--bad)" : "#9b7784";
+function toast(message){
+  const el=$("toast");
+  el.textContent=message;
+  el.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer=setTimeout(()=>el.classList.remove("show"),2200);
 }
 
-async function refreshSession(){
-  const {data,error} = await supabase.auth.getSession();
-  if(error){
-    setConnection("Supabase 连接失败", false);
-    setAuthHint(error.message, true);
-    return;
-  }
-  setConnection("Supabase 已连接 ✓", true);
-  const session = data.session;
-  $("loggedOutBox").classList.toggle("hidden", !!session);
-  $("loggedInBox").classList.toggle("hidden", !session);
-  $("accountEmail").textContent = session?.user?.email || "";
-  $("accountIcon").textContent = session ? "🐱" : "♡";
+function setAuthHint(text,bad=false){
+  $("authHint").textContent=text||"";
+  $("authHint").style.color=bad?"var(--bad)":"var(--muted)";
+}
+
+function setConnection(text,ok=true){
+  $("connectionStatus").className="connection-pill "+(ok?"good":"bad");
+  $("connectionText").textContent=text;
+}
+
+function currentShop(){
+  return state.shops.find(s=>s.id===state.shopId) || state.shops[0] || null;
+}
+
+function money(value,shop=currentShop()){
+  const symbol=shop?.currency_symbol || "¥";
+  return symbol + Number(value||0).toFixed(2);
+}
+
+function plainNumber(value){
+  const n=Number(value||0);
+  return Number.isInteger(n)?String(n):n.toFixed(2).replace(/0+$/,"").replace(/\.$/,"");
+}
+
+function safe(value){
+  return String(value??"")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+function dateParts(dateValue=new Date()){
+  const d=new Date(dateValue);
+  return {
+    date:d.toLocaleDateString("zh-CN",{year:"numeric",month:"2-digit",day:"2-digit"}),
+    time:d.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"})
+  };
 }
 
 async function signUp(){
-  const email = $("email").value.trim();
-  const password = $("password").value;
-  if(!email || password.length < 6){
-    setAuthHint("请输入邮箱，密码至少 6 位。", true);
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  if(!email || password.length<6){
+    setAuthHint("请输入邮箱，密码至少 6 位。",true);
     return;
   }
   setAuthHint("正在注册…");
-  const {data,error} = await supabase.auth.signUp({
-    email,
-    password,
-    options:{
-      emailRedirectTo:new URL("./",window.location.href).href
-    }
+  const {data,error}=await supabase.auth.signUp({
+    email,password,
+    options:{emailRedirectTo:new URL("./",window.location.href).href}
   });
-  if(error){
-    setAuthHint("注册失败：" + error.message, true);
-    return;
-  }
-  setAuthHint(data.session ? "注册成功 ✓" : "注册成功，请按邮箱里的确认链接完成验证。");
-  await refreshSession();
+  if(error){setAuthHint("注册失败："+error.message,true);return}
+  setAuthHint(data.session?"注册成功 ✓":"注册成功，请先完成邮箱确认。");
 }
 
 async function signIn(){
-  const email = $("email").value.trim();
-  const password = $("password").value;
-  if(!email || !password){
-    setAuthHint("请输入邮箱和密码。", true);
-    return;
-  }
+  const email=$("email").value.trim();
+  const password=$("password").value;
+  if(!email || !password){setAuthHint("请输入邮箱和密码。",true);return}
   setAuthHint("正在登录…");
-  const {error} = await supabase.auth.signInWithPassword({email,password});
-  if(error){
-    setAuthHint("登录失败：" + error.message, true);
-    return;
-  }
-  setAuthHint("登录成功 ✓");
-  await refreshSession();
+  const {error}=await supabase.auth.signInWithPassword({email,password});
+  if(error){setAuthHint("登录失败："+error.message,true);return}
+  setAuthHint("");
 }
 
 async function signOut(){
   await supabase.auth.signOut();
-  setAuthHint("");
-  await refreshSession();
 }
 
-$("signUpBtn").addEventListener("click", signUp);
-$("signInBtn").addEventListener("click", signIn);
-$("signOutBtn").addEventListener("click", signOut);
+async function applySession(session){
+  state.session=session;
+  $("authGate").classList.toggle("hidden",!!session);
+  $("appRoot").classList.toggle("hidden",!session);
+  setConnection("Supabase 已连接 ✓",true);
+  if(!session) return;
 
-supabase.auth.onAuthStateChange(() => refreshSession());
-updateCalculator();
-refreshSession();
+  $("accountEmail").textContent=session.user.email||"";
+  $("settingsEmail").textContent=session.user.email||"";
+  await bootstrap();
+}
+
+async function bootstrap(){
+  try{
+    await loadShops();
+    if(!state.shops.length) await createStarterShop();
+    await loadShops();
+    state.shopId=state.shopId && state.shops.some(s=>s.id===state.shopId)
+      ? state.shopId
+      : state.shops[0]?.id || null;
+    populateShopSelectors();
+    await loadCurrentShopData();
+    await loadRecords();
+    renderAll();
+  }catch(error){
+    console.error(error);
+    toast("数据还没准备好，请确认 V1 SQL 已部署");
+  }
+}
+
+async function createStarterShop(){
+  const {data:shop,error}=await supabase.from("shops")
+    .insert({name:"我的小店",currency_symbol:"¥",brand_color:"#f47ea7"})
+    .select().single();
+  if(error) throw error;
+
+  await supabase.from("price_categories").insert([
+    {shop_id:shop.id,name:"语音",sort_order:10},
+    {shop_id:shop.id,name:"游戏",sort_order:20},
+    {shop_id:shop.id,name:"娱乐",sort_order:30},
+    {shop_id:shop.id,name:"其他",sort_order:40}
+  ]);
+  await supabase.from("report_templates").insert({shop_id:shop.id,template_text:DEFAULT_TEMPLATE});
+  await supabase.from("receipt_settings").insert({shop_id:shop.id});
+}
+
+async function loadShops(){
+  const {data,error}=await supabase.from("shops").select("*").order("created_at");
+  if(error) throw error;
+  state.shops=data||[];
+}
+
+async function loadCurrentShopData(){
+  if(!state.shopId) return;
+  const [cats,items,customers,template,receipt]=await Promise.all([
+    supabase.from("price_categories").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
+    supabase.from("price_items").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
+    supabase.from("customers").select("*").eq("shop_id",state.shopId).order("name"),
+    supabase.from("report_templates").select("*").eq("shop_id",state.shopId).maybeSingle(),
+    supabase.from("receipt_settings").select("*").eq("shop_id",state.shopId).maybeSingle()
+  ]);
+  for(const result of [cats,items,customers,template,receipt]) if(result.error) throw result.error;
+  state.categories=cats.data||[];
+  state.items=items.data||[];
+  state.customers=customers.data||[];
+  state.template=template.data||{template_text:DEFAULT_TEMPLATE};
+  state.receiptSettings=receipt.data||defaultReceipt();
+  state.selectedItem=null;
+  state.categoryFilter="all";
+  state.historyTotal=0;
+  state.calc=null;
+}
+
+async function loadRecords(){
+  const {data,error}=await supabase.from("consumption_records")
+    .select("*")
+    .order("occurred_at",{ascending:false})
+    .limit(300);
+  if(error) throw error;
+  state.records=data||[];
+}
+
+function populateShopSelectors(){
+  const shopOptions=state.shops.map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join("");
+  $("calcShop").innerHTML=shopOptions;
+  $("templateShop").innerHTML=shopOptions;
+  $("receiptShop").innerHTML=shopOptions;
+  $("recordShopFilter").innerHTML='<option value="all">全部店铺</option>'+shopOptions;
+  if(state.shopId){
+    $("calcShop").value=state.shopId;
+    $("templateShop").value=state.shopId;
+    $("receiptShop").value=state.shopId;
+  }
+}
+
+function renderAll(){
+  renderCategories();
+  renderItems();
+  renderCustomerList();
+  renderPriceManager();
+  renderShopList();
+  renderTemplate();
+  renderReceiptSettings();
+  renderRecords();
+  renderDataSummary();
+  resetCalculatorVisual();
+}
+
+function renderCategories(){
+  $("categoryChips").innerHTML=[
+    `<button class="chip ${state.categoryFilter==="all"?"active":""}" data-category="all" type="button">全部</button>`,
+    ...state.categories.filter(c=>c.is_active!==false).map(c=>
+      `<button class="chip ${state.categoryFilter===c.id?"active":""}" data-category="${c.id}" type="button">${safe(c.name)}</button>`
+    )
+  ].join("");
+
+  $("categoryManager").innerHTML=state.categories.length
+    ? state.categories.map(c=>`
+      <div class="manager-row">
+        <div><b>${safe(c.name)}</b></div>
+        <div class="row-actions">
+          <button class="tiny-btn danger" data-delete-category="${c.id}" type="button">删除</button>
+        </div>
+      </div>`).join("")
+    : '<div class="empty-state">还没有分类。</div>';
+
+  $("priceCategory").innerHTML='<option value="">未分类</option>'+
+    state.categories.map(c=>`<option value="${c.id}">${safe(c.name)}</option>`).join("");
+}
+
+function filteredItems(){
+  const q=state.itemSearch.trim().toLowerCase();
+  return state.items.filter(item=>{
+    if(item.is_active===false) return false;
+    if(state.categoryFilter!=="all" && item.category_id!==state.categoryFilter) return false;
+    if(q && !String(item.name||"").toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderItems(){
+  const items=filteredItems();
+  $("emptyItems").classList.toggle("hidden",items.length>0);
+  $("itemWall").innerHTML=items.map(item=>{
+    const category=state.categories.find(c=>c.id===item.category_id)?.name||"未分类";
+    return `
+      <button class="item-card ${state.selectedItem?.id===item.id?"active":""}" data-item="${item.id}" type="button">
+        <b>${safe(item.name)}</b>
+        <span>${money(item.unit_price)} / ${safe(item.unit_label)}</span>
+        <small>${safe(category)}${item.unit_minutes?" · "+item.unit_minutes+"分钟/单位":""}</small>
+      </button>`;
+  }).join("");
+}
+
+function renderCustomerList(){
+  $("customerList").innerHTML=state.customers.map(c=>`<option value="${safe(c.name)}"></option>`).join("");
+}
+
+function renderPriceManager(){
+  $("priceItemList").innerHTML=state.items.length
+    ? state.items.map(item=>{
+      const category=state.categories.find(c=>c.id===item.category_id)?.name||"未分类";
+      return `
+        <div class="price-row">
+          <div class="price-top">
+            <div><b>${safe(item.name)}</b><p>${safe(category)} · ${safe(item.unit_label)}${item.unit_minutes?" · "+item.unit_minutes+"分钟":""}</p></div>
+            <strong>${money(item.unit_price)}</strong>
+          </div>
+          <p>${safe(item.notes||"暂无备注")}</p>
+          <span class="status-tag ${item.is_active===false?"off":""}">${item.is_active===false?"已停用":"已启用"}</span>
+          <div class="row-actions">
+            <button class="tiny-btn" data-edit-item="${item.id}" type="button">编辑</button>
+            <button class="tiny-btn" data-toggle-item="${item.id}" type="button">${item.is_active===false?"启用":"停用"}</button>
+            <button class="tiny-btn danger" data-delete-item="${item.id}" type="button">删除</button>
+          </div>
+        </div>`;
+    }).join("")
+    : '<div class="empty-state">价格表还是空的，先新增一个项目吧。</div>';
+}
+
+function renderShopList(){
+  $("shopList").innerHTML=state.shops.map(shop=>`
+    <div class="shop-card">
+      <div class="shop-color" style="background:${safe(shop.brand_color||"#f47ea7")}"></div>
+      <b>${safe(shop.name)}</b>
+      <p>${safe(shop.currency_symbol||"¥")} · ${shop.is_active===false?"停用":"启用"}</p>
+      <p>${safe(shop.footer_text||"")}</p>
+      <div class="row-actions">
+        <button class="tiny-btn" data-use-shop="${shop.id}" type="button">使用</button>
+        <button class="tiny-btn" data-edit-shop="${shop.id}" type="button">编辑</button>
+        <button class="tiny-btn danger" data-delete-shop="${shop.id}" type="button">删除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTemplate(){
+  if($("templateShop").value!==state.shopId) return;
+  $("reportTemplateText").value=state.template?.template_text || DEFAULT_TEMPLATE;
+}
+
+function receiptSettingValue(key){
+  const dbKey=key.replace(/[A-Z]/g,m=>"_"+m.toLowerCase());
+  return state.receiptSettings?.[dbKey] ?? true;
+}
+
+function renderReceiptSettings(){
+  if($("receiptShop").value!==state.shopId) return;
+  receiptKeys.forEach(key=>$(key).checked=receiptSettingValue(key));
+  renderInlineReceipt();
+}
+
+function renderDataSummary(){
+  $("dataSummary").textContent=`${state.shops.length} 个店铺 · ${state.items.length} 个当前店铺项目 · ${state.customers.length} 位当前店铺老板 · ${state.records.length} 条消费记录`;
+}
+
+function resetCalculatorVisual(){
+  $("calcUnitPrice").value="";
+  $("calcUnitPrice").readOnly=true;
+  $("calcUnitLabel").value="";
+  $("durationInput").value="";
+  $("durationHelp").textContent="选择项目后自动识别计价方式";
+  $("selectedItemText").textContent="还没选择项目";
+  $("currencyPrefix").textContent=currentShop()?.currency_symbol||"¥";
+  $("calcTotal").textContent=money(0);
+  $("calcFormula").textContent="等待选择项目";
+  $("historyTotal").textContent=money(state.historyTotal);
+  $("newTotal").textContent=money(state.historyTotal);
+}
+
+function selectItem(id){
+  const item=state.items.find(x=>x.id===id);
+  if(!item) return;
+  state.selectedItem=item;
+  $("calcUnitPrice").value=Number(item.unit_price||0);
+  $("calcUnitPrice").readOnly=!item.allow_manual_price;
+  $("calcUnitLabel").value=item.unit_label||"次";
+  $("selectedItemText").textContent=`${item.name} · ${money(item.unit_price)} / ${item.unit_label}`;
+  $("durationInput").placeholder=item.unit_minutes?"例如 3H / 90m / 6":"输入数量，例如 3";
+  $("durationHelp").textContent=item.unit_minutes
+    ? `每 1 ${item.unit_label} = ${item.unit_minutes} 分钟，支持输入 3H / 90m`
+    : `按「${item.unit_label}」计数`;
+  renderItems();
+  calculate();
+}
+
+function parseMeasure(){
+  if(!state.selectedItem) return null;
+  const raw=$("durationInput").value.trim();
+  if(!raw) return null;
+  const item=state.selectedItem;
+  let quantity=0;
+  let minutes=null;
+
+  if(item.unit_minutes){
+    const normalized=raw.toLowerCase().replaceAll(" ","");
+    if(/小时|h$/.test(normalized)){
+      const num=parseFloat(normalized.replace(/小时|h$/g,""));
+      if(!Number.isFinite(num)) return null;
+      minutes=num*60;
+      quantity=minutes/Number(item.unit_minutes);
+    }else if(/分钟|m$/.test(normalized)){
+      const num=parseFloat(normalized.replace(/分钟|m$/g,""));
+      if(!Number.isFinite(num)) return null;
+      minutes=num;
+      quantity=minutes/Number(item.unit_minutes);
+    }else{
+      const num=parseFloat(normalized);
+      if(!Number.isFinite(num)) return null;
+      quantity=num;
+      minutes=quantity*Number(item.unit_minutes);
+    }
+  }else{
+    const num=parseFloat(raw);
+    if(!Number.isFinite(num)) return null;
+    quantity=num;
+  }
+  if(quantity<0) return null;
+  return {raw,quantity,minutes};
+}
+
+function calculate(){
+  if(!state.selectedItem){
+    state.calc=null;
+    $("calcTotal").textContent=money(0);
+    $("newTotal").textContent=money(state.historyTotal);
+    return null;
+  }
+  const measure=parseMeasure();
+  const unitPrice=Number($("calcUnitPrice").value||0);
+  if(!measure || !Number.isFinite(unitPrice)){
+    state.calc=null;
+    $("calcTotal").textContent=money(0);
+    $("calcFormula").textContent="输入时长或数量后自动计算";
+    $("newTotal").textContent=money(state.historyTotal);
+    return null;
+  }
+  const total=unitPrice*measure.quantity;
+  state.calc={unitPrice,total,...measure};
+  $("calcTotal").textContent=money(total);
+  $("calcFormula").textContent=`${plainNumber(unitPrice)} × ${plainNumber(measure.quantity)} = ${plainNumber(total)}`;
+  $("newTotal").textContent=money(state.historyTotal+total);
+  return state.calc;
+}
+
+async function refreshCustomerTotal(){
+  const name=$("customerName").value.trim();
+  const customer=state.customers.find(c=>c.name===name);
+  if(!customer){
+    state.historyTotal=0;
+  }else{
+    const {data,error}=await supabase.from("consumption_records")
+      .select("amount")
+      .eq("customer_id",customer.id);
+    if(error){console.error(error);return}
+    state.historyTotal=(data||[]).reduce((sum,r)=>sum+Number(r.amount||0),0);
+  }
+  $("historyTotal").textContent=money(state.historyTotal);
+  calculate();
+}
+
+function validateCalc(){
+  const customer=$("customerName").value.trim();
+  const companion=$("companionName").value.trim();
+  const calc=calculate();
+  if(!state.shopId){toast("请先选择店铺");return null}
+  if(!customer){toast("先填写老板 / 顾客");return null}
+  if(!state.selectedItem){toast("先选择消费项目");return null}
+  if(!companion){toast("先填写陪陪");return null}
+  if(!calc){toast("请输入有效的时长 / 数量");return null}
+  return {customer,companion,calc,note:$("calcNote").value.trim()};
+}
+
+function reportData(){
+  const valid=validateCalc();
+  if(!valid) return null;
+  const shop=currentShop();
+  const item=state.selectedItem;
+  const parts=dateParts();
+  return {
+    shop,
+    customer:valid.customer,
+    companion:valid.companion,
+    item,
+    note:valid.note,
+    measure:valid.calc.raw,
+    quantity:valid.calc.quantity,
+    unitPrice:valid.calc.unitPrice,
+    total:valid.calc.total,
+    history:state.historyTotal,
+    newTotal:state.historyTotal+valid.calc.total,
+    date:parts.date,
+    time:parts.time
+  };
+}
+
+function buildReport(data){
+  if(!data) return "";
+  const vars={
+    "{老板}":data.customer,
+    "{项目}":data.item.name,
+    "{陪陪}":data.companion,
+    "{单价}":plainNumber(data.unitPrice),
+    "{单位}":data.item.unit_label,
+    "{时长}":data.measure,
+    "{数量}":plainNumber(data.quantity),
+    "{总价}":plainNumber(data.total),
+    "{历史累计}":plainNumber(data.history),
+    "{累计消费}":plainNumber(data.newTotal),
+    "{备注}":data.note||"",
+    "{日期}":data.date,
+    "{时间}":data.time
+  };
+  let text=state.template?.template_text || DEFAULT_TEMPLATE;
+  Object.entries(vars).forEach(([key,value])=>{text=text.split(key).join(String(value))});
+  return text;
+}
+
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast("已复制 ♡");
+  }catch{
+    window.prompt("复制下面内容：",text);
+  }
+}
+
+async function getOrCreateCustomer(name){
+  let customer=state.customers.find(c=>c.name===name);
+  if(customer) return customer;
+  const {data,error}=await supabase.from("customers")
+    .insert({shop_id:state.shopId,name})
+    .select().single();
+  if(error) throw error;
+  state.customers.push(data);
+  renderCustomerList();
+  return data;
+}
+
+async function saveRecord(){
+  const data=reportData();
+  if(!data) return;
+  try{
+    const customer=await getOrCreateCustomer(data.customer);
+    const {data:oldRows,error:oldError}=await supabase.from("consumption_records")
+      .select("amount").eq("customer_id",customer.id);
+    if(oldError) throw oldError;
+    const previous=(oldRows||[]).reduce((sum,r)=>sum+Number(r.amount||0),0);
+    const report=buildReport({...data,history:previous,newTotal:previous+data.total});
+
+    const {error}=await supabase.from("consumption_records").insert({
+      shop_id:state.shopId,
+      customer_id:customer.id,
+      item_id:data.item.id,
+      customer_name_snapshot:data.customer,
+      item_name_snapshot:data.item.name,
+      companion_name:data.companion,
+      unit_price_snapshot:data.unitPrice,
+      unit_label_snapshot:data.item.unit_label,
+      unit_minutes_snapshot:data.item.unit_minutes,
+      quantity:data.quantity,
+      duration_input:data.measure,
+      amount:data.total,
+      previous_total:previous,
+      new_total:previous+data.total,
+      note:data.note,
+      report_text:report
+    });
+    if(error) throw error;
+    state.historyTotal=previous+data.total;
+    await loadRecords();
+    renderRecords();
+    renderDataSummary();
+    $("historyTotal").textContent=money(state.historyTotal);
+    calculate();
+    toast("消费记录已保存 ♡");
+  }catch(error){
+    console.error(error);
+    toast("保存失败："+error.message);
+  }
+}
+
+function currentReceiptSettingsFromControls(){
+  return {
+    show_customer:$("showCustomer").checked,
+    show_companion:$("showCompanion").checked,
+    show_unit_price:$("showUnitPrice").checked,
+    show_quantity:$("showQuantity").checked,
+    show_total_spent:$("showTotalSpent").checked,
+    show_note:$("showNote").checked,
+    show_time:$("showTime").checked,
+    show_logo:$("showLogo").checked,
+    show_footer:$("showFooter").checked
+  };
+}
+
+function sampleReceiptData(){
+  const shop=state.shops.find(s=>s.id===$("receiptShop").value)||currentShop()||{
+    name:"我的小店",currency_symbol:"¥",footer_text:"谢谢喜欢，祝你今天也开心 ♡"
+  };
+  return {
+    shop,customer:"老板昵称",companion:"A",item:{name:"语聊",unit_label:"半小时"},
+    note:"谢谢支持 ♡",measure:"3H",quantity:6,unitPrice:25,total:150,
+    history:300,newTotal:450,...dateParts()
+  };
+}
+
+function receiptHtml(data,settings){
+  const shop=data.shop||currentShop()||{};
+  const logo=settings.show_logo && shop.logo_url
+    ? `<img class="receipt-logo" src="${safe(shop.logo_url)}" alt="">`
+    : "";
+  const lines=[];
+  if(settings.show_customer) lines.push(["老板",data.customer]);
+  lines.push(["消费项目",data.item?.name||""]);
+  if(settings.show_companion) lines.push(["陪陪",data.companion||""]);
+  if(settings.show_unit_price) lines.push(["单价",`${money(data.unitPrice,shop)} / ${data.item?.unit_label||""}`]);
+  if(settings.show_quantity) lines.push(["时长 / 数量",data.measure||plainNumber(data.quantity)]);
+  if(settings.show_total_spent) lines.push(["累计消费",money(data.newTotal,shop)]);
+  if(settings.show_note && data.note) lines.push(["备注",data.note]);
+  if(settings.show_time) lines.push(["时间",`${data.date} ${data.time}`]);
+
+  return `
+    <div class="receipt-head">
+      ${logo}
+      <h3>${safe(shop.name||"我的小店")}</h3>
+      <p>消费小票 · THANK YOU ♡</p>
+    </div>
+    <div class="receipt-lines">
+      ${lines.map(([k,v])=>`<div class="receipt-line"><span>${safe(k)}</span><b>${safe(v)}</b></div>`).join("")}
+    </div>
+    <div class="receipt-total"><span>本单金额</span><strong>${money(data.total,shop)}</strong></div>
+    ${settings.show_footer?`<div class="receipt-footer">${safe(shop.footer_text||"谢谢喜欢，祝你今天也开心 ♡")}</div>`:""}
+  `;
+}
+
+function renderInlineReceipt(){
+  const data=sampleReceiptData();
+  $("receiptPreviewInline").innerHTML=receiptHtml(data,currentReceiptSettingsFromControls());
+}
+
+function renderReceiptForCurrentCalc(targetId){
+  const data=reportData();
+  if(!data) return false;
+  const settings=state.receiptSettings||defaultReceipt();
+  $(targetId).innerHTML=receiptHtml(data,settings);
+  return true;
+}
+
+async function exportReceipt(){
+  if(!renderReceiptForCurrentCalc("receiptCapture")) return;
+  const el=$("receiptCapture");
+  if(!window.html2canvas){toast("图片组件还没加载好，请稍后再试");return}
+  try{
+    const canvas=await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:null});
+    const link=document.createElement("a");
+    link.download=`消费小票-${Date.now()}.png`;
+    link.href=canvas.toDataURL("image/png");
+    link.click();
+    toast("小票图片已生成 ♡");
+  }catch(error){
+    console.error(error);
+    toast("导出失败，Logo 跨域时可以先关闭 Logo 再试");
+  }
+}
+
+function openReceiptPreview(){
+  if(!renderReceiptForCurrentCalc("receiptCapture")) return;
+  $("receiptDialog").showModal();
+}
+
+async function addCategory(){
+  const name=$("newCategoryName").value.trim();
+  if(!name){toast("先填分类名称");return}
+  const {error}=await supabase.from("price_categories").insert({shop_id:state.shopId,name,sort_order:state.categories.length*10});
+  if(error){toast("新增失败："+error.message);return}
+  $("newCategoryName").value="";
+  await loadCurrentShopData();
+  renderAll();
+  toast("分类已新增");
+}
+
+function resetPriceForm(){
+  state.editingItemId=null;
+  $("itemFormTitle").textContent="新增价格项目";
+  $("priceName").value="";
+  $("priceCategory").value="";
+  $("priceValue").value="";
+  $("priceUnitLabel").value="";
+  $("priceUnitMinutes").value="";
+  $("priceSort").value="0";
+  $("priceManual").checked=false;
+  $("priceNotes").value="";
+  $("cancelItemEditBtn").classList.add("hidden");
+}
+
+async function savePriceItem(){
+  const payload={
+    shop_id:state.shopId,
+    category_id:$("priceCategory").value||null,
+    name:$("priceName").value.trim(),
+    unit_price:Number($("priceValue").value||0),
+    unit_label:$("priceUnitLabel").value.trim()||"次",
+    unit_minutes:$("priceUnitMinutes").value?Number($("priceUnitMinutes").value):null,
+    sort_order:Number($("priceSort").value||0),
+    allow_manual_price:$("priceManual").checked,
+    notes:$("priceNotes").value.trim()||null
+  };
+  if(!payload.name){toast("先填项目名称");return}
+  if(payload.unit_price<0){toast("单价不能小于 0");return}
+  let result;
+  if(state.editingItemId){
+    result=await supabase.from("price_items").update(payload).eq("id",state.editingItemId);
+  }else{
+    result=await supabase.from("price_items").insert(payload);
+  }
+  if(result.error){toast("保存失败："+result.error.message);return}
+  resetPriceForm();
+  await loadCurrentShopData();
+  renderAll();
+  toast("价格项目已保存 ♡");
+}
+
+function editPriceItem(id){
+  const item=state.items.find(x=>x.id===id);
+  if(!item) return;
+  state.editingItemId=id;
+  $("itemFormTitle").textContent="编辑价格项目";
+  $("priceName").value=item.name||"";
+  $("priceCategory").value=item.category_id||"";
+  $("priceValue").value=item.unit_price??"";
+  $("priceUnitLabel").value=item.unit_label||"";
+  $("priceUnitMinutes").value=item.unit_minutes??"";
+  $("priceSort").value=item.sort_order??0;
+  $("priceManual").checked=!!item.allow_manual_price;
+  $("priceNotes").value=item.notes||"";
+  $("cancelItemEditBtn").classList.remove("hidden");
+  showPage("prices");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function togglePriceItem(id){
+  const item=state.items.find(x=>x.id===id);
+  if(!item) return;
+  const {error}=await supabase.from("price_items").update({is_active:!item.is_active}).eq("id",id);
+  if(error){toast("更新失败："+error.message);return}
+  await loadCurrentShopData();renderAll();
+}
+
+async function deletePriceItem(id){
+  if(!confirm("确定删除这个价格项目吗？历史消费记录会保留当时的价格快照。")) return;
+  const {error}=await supabase.from("price_items").delete().eq("id",id);
+  if(error){toast("删除失败："+error.message);return}
+  await loadCurrentShopData();renderAll();toast("已删除");
+}
+
+async function deleteCategory(id){
+  if(!confirm("删除分类后，分类下的项目会变成「未分类」，继续吗？")) return;
+  const {error}=await supabase.from("price_categories").delete().eq("id",id);
+  if(error){toast("删除失败："+error.message);return}
+  await loadCurrentShopData();renderAll();
+}
+
+function resetShopForm(){
+  state.editingShopId=null;
+  $("shopFormTitle").textContent="新增店铺";
+  $("shopName").value="";
+  $("shopCurrency").value="¥";
+  $("shopBrandColor").value="#f47ea7";
+  $("shopLogo").value="";
+  $("shopFooter").value="谢谢喜欢，祝你今天也开心 ♡";
+  $("cancelShopEditBtn").classList.add("hidden");
+}
+
+async function saveShop(){
+  const payload={
+    name:$("shopName").value.trim(),
+    currency_symbol:$("shopCurrency").value.trim()||"¥",
+    brand_color:$("shopBrandColor").value||"#f47ea7",
+    logo_url:$("shopLogo").value.trim()||null,
+    footer_text:$("shopFooter").value.trim()||"谢谢喜欢，祝你今天也开心 ♡"
+  };
+  if(!payload.name){toast("先填店铺名称");return}
+
+  if(state.editingShopId){
+    const {error}=await supabase.from("shops").update(payload).eq("id",state.editingShopId);
+    if(error){toast("保存失败："+error.message);return}
+  }else{
+    const {data,error}=await supabase.from("shops").insert(payload).select().single();
+    if(error){toast("保存失败："+error.message);return}
+    await supabase.from("price_categories").insert([
+      {shop_id:data.id,name:"语音",sort_order:10},
+      {shop_id:data.id,name:"游戏",sort_order:20},
+      {shop_id:data.id,name:"娱乐",sort_order:30},
+      {shop_id:data.id,name:"其他",sort_order:40}
+    ]);
+    await supabase.from("report_templates").insert({shop_id:data.id,template_text:DEFAULT_TEMPLATE});
+    await supabase.from("receipt_settings").insert({shop_id:data.id});
+    state.shopId=data.id;
+  }
+  resetShopForm();
+  await bootstrap();
+  toast("店铺已保存 ♡");
+}
+
+function editShop(id){
+  const shop=state.shops.find(s=>s.id===id);
+  if(!shop) return;
+  state.editingShopId=id;
+  $("shopFormTitle").textContent="编辑店铺";
+  $("shopName").value=shop.name||"";
+  $("shopCurrency").value=shop.currency_symbol||"¥";
+  $("shopBrandColor").value=shop.brand_color||"#f47ea7";
+  $("shopLogo").value=shop.logo_url||"";
+  $("shopFooter").value=shop.footer_text||"";
+  $("cancelShopEditBtn").classList.remove("hidden");
+  showPage("shops");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+async function useShop(id){
+  state.shopId=id;
+  populateShopSelectors();
+  $("calcShop").value=id;
+  $("templateShop").value=id;
+  $("receiptShop").value=id;
+  await loadCurrentShopData();
+  renderAll();
+  toast("已切换店铺");
+}
+
+async function deleteShop(id){
+  if(state.shops.length<=1){toast("至少保留一个店铺");return}
+  if(!confirm("删除店铺会一起删除它的价格表、老板和消费记录，确定吗？")) return;
+  const {error}=await supabase.from("shops").delete().eq("id",id);
+  if(error){toast("删除失败："+error.message);return}
+  if(state.shopId===id) state.shopId=null;
+  await bootstrap();
+}
+
+async function loadTemplateFor(shopId){
+  const {data,error}=await supabase.from("report_templates").select("*").eq("shop_id",shopId).maybeSingle();
+  if(error){toast("读取模板失败");return}
+  $("reportTemplateText").value=data?.template_text||DEFAULT_TEMPLATE;
+}
+
+async function saveTemplate(){
+  const shopId=$("templateShop").value;
+  if(!shopId) return;
+  const payload={
+    shop_id:shopId,
+    template_text:$("reportTemplateText").value||DEFAULT_TEMPLATE
+  };
+  const {error}=await supabase.from("report_templates").upsert(payload,{onConflict:"user_id,shop_id"});
+  if(error){toast("保存失败："+error.message);return}
+  if(shopId===state.shopId) state.template={...state.template,...payload};
+  toast("报备模板已保存 ♡");
+}
+
+async function loadReceiptFor(shopId){
+  const {data,error}=await supabase.from("receipt_settings").select("*").eq("shop_id",shopId).maybeSingle();
+  if(error){toast("读取小票设置失败");return}
+  const settings=data||defaultReceipt();
+  receiptKeys.forEach(key=>{
+    const dbKey=key.replace(/[A-Z]/g,m=>"_"+m.toLowerCase());
+    $(key).checked=settings[dbKey]??true;
+  });
+  renderInlineReceipt();
+}
+
+async function saveReceiptSettings(){
+  const shopId=$("receiptShop").value;
+  if(!shopId) return;
+  const payload={shop_id:shopId,...currentReceiptSettingsFromControls()};
+  const {error}=await supabase.from("receipt_settings").upsert(payload,{onConflict:"user_id,shop_id"});
+  if(error){toast("保存失败："+error.message);return}
+  if(shopId===state.shopId) state.receiptSettings={...state.receiptSettings,...payload};
+  toast("小票设置已保存 ♡");
+}
+
+function renderRecords(){
+  const q=$("recordSearch").value.trim().toLowerCase();
+  const shopFilter=$("recordShopFilter").value||"all";
+  const filtered=state.records.filter(r=>{
+    if(shopFilter!=="all" && r.shop_id!==shopFilter) return false;
+    if(!q) return true;
+    return [r.customer_name_snapshot,r.item_name_snapshot,r.companion_name,r.note]
+      .some(v=>String(v||"").toLowerCase().includes(q));
+  });
+  $("emptyRecords").classList.toggle("hidden",filtered.length>0);
+  $("recordList").innerHTML=filtered.map(r=>{
+    const shop=state.shops.find(s=>s.id===r.shop_id);
+    const d=dateParts(r.occurred_at);
+    return `
+      <div class="record-row">
+        <div class="record-main">
+          <b>${safe(r.customer_name_snapshot)} · ${safe(r.item_name_snapshot)}</b>
+          <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}</p>
+          <small>${d.date} ${d.time}</small>
+          <div class="row-actions">
+            <button class="tiny-btn" data-reuse-record="${r.id}" type="button">再次使用</button>
+            <button class="tiny-btn" data-copy-record="${r.id}" type="button">复制报备</button>
+            <button class="tiny-btn danger" data-delete-record="${r.id}" type="button">删除</button>
+          </div>
+        </div>
+        <div class="record-money">
+          <strong>${money(r.amount,shop)}</strong>
+          <span>当时累计 ${money(r.new_total,shop)}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function deleteRecord(id){
+  if(!confirm("确定删除这条消费记录吗？当前累计会按剩余记录重新计算。")) return;
+  const {error}=await supabase.from("consumption_records").delete().eq("id",id);
+  if(error){toast("删除失败："+error.message);return}
+  await loadRecords();
+  renderRecords();
+  await refreshCustomerTotal();
+  renderDataSummary();
+  toast("记录已删除");
+}
+
+async function reuseRecord(id){
+  const record=state.records.find(r=>r.id===id);
+  if(!record) return;
+  if(state.shopId!==record.shop_id) await useShop(record.shop_id);
+  $("customerName").value=record.customer_name_snapshot||"";
+  $("companionName").value=record.companion_name||"";
+  $("calcNote").value=record.note||"";
+  const item=state.items.find(i=>i.id===record.item_id);
+  if(item) selectItem(item.id);
+  $("calcUnitPrice").value=record.unit_price_snapshot||0;
+  $("durationInput").value=record.duration_input||plainNumber(record.quantity);
+  await refreshCustomerTotal();
+  calculate();
+  showPage("calculator");
+  window.scrollTo({top:0,behavior:"smooth"});
+  toast("已带回计算页");
+}
+
+function showPage(name){
+  document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id===`page-${name}`));
+  document.querySelectorAll(".nav-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page===name));
+}
+
+function bindEvents(){
+  $("signUpBtn").addEventListener("click",signUp);
+  $("signInBtn").addEventListener("click",signIn);
+  $("signOutBtn").addEventListener("click",signOut);
+
+  document.querySelectorAll(".nav-tab").forEach(btn=>btn.addEventListener("click",()=>showPage(btn.dataset.page)));
+
+  $("calcShop").addEventListener("change",async()=>{
+    state.shopId=$("calcShop").value;
+    $("templateShop").value=state.shopId;
+    $("receiptShop").value=state.shopId;
+    await loadCurrentShopData();
+    renderAll();
+  });
+
+  $("customerName").addEventListener("input",()=>{
+    clearTimeout(bindEvents.customerTimer);
+    bindEvents.customerTimer=setTimeout(refreshCustomerTotal,250);
+  });
+  $("calcUnitPrice").addEventListener("input",calculate);
+  $("durationInput").addEventListener("input",calculate);
+  $("itemSearch").addEventListener("input",()=>{
+    state.itemSearch=$("itemSearch").value;
+    renderItems();
+  });
+
+  $("categoryChips").addEventListener("click",e=>{
+    const btn=e.target.closest("[data-category]");
+    if(!btn) return;
+    state.categoryFilter=btn.dataset.category;
+    renderCategories();renderItems();
+  });
+  $("itemWall").addEventListener("click",e=>{
+    const btn=e.target.closest("[data-item]");
+    if(btn) selectItem(btn.dataset.item);
+  });
+
+  $("copyReportBtn").addEventListener("click",()=>{
+    const data=reportData();
+    if(data) copyText(buildReport(data));
+  });
+  $("previewReceiptBtn").addEventListener("click",openReceiptPreview);
+  $("exportReceiptBtn").addEventListener("click",exportReceipt);
+  $("saveRecordBtn").addEventListener("click",saveRecord);
+
+  $("addCategoryBtn").addEventListener("click",addCategory);
+  $("categoryManager").addEventListener("click",e=>{
+    const btn=e.target.closest("[data-delete-category]");
+    if(btn) deleteCategory(btn.dataset.deleteCategory);
+  });
+  $("savePriceItemBtn").addEventListener("click",savePriceItem);
+  $("cancelItemEditBtn").addEventListener("click",resetPriceForm);
+  $("priceItemList").addEventListener("click",e=>{
+    const edit=e.target.closest("[data-edit-item]");
+    const toggle=e.target.closest("[data-toggle-item]");
+    const del=e.target.closest("[data-delete-item]");
+    if(edit) editPriceItem(edit.dataset.editItem);
+    if(toggle) togglePriceItem(toggle.dataset.toggleItem);
+    if(del) deletePriceItem(del.dataset.deleteItem);
+  });
+
+  $("saveShopBtn").addEventListener("click",saveShop);
+  $("cancelShopEditBtn").addEventListener("click",resetShopForm);
+  $("shopList").addEventListener("click",e=>{
+    const use=e.target.closest("[data-use-shop]");
+    const edit=e.target.closest("[data-edit-shop]");
+    const del=e.target.closest("[data-delete-shop]");
+    if(use) useShop(use.dataset.useShop);
+    if(edit) editShop(edit.dataset.editShop);
+    if(del) deleteShop(del.dataset.deleteShop);
+  });
+
+  $("templateShop").addEventListener("change",()=>loadTemplateFor($("templateShop").value));
+  $("saveTemplateBtn").addEventListener("click",saveTemplate);
+
+  $("receiptShop").addEventListener("change",()=>loadReceiptFor($("receiptShop").value));
+  receiptKeys.forEach(key=>$(key).addEventListener("change",renderInlineReceipt));
+  $("saveReceiptSettingsBtn").addEventListener("click",saveReceiptSettings);
+
+  $("recordSearch").addEventListener("input",renderRecords);
+  $("recordShopFilter").addEventListener("change",renderRecords);
+  $("recordList").addEventListener("click",e=>{
+    const reuse=e.target.closest("[data-reuse-record]");
+    const copy=e.target.closest("[data-copy-record]");
+    const del=e.target.closest("[data-delete-record]");
+    if(reuse) reuseRecord(reuse.dataset.reuseRecord);
+    if(copy){
+      const record=state.records.find(r=>r.id===copy.dataset.copyRecord);
+      if(record) copyText(record.report_text||"");
+    }
+    if(del) deleteRecord(del.dataset.deleteRecord);
+  });
+
+  $("closeReceiptDialog").addEventListener("click",()=>$("receiptDialog").close());
+  $("dialogExportBtn").addEventListener("click",exportReceipt);
+  $("refreshDataBtn").addEventListener("click",bootstrap);
+}
+
+bindEvents();
+
+supabase.auth.onAuthStateChange((_event,session)=>applySession(session));
+const {data,error}=await supabase.auth.getSession();
+if(error){
+  setConnection("Supabase 连接失败",false);
+  setAuthHint(error.message,true);
+}else{
+  setConnection("Supabase 已连接 ✓",true);
+  await applySession(data.session);
+}
