@@ -57,6 +57,73 @@ const defaultReceipt = () => ({
   boss_message:"谢谢支持，祝你今天也开心 ♡"
 });
 
+
+let deferredInstallPrompt=null;
+
+function isStandaloneMode(){
+  return window.matchMedia?.("(display-mode: standalone)")?.matches
+    || window.navigator.standalone===true;
+}
+
+function installHelpText(){
+  const ua=navigator.userAgent||"";
+  const isIOS=/iPhone|iPad|iPod/i.test(ua);
+  const isWeChat=/MicroMessenger/i.test(ua);
+
+  if(isStandaloneMode()){
+    return "派mini 已经添加到主屏幕，可以直接从桌面打开。";
+  }
+
+  if(isWeChat){
+    return "请先点右上角「…」选择用 Safari 打开，然后在 Safari 底部点分享按钮，再选择「添加到主屏幕」。";
+  }
+
+  if(isIOS){
+    return "在 Safari 底部点分享按钮，再选择「添加到主屏幕」即可。";
+  }
+
+  return "浏览器如果支持安装，会直接弹出安装提示；如果没有弹出，请打开浏览器菜单并选择「添加到主屏幕」或「安装应用」。";
+}
+
+async function installPaiMini(){
+  if(isStandaloneMode()){
+    toast("派mini 已经在主屏幕啦 ♡");
+    return;
+  }
+
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice.catch(()=>null);
+    deferredInstallPrompt=null;
+    return;
+  }
+
+  const dialog=$("installHelpDialog");
+  const text=$("installHelpText");
+  if(text) text.textContent=installHelpText();
+  if(dialog?.showModal) dialog.showModal();
+}
+
+function registerPaiMiniPwa(){
+  window.addEventListener("beforeinstallprompt",event=>{
+    event.preventDefault();
+    deferredInstallPrompt=event;
+  });
+
+  window.addEventListener("appinstalled",()=>{
+    deferredInstallPrompt=null;
+    toast("已添加到主屏幕 ♡");
+  });
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load",()=>{
+      navigator.serviceWorker.register("./sw.js").catch(error=>{
+        console.warn("Service worker registration failed",error);
+      });
+    });
+  }
+}
+
 function toast(message){
   const el=$("toast");
   el.textContent=message;
@@ -1825,6 +1892,8 @@ function bindEvents(){
   $("signInBtn").addEventListener("click",signIn);
   $("signOutBtn").addEventListener("click",signOut);
   $("settingsSignOutBtn").addEventListener("click",signOut);
+  $("installAppBtn").addEventListener("click",installPaiMini);
+  $("closeInstallHelpDialog").addEventListener("click",()=>$("installHelpDialog").close());
   $("expiredSignOutBtn").addEventListener("click",signOut);
   $("expiredRenewBtn").addEventListener("click",()=>redeemRenewal("expiredRenewalCode","expiredHint"));
   $("settingsRenewBtn").addEventListener("click",()=>redeemRenewal("settingsRenewalCode","settingsRenewHint"));
@@ -1989,6 +2058,7 @@ function bindEvents(){
 }
 
 loadTheme();
+registerPaiMiniPwa();
 bindEvents();
 
 const serviceCheck=await checkAuthService();
