@@ -141,14 +141,33 @@ async function signOut(){
 
 async function applySession(session){
   state.session=session;
-  $("authGate").classList.toggle("hidden",!!session);
-  $("appRoot").classList.toggle("hidden",!session);
   setConnection("Supabase 已连接 ✓",true);
-  if(!session) return;
+
+  if(!session){
+    $("authGate").classList.remove("hidden");
+    $("appRoot").classList.add("hidden");
+    return;
+  }
+
+  // 先套用本机缓存的个人主页，避免进入后闪一下默认名字/默认文案。
+  try{
+    const cached=localStorage.getItem("playmate-profile-"+session.user.id);
+    if(cached){
+      state.profile=JSON.parse(cached);
+      renderProfile();
+    }
+  }catch{}
+
+  $("authGate").classList.add("hidden");
+  $("appRoot").classList.add("hidden");
 
   $("accountEmail").textContent=session.user.email||"";
   $("settingsEmail").textContent=session.user.email||"";
+
   await bootstrap();
+
+  // 数据真正加载好以后再一次性显示整个工作台。
+  $("appRoot").classList.remove("hidden");
 }
 
 async function bootstrap(){
@@ -183,6 +202,9 @@ async function loadProfile(){
 
   if(data){
     state.profile=data;
+    try{
+      localStorage.setItem("playmate-profile-"+userId,JSON.stringify(data));
+    }catch{}
     return;
   }
 
@@ -197,6 +219,9 @@ async function loadProfile(){
     .select().single();
   if(createError) throw createError;
   state.profile=created;
+  try{
+    localStorage.setItem("playmate-profile-"+userId,JSON.stringify(created));
+  }catch{}
 }
 
 async function loadSavedShops(){
@@ -272,6 +297,9 @@ async function saveProfile(){
       .select().single();
     if(error) throw error;
     state.profile=data;
+    try{
+      localStorage.setItem("playmate-profile-"+state.session.user.id,JSON.stringify(data));
+    }catch{}
     $("profileAvatarFile").value="";
     renderProfile();
     toast("我的主页已保存 ♡");
