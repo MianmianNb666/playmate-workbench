@@ -210,6 +210,20 @@
         </div>
       </div>
 
+      <div class="card multi-order-card">
+        <div class="card-title">
+          <div><b>④ 本单陪玩 / 项目</b><small>可以添加多个陪玩，每个陪玩也可以添加多个项目</small></div>
+          <button id="addOrderLineBtn" class="tiny-btn" type="button">＋ 添加当前项目</button>
+        </div>
+        <div id="orderLineList" class="order-line-list">
+          <div class="empty-state">还没有添加项目。填好上面的陪陪、项目和数量后，点「添加当前项目」。</div>
+        </div>
+        <div class="multi-order-total">
+          <span>本单合计</span>
+          <strong id="orderGrandTotal">¥0.00</strong>
+        </div>
+      </div>
+
       <div class="action-row">
         <button id="copyReportBtn" class="btn soft" type="button">复制报备</button>
         <button id="previewReceiptBtn" class="btn soft" type="button">预览小票</button>
@@ -624,8 +638,9 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260922-2"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260922-3"></script>
   <script type="module" src="./boss-features.js?v=20260921-v16"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
+  <script type="module" src="./multi-order.js?v=20260922-1"></script>
 </body>
 </html>
