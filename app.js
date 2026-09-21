@@ -321,6 +321,21 @@ async function applySession(session){
   $("appRoot").classList.remove("hidden");
 }
 
+async function refreshAdminEntry(){
+  const card=$("adminEntryCard");
+  if(!card || !state.session) return;
+  try{
+    const {data,error}=await supabase.rpc("is_app_admin");
+    if(error){
+      card.classList.add("hidden");
+      return;
+    }
+    card.classList.toggle("hidden",!data);
+  }catch{
+    card.classList.add("hidden");
+  }
+}
+
 async function bootstrap(){
   try{
     await loadProfile();
@@ -336,6 +351,7 @@ async function bootstrap(){
     await loadRecords();
     renderAll();
     renderProfile();
+    await refreshAdminEntry();
   }catch(error){
     console.error(error);
     toast("数据还没准备好，请确认 V1 SQL 已部署");
