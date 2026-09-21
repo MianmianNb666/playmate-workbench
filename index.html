@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
   <title>陪玩工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v14">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v16">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -102,6 +102,10 @@
               <input id="customerName" list="customerList" placeholder="输入昵称，已有老板可直接选">
               <datalist id="customerList"></datalist>
             </label>
+            <label>老板折扣
+              <input id="customerDiscount" placeholder="默认10折，例如 9折 / 8.5折 / 90%">
+              <small id="discountHelp">已有老板会自动带出保存的折扣</small>
+            </label>
             <label>陪陪
               <input id="companionName" placeholder="直接手填，例如 A">
             </label>
@@ -133,16 +137,24 @@
         <div class="card-title">
           <div><b>③ 算价</b><small id="selectedItemText">还没选择项目</small></div>
         </div>
-        <div class="calc-grid">
+        <div class="calc-grid manual-calc-grid">
+          <label>项目
+            <input id="calcItemName" list="calcItemList" placeholder="选择已有项目，或直接输入">
+            <datalist id="calcItemList"></datalist>
+            <small>已有项目会自动带出价格和单位；新项目可以直接手填</small>
+          </label>
           <label>单价
             <div class="money-field"><span id="currencyPrefix">¥</span><input id="calcUnitPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
           </label>
           <label>单位
-            <input id="calcUnitLabel" readonly placeholder="自动带出">
+            <input id="calcUnitLabel" placeholder="例如 半 / 小时 / 局 / 次">
+          </label>
+          <label>每单位分钟
+            <input id="calcUnitMinutes" type="number" min="0" step="1" placeholder="半填30，小时填60，可留空">
           </label>
           <label>时长 / 数量
             <input id="durationInput" placeholder="例如 3H / 90m / 6">
-            <small id="durationHelp">选择项目后自动识别计价方式</small>
+            <small id="durationHelp">已有项目自动识别；手动项目按你填写的单位计算</small>
           </label>
           <div class="price-result">
             <span>本单总价</span>
@@ -444,7 +456,7 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v15"></script>
+  <script type="module" src="./app.js?v=20260921-v16"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v15"></script>
 </body>
