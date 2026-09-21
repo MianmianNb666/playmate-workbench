@@ -100,13 +100,20 @@ function setProgress(progress,text){
 }
 
 function normalizeUnit(raw){
-  const value=String(raw||"").trim().toLowerCase().replaceAll(" ","");
+  let value=String(raw||"").trim().toLowerCase().replaceAll(" ","");
   if(!value) return {unitLabel:"次",unitMinutes:null};
 
-  if(value==="半"||value==="半小时"||value==="0.5h"){
-    return {unitLabel:"半小时",unitMinutes:30};
+  value=value
+    .replace(/^\/+|\/+$/g,"")
+    .replace(/^每/,"");
+
+  // OCR 常把 0.5h 看成 o5h / 05h。
+  if(value==="o5h"||value==="05h"||value===".5h") value="0.5h";
+
+  if(["半","半小时","0.5h","0.5hr"].includes(value)){
+    return {unitLabel:"半",unitMinutes:30};
   }
-  if(["h","hr","hrs","hour","小时"].includes(value)){
+  if(["h","hr","hrs","hour","小时","时"].includes(value)){
     return {unitLabel:"小时",unitMinutes:60};
   }
   if(["m","min","mins","分钟","分"].includes(value)){
@@ -132,53 +139,187 @@ function cleanLine(line){
     .replace(/[：:]/g," ")
     .replace(/[￥]/g,"¥")
     .replace(/[／]/g,"/")
+    .replace(/[，,；;]/g," ")
     .replace(/\s+/g," ")
     .trim();
 }
 
-function looksLikeCategory(line){
-  if(!line) return false;
-  if(/[0-9¥￥]/.test(line)) return false;
-  const trimmed=line.replace(/[【】\[\]（）()「」]/g,"").trim();
-  if(trimmed.length<2||trimmed.length>12) return false;
-  if(/[,.，。!！?？]/.test(trimmed)) return false;
-  return true;
+function parsePriceToken(rawToken){
+  let token=String(rawToken||"")
+    .trim()
+    .toLowerCase()
+    .replace(/[¥￥]/g,"")
+    .replace(/元/g,"")
+    .replace(/\s+/g,"");
+
+  if(!token || !/\d/.test(token)) return null;
+
+  // 美工价目表 OCR 常见误识别：
+  // 25r0.5h / 40ro5h / 30rh / 15r10min
+  if(/^[0-9.r\/hmings]+$/i.test(token)){
+    token=token.replace(/o/g,"0");
+  }
+  token=token
+    .replace(/r0?5h$/i,"r0.5h")
+    .replace(/\/0?5h$/i,"/0.5h");
+
+  const match=token.match(/^(\d+(?:\.\d+)?)(?:r|\/)?(.*)$/i);
+  if(!match) return null;
+
+  const price=Number(match[1]);
+  if(!Number.isFinite(price)) return null;
+
+  let rawUnit=String(match[2]||"")
+    .replace(/^\/+|\/+$/g,"")
+    .trim();
+
+  const normalized=normalizeUnit(rawUnit||"次");
+  return {
+    price,
+    unitLabel:normalized.unitLabel,
+    unitMinutes:normalized.unitMinutes,
+    raw:rawToken
+  };
 }
 
-function parseLine(line,currentCategory){
+function extractPriceTokens(line){
+  const cleaned=cleanLine(line);
+  if(!cleaned) return [];
+
+  // 先按空格拆。大多数价目表 OCR 会把每个价格块保留成独立 token。
+  const chunks=cleaned.split(/\s+/).filter(Boolean);
+  const parsed=chunks
+    .map(parsePriceToken)
+    .filter(Boolean);
+
+  // 至少一半 chunk 看起来是价格，才把这一整行当作“价格行”。
+  if(parsed.length && parsed.length>=Math.ceil(chunks.length/2)){
+    return parsed;
+  }
+
+  return [];
+}
+
+function chineseWordSegments(text){
+  const joined=String(text||"")
+    .replace(/[【】\[\]（）()「」『』]/g,"")
+    .replace(/\s+/g,"")
+    .trim();
+
+  if(!joined) return [];
+
+  try{
+    if(Intl?.Segmenter){
+      const segmenter=new Intl.Segmenter("zh-CN",{granularity:"word"});
+      const words=[...segmenter.segment(joined)]
+        .filter(part=>part.isWordLike)
+        .map(part=>part.segment)
+        .filter(Boolean);
+      if(words.length) return words;
+    }
+  }catch{}
+
+  return [...joined];
+}
+
+function partitionWords(words,count){
+  if(count<=0) return [];
+  if(count===1) return [words.join("")];
+  if(words.length===count) return words.slice();
+  if(words.length<count) return [];
+
+  const result=[];
+  let index=0;
+
+  for(let groupIndex=0;groupIndex<count;groupIndex++){
+    const groupsLeft=count-groupIndex;
+    const wordsLeft=words.length-index;
+
+    if(groupsLeft===1){
+      result.push(words.slice(index).join(""));
+      break;
+    }
+
+    const totalChars=words.slice(index).reduce((sum,w)=>sum+w.length,0);
+    const target=totalChars/groupsLeft;
+    const mustLeave=groupsLeft-1;
+
+    let group="";
+    while(index<words.length-mustLeave){
+      const next=words[index];
+      if(!group){
+        group+=next;
+        index++;
+        continue;
+      }
+
+      const nowDiff=Math.abs(group.length-target);
+      const nextDiff=Math.abs(group.length+next.length-target);
+
+      if(nextDiff<=nowDiff){
+        group+=next;
+        index++;
+      }else{
+        break;
+      }
+    }
+    result.push(group);
+  }
+
+  return result.length===count ? result : [];
+}
+
+function splitNamesForCount(nameLine,count){
+  if(count<=0) return [];
+
+  const cleaned=cleanLine(nameLine)
+    .replace(/[0-9¥￥]/g,"")
+    .replace(/[·•—_+=]/g," ")
+    .trim();
+
+  if(!cleaned) return [];
+
+  // OCR 没把汉字拆散时，优先尊重原来的空格。
+  const rawTokens=cleaned.split(/\s+/).filter(Boolean);
+  if(rawTokens.length===count){
+    return rawTokens.map(x=>x.replace(/\s+/g,""));
+  }
+
+  const joined=rawTokens.join("");
+  const words=chineseWordSegments(joined);
+  const segmented=partitionWords(words,count);
+  if(segmented.length===count) return segmented;
+
+  // 最后兜底：如果字符数刚好能平均分，直接按字符切。
+  const chars=[...joined];
+  if(chars.length>=count && chars.length%count===0){
+    const size=chars.length/count;
+    return Array.from({length:count},(_,i)=>chars.slice(i*size,(i+1)*size).join(""));
+  }
+
+  if(count===1) return [joined];
+  return [];
+}
+
+function parseNamedPriceLine(line){
   const cleaned=cleanLine(line);
   if(!cleaned) return null;
 
-  // 常见：语聊 25/半、王者 ¥50 / H、唱歌 15/首、陪玩 30元/小时
-  let match=cleaned.match(
-    /^(.+?)\s*[¥]?\s*(\d+(?:\.\d+)?)\s*(?:元)?\s*(?:\/|每)?\s*(\d+(?:\.\d+)?\s*(?:分钟|分|min|mins)|半小时|半|小时|H|h|HR|hr|局|次|首|把|单|份|个)?\s*$/i
-  );
+  const chunks=cleaned.split(/\s+/).filter(Boolean);
+  if(chunks.length<2) return null;
 
-  // 兼容：¥25/半 语聊
-  if(!match){
-    const reverse=cleaned.match(
-      /^[¥]?\s*(\d+(?:\.\d+)?)\s*(?:元)?\s*(?:\/|每)?\s*(\d+(?:\.\d+)?\s*(?:分钟|分|min|mins)|半小时|半|小时|H|h|HR|hr|局|次|首|把|单|份|个)?\s+(.+)$/i
-    );
-    if(reverse){
-      match=[reverse[0],reverse[3],reverse[1],reverse[2]];
-    }
-  }
+  const price=parsePriceToken(chunks[chunks.length-1]);
+  if(!price) return null;
 
-  if(!match) return null;
+  const name=chunks.slice(0,-1).join("").trim();
+  if(!name || /\d/.test(name)) return null;
 
-  let name=String(match[1]||"").trim()
-    .replace(/^[-·•—_]+|[-·•—_]+$/g,"")
-    .trim();
-  const price=Number(match[2]);
-  if(!name||!Number.isFinite(price)) return null;
-
-  const unit=normalizeUnit(match[3]||"次");
   return {
-    category:currentCategory||"未分类",
+    category:"",
     name,
-    price,
-    unitLabel:unit.unitLabel,
-    unitMinutes:unit.unitMinutes
+    price:price.price,
+    unitLabel:price.unitLabel,
+    unitMinutes:price.unitMinutes
   };
 }
 
@@ -189,23 +330,46 @@ function parseOcrText(text){
     .filter(Boolean);
 
   const rows=[];
-  let category="未分类";
+  let pendingNameLine="";
 
   for(const line of lines){
-    const parsed=parseLine(line,category);
-    if(parsed){
-      rows.push(parsed);
+    const direct=parseNamedPriceLine(line);
+    if(direct){
+      rows.push(direct);
+      pendingNameLine="";
       continue;
     }
-    if(looksLikeCategory(line)){
-      category=line.replace(/[【】\[\]（）()「」]/g,"").trim();
+
+    const prices=extractPriceTokens(line);
+
+    if(prices.length){
+      if(pendingNameLine){
+        const names=splitNamesForCount(pendingNameLine,prices.length);
+
+        if(names.length===prices.length){
+          names.forEach((name,index)=>{
+            const price=prices[index];
+            rows.push({
+              category:"",
+              name,
+              price:price.price,
+              unitLabel:price.unitLabel,
+              unitMinutes:price.unitMinutes
+            });
+          });
+        }
+      }
+      pendingNameLine="";
+      continue;
     }
+
+    // 不再把纯文字行当“分类”。它只是下一组项目名称。
+    pendingNameLine=line;
   }
 
-  // 去掉完全重复的 OCR 行
   const seen=new Set();
   return rows.filter(row=>{
-    const key=[row.category,row.name,row.price,row.unitLabel].join("::").toLowerCase();
+    const key=[row.name,row.price,row.unitLabel].join("::").toLowerCase();
     if(seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -220,8 +384,8 @@ function renderRows(){
   empty.classList.toggle("hidden",state.rows.length>0);
   container.innerHTML=state.rows.map((row,index)=>`
     <div class="ocr-row" data-index="${index}">
-      <label>分类
-        <input data-field="category" value="${safe(row.category)}">
+      <label>分类（可空）
+        <input data-field="category" value="${safe(row.category||"")}" placeholder="默认不分类">
       </label>
       <label>项目
         <input data-field="name" value="${safe(row.name)}">
@@ -354,9 +518,11 @@ async function importRows(){
     (existingCategories||[]).map(c=>[String(c.name||"").trim().toLowerCase(),c])
   );
 
+  // 分类默认留空。只有用户自己在识别结果里填写了分类，才创建/匹配分类。
   const missingNames=[...new Set(
     validRows
-      .map(r=>String(r.category||"未分类").trim()||"未分类")
+      .map(r=>String(r.category||"").trim())
+      .filter(Boolean)
       .filter(name=>!categoryMap.has(name.toLowerCase()))
   )];
 
@@ -399,8 +565,10 @@ async function importRows(){
     let updated=0;
 
     for(const row of validRows){
-      const categoryName=String(row.category||"未分类").trim()||"未分类";
-      const category=categoryMap.get(categoryName.toLowerCase());
+      const categoryName=String(row.category||"").trim();
+      const category=categoryName
+        ? categoryMap.get(categoryName.toLowerCase())
+        : null;
       const normalized=normalizeUnit(row.unitLabel);
       const unitMinutes=row.unitMinutes===""||row.unitMinutes==null
         ? normalized.unitMinutes
