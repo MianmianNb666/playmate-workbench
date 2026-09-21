@@ -22,7 +22,9 @@ async function getPaddleOcr(){
 
   paddleOcrPromise=(async()=>{
     setProgress(.03,"正在加载高精度中文 OCR 模型…");
-    const {PaddleOCR}=await import("https://esm.sh/@paddleocr/paddleocr-js@0.4.2?bundle");
+    const {PaddleOCR}=await import(
+      "https://cdn.jsdelivr.net/npm/@paddleocr/paddleocr-js@0.4.2/dist/index.mjs"
+    );
 
     return await PaddleOCR.create({
       lang:"ch",
@@ -694,7 +696,8 @@ async function recognize(){
     }catch(paddleError){
       console.warn("PaddleOCR failed, falling back to Tesseract",paddleError);
       engine="Tesseract备用识别";
-      setProgress(.04,"高精度 OCR 加载失败，正在切换备用识别…");
+      const reason=String(paddleError?.message||paddleError||"未知错误").slice(0,120);
+      setProgress(.04,"高精度 OCR 加载失败："+reason+"，正在切换备用识别…");
       await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
       text=await recognizeSmart(state.file);
     }
