@@ -1035,7 +1035,6 @@ function bindEvents(){
 
 bindEvents();
 
-supabase.auth.onAuthStateChange((_event,session)=>applySession(session));
 const {data,error}=await supabase.auth.getSession();
 if(error){
   setConnection("Supabase 连接失败",false);
@@ -1044,3 +1043,10 @@ if(error){
   setConnection("Supabase 已连接 ✓",true);
   await applySession(data.session);
 }
+
+supabase.auth.onAuthStateChange(async (_event,session)=>{
+  const oldId=state.session?.user?.id || null;
+  const newId=session?.user?.id || null;
+  if(oldId===newId) return;
+  await applySession(session);
+});
