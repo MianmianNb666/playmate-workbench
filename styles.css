@@ -1959,3 +1959,199 @@ html.pre-left body:not(.booting){
 html.pre-top body:not(.booting){
   --pre-nav-mode:top;
 }
+
+
+/* V2.7 网页版重构：左侧固定导航 + 右侧工作区 */
+.desktop-side-brand{display:none}
+
+@media(min-width:961px){
+  .app-shell{
+    width:min(1460px,calc(100% - 36px));
+    margin:0 auto;
+    padding:18px 0 64px;
+    display:grid;
+    grid-template-columns:178px minmax(0,1fr);
+    column-gap:20px;
+    align-items:start;
+  }
+
+  .app-shell > .topbar,
+  .app-shell > .welcome-strip,
+  .app-shell > .page{
+    grid-column:2;
+    min-width:0;
+  }
+
+  .section-nav{
+    grid-column:1;
+    grid-row:1 / span 30;
+    position:sticky;
+    top:18px;
+    z-index:30;
+    margin:0;
+    min-height:calc(100vh - 36px);
+    min-height:calc(100svh - 36px);
+    padding:18px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    border-radius:26px;
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb,var(--pink) 7%,var(--paper)),
+        color-mix(in srgb,var(--bg) 78%,var(--paper))
+      );
+    border:1px solid var(--line);
+    box-shadow:0 18px 44px color-mix(in srgb,var(--pink) 8%,transparent);
+    backdrop-filter:blur(18px);
+  }
+
+  .desktop-side-brand{
+    display:block;
+    padding:10px 10px 20px;
+    margin-bottom:4px;
+    border-bottom:1px solid var(--line);
+  }
+
+  .desktop-side-logo{
+    font-size:27px;
+    line-height:1;
+    font-weight:900;
+    letter-spacing:-1px;
+    color:var(--ink);
+  }
+
+  .desktop-side-logo span{
+    color:var(--pink);
+  }
+
+  .desktop-side-brand small{
+    display:block;
+    margin-top:8px;
+    color:var(--muted);
+    font-size:8px;
+    font-weight:900;
+    letter-spacing:.22em;
+  }
+
+  .section-nav .nav-tab{
+    width:100%;
+    min-height:48px;
+    padding:0 14px;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    border:1px solid transparent;
+    border-radius:15px;
+    text-align:left;
+    font-size:12px;
+    background:transparent;
+  }
+
+  .section-nav .nav-tab.active{
+    background:var(--paper);
+    color:var(--pink-deep);
+    border-color:color-mix(in srgb,var(--pink) 30%,var(--line));
+    box-shadow:0 8px 20px color-mix(in srgb,var(--pink) 8%,transparent);
+  }
+
+  .vertical-nav-collapse-btn{
+    display:none!important;
+  }
+
+  .topbar{
+    min-height:76px;
+    padding:8px 4px 14px;
+    align-items:center;
+  }
+
+  .top-identity{
+    gap:13px;
+  }
+
+  .profile-avatar{
+    width:54px;
+    height:54px;
+    flex-basis:54px;
+    border-radius:17px;
+  }
+
+  .topbar h1{
+    font-size:30px;
+    letter-spacing:-1px;
+  }
+
+  .topbar p{
+    margin-top:5px;
+    font-size:11px;
+  }
+
+  .icon-btn{
+    min-height:42px;
+    padding:0 16px;
+    border-radius:14px;
+  }
+
+  .welcome-strip{
+    min-height:154px;
+    margin-bottom:18px;
+    padding:24px 30px;
+    border-radius:28px;
+    background:
+      radial-gradient(circle at 84% 50%,color-mix(in srgb,var(--pink) 13%,transparent),transparent 34%),
+      color-mix(in srgb,var(--pink) 6%,var(--paper));
+    box-shadow:0 14px 34px color-mix(in srgb,var(--pink) 7%,transparent);
+  }
+
+  .welcome-strip h2{
+    font-size:34px;
+    letter-spacing:-1px;
+  }
+
+  .welcome-strip p{
+    font-size:12px;
+  }
+
+  .home-quick-actions{
+    margin-top:14px;
+  }
+
+  .home-quick-btn{
+    min-height:34px;
+    padding:0 12px;
+  }
+
+  .hearts span:nth-child(1){font-size:60px}
+  .hearts span:nth-child(2){font-size:34px}
+  .hearts span:nth-child(3){font-size:46px}
+
+  .page-head{
+    margin:0 2px 14px;
+  }
+
+  .page-head h2{
+    font-size:32px;
+  }
+
+  .card{
+    border-radius:22px;
+    padding:20px;
+    box-shadow:0 10px 26px color-mix(in srgb,var(--pink) 5%,transparent);
+  }
+
+  .two-col{
+    gap:16px;
+  }
+
+  .form-grid{
+    gap:13px;
+  }
+
+  .item-wall{
+    gap:11px;
+  }
+
+  .action-row{
+    gap:12px;
+  }
+}
