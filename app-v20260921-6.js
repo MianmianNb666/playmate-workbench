@@ -1915,6 +1915,21 @@ async function captureElementPng(el,filename){
   });
   document.body.appendChild(clone);
 
+  // html2canvas 不认识 CSS color-mix()。截图副本里把计算后的颜色固化为普通 rgb/rgba。
+  const colorProps=["color","backgroundColor","borderTopColor","borderRightColor","borderBottomColor","borderLeftColor","outlineColor","textDecorationColor","caretColor"];
+  const allNodes=[clone,...clone.querySelectorAll("*")];
+  for(const node of allNodes){
+    const computed=getComputedStyle(node);
+    for(const prop of colorProps){
+      const value=computed[prop];
+      if(value && !/color-mix|var\(/i.test(value)){
+        try{node.style[prop]=value}catch{}
+      }
+    }
+    node.style.boxShadow=/color-mix|var\(/i.test(computed.boxShadow||"")?"none":computed.boxShadow;
+    node.style.textShadow=/color-mix|var\(/i.test(computed.textShadow||"")?"none":computed.textShadow;
+  }
+
   try{
     let canvas;
     try{
