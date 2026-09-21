@@ -1402,3 +1402,55 @@ textarea,
     border-radius:16px;
   }
 }
+
+
+/* V2.3 手机端顶部名称缩小，安卓也保持轻巧 */
+@media(max-width:700px){
+  .topbar{
+    gap:10px;
+  }
+  .top-identity{
+    gap:10px;
+    min-width:0;
+    flex:1;
+  }
+  .topbar h1{
+    font-size:26px;
+    letter-spacing:-1px;
+    line-height:1.08;
+    max-width:58vw;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .profile-avatar{
+    width:48px;
+    height:48px;
+    flex-basis:48px;
+    border-radius:15px;
+    font-size:22px;
+  }
+  .top-actions .icon-btn{
+    height:36px;
+    padding:0 11px;
+    font-size:11px;
+  }
+  .welcome-strip h2{
+    font-size:30px;
+    line-height:1.15;
+  }
+}
+@media(max-width:420px){
+  .topbar h1{
+    font-size:23px;
+    max-width:54vw;
+  }
+  .profile-avatar{
+    width:44px;
+    height:44px;
+    flex-basis:44px;
+  }
+  .welcome-strip h2{
+    font-size:27px;
+  }
+}
