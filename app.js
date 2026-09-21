@@ -860,7 +860,8 @@ function parseMeasure(){
 function calculate(){
   const item=effectiveCalcItem();
   const measure=parseMeasure();
-  const unitPrice=Number($("calcUnitPrice").value);
+  const priceText=$("calcUnitPrice").value.trim();
+  const unitPrice=priceText===""?NaN:Number(priceText);
   const discountRate=parseDiscountRate($("customerDiscount").value);
 
   if(!item || !measure || !Number.isFinite(unitPrice) || unitPrice<0 || discountRate===null){
@@ -919,7 +920,7 @@ function validateCalc(){
   if(!state.shopId){toast("请先选择店铺");return null}
   if(!customer){toast("先填写老板 / 顾客");return null}
   if(!item){toast("先填写项目名称");return null}
-  if(!Number.isFinite(Number($("calcUnitPrice").value))){toast("先填写单价");return null}
+  if($("calcUnitPrice").value.trim()==="" || !Number.isFinite(Number($("calcUnitPrice").value))){toast("先填写单价");return null}
   if(!companion){toast("先填写陪陪");return null}
   if(parseDiscountRate($("customerDiscount").value)===null){toast("折扣格式请填 9折 / 8.5折 / 90%");return null}
   if(!calc){toast("请输入有效的时长 / 数量");return null}
@@ -1399,7 +1400,7 @@ function renderRecords(){
       <div class="record-row">
         <div class="record-main">
           <b>${safe(r.customer_name_snapshot)} · ${safe(r.item_name_snapshot)}</b>
-          <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}</p>
+          <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}${Number(r.discount_rate_snapshot??100)<100?" · "+safe(discountLabel(r.discount_rate_snapshot)):""}</p>
           <small>${d.date} ${d.time}</small>
           <div class="row-actions">
             <button class="tiny-btn" data-reuse-record="${r.id}" type="button">再次使用</button>
