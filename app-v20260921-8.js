@@ -2645,6 +2645,7 @@ if(error){
   document.body.classList.remove("booting");
 }else{
   await applySession(data.session);
+  clearTimeout(window.__paiminiBootWatch);
   document.body.classList.remove("booting");
 }
 
