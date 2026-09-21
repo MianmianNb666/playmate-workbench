@@ -2592,31 +2592,3 @@ html.pre-top body:not(.booting){
     grid-column:1/-1;
   }
 }
-
-
-/* Multi companion / multi item calculator */
-.multi-order-card{margin-top:18px}
-.multi-order-title{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.multi-companion-groups{display:grid;gap:14px;margin-top:14px}
-.multi-companion{border:1px solid color-mix(in srgb,var(--accent) 25%,#ddd);border-radius:18px;padding:14px;background:color-mix(in srgb,var(--paper) 94%,var(--accent) 6%)}
-.multi-companion-head{display:flex;gap:10px;align-items:end;margin-bottom:10px}
-.multi-companion-head label{flex:1}
-.multi-lines{display:grid;gap:9px}
-.multi-line{display:grid;grid-template-columns:minmax(150px,1.5fr) minmax(90px,.7fr) minmax(80px,.65fr) minmax(95px,.7fr) auto auto;gap:8px;align-items:end;padding:10px;border-radius:14px;background:var(--paper);border:1px solid color-mix(in srgb,var(--accent) 16%,#e5e5e5)}
-.multi-line label{margin:0}
-.multi-line small{display:block}
-.multi-line-subtotal{min-width:78px;padding:12px 4px;font-weight:800;color:var(--accent);text-align:right}
-.multi-remove{border:0;background:transparent;font-size:20px;cursor:pointer;color:#aa8790;padding:10px}
-.multi-add-item{margin-top:10px}
-.multi-companion-total{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;font-size:13px}.multi-companion-total b{color:var(--accent)}
-.multi-order-summary{margin-top:14px;border-radius:18px;padding:14px 16px;background:color-mix(in srgb,var(--accent) 9%,var(--paper));display:grid;gap:7px}
-.multi-order-summary>div{display:flex;justify-content:space-between;gap:12px}.multi-order-summary .grand{padding-top:8px;border-top:1px solid color-mix(in srgb,var(--accent) 22%,transparent)}.multi-order-summary strong{font-size:24px;color:var(--accent)}
-.multi-order-actions{display:flex;gap:10px;margin-top:12px}.multi-order-actions .btn{flex:1}
-.multi-order-help{display:block;margin-top:9px;opacity:.7}
-body.multi-order-active .multi-order-card{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 55%,transparent)}
-@media(max-width:760px){
- .multi-order-title,.multi-order-actions{align-items:stretch;flex-direction:column}
- .multi-line{grid-template-columns:1fr 1fr}
- .multi-line label:first-child{grid-column:1/-1}
- .multi-line-subtotal{text-align:left}
-}
