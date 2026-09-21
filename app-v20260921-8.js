@@ -37,7 +37,8 @@ const state = {
   editingShopId:null,
   editingCustomerId:null,
   customerSearch:"",
-  theme:null
+  theme:null,
+  multiBound:false
 };
 
 const receiptKeys = [
@@ -679,6 +680,7 @@ async function bootstrap(){
     await loadCurrentShopData();
     await loadRecords();
     renderAll();
+    bindMultiOrder();
     renderProfile();
     renderDesktopPrefs();
     await refreshAdminEntry();
@@ -1646,6 +1648,8 @@ function multiOrderData(){
   return {totals,itemNames,companions,detailText};
 }
 function bindMultiOrder(){
+  if(state.multiBound) return;
+  state.multiBound=true;
   ensureMultiOrder(); renderMultiOrder();
   $("addCompanionGroupBtn")?.addEventListener("click",()=>{state.multiOrder.groups.push(multiNewGroup());renderMultiOrder()});
   $("clearMultiOrderBtn")?.addEventListener("click",()=>{state.multiOrder={groups:[multiNewGroup()],active:false};document.body.classList.remove("multi-order-active");renderMultiOrder();calculate()});
@@ -2626,7 +2630,6 @@ applyDesktopSidebarState();
 applyMobileNavLayout();
 registerPaiMiniPwa();
 bindEvents();
-bindMultiOrder();
 
 const serviceCheck=await checkAuthService();
 if(!serviceCheck.ok){
