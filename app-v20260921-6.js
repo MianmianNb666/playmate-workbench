@@ -1892,66 +1892,63 @@ async function downloadCanvasPng(canvas,filename){
 async function captureElementPng(el,filename){
   if(!window.html2canvas) throw new Error("html2canvas unavailable");
 
-  // 直接在一个隔离的 iframe 中渲染小票。
-  // 这样 html2canvas 完全看不到主网页 CSS，避免把整页布局/响应式样式一起画进去。
-  const frame=document.createElement("iframe");
-  frame.setAttribute("aria-hidden","true");
-  frame.style.cssText="position:fixed;left:-10000px;top:0;width:420px;height:900px;border:0;opacity:0;pointer-events:none;";
-  document.body.appendChild(frame);
+  // 用纯 HTML 重建一张“导出专用小票”，不再克隆预览 DOM。
+  // 这样主页面任何 CSS、媒体查询、dialog 样式都无法污染导出结果。
+  const source={
+    shop:el.querySelector(".receipt-head h3")?.textContent||"",
+    subtitle:el.querySelector(".receipt-head p")?.textContent||"",
+    rows:[...el.querySelectorAll(".receipt-line")].map(row=>({
+      label:row.querySelector("span")?.textContent||"",
+      value:row.querySelector("b")?.textContent||""
+    })),
+    totalLabel:el.querySelector(".receipt-total span")?.textContent||"本单金额",
+    total:el.querySelector(".receipt-total strong")?.textContent||"",
+    message:el.querySelector(".receipt-message")?.textContent||"",
+    footer:el.querySelector(".receipt-footer")?.innerText||""
+  };
 
-  const doc=frame.contentDocument;
-  doc.open();
-  doc.write(`<!doctype html><html><head><meta charset="utf-8"><style>
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:#fff}
-    body{width:420px;padding:20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Arial,sans-serif;color:#57454b}
-    #ticket{width:380px;padding:24px;border:1px solid #eadbc9;border-radius:20px;background:#fffaf8}
-    .receipt-head{text-align:center;border-bottom:1px dashed #d8c8bc;padding-bottom:14px}
-    .receipt-logo{width:54px;height:54px;border-radius:18px;object-fit:cover;margin:0 auto 8px;display:block;border:1px solid #eadbc9}
-    .receipt-head h3{margin:0;font-size:20px;line-height:1.3}
-    .receipt-head p{margin:6px 0 0;font-size:11px;color:#a08c82}
-    .receipt-lines{display:flex;flex-direction:column;gap:10px;padding:16px 0}
-    .receipt-line{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;font-size:13px;line-height:1.45}
-    .receipt-line span{color:#907f78;flex:0 0 auto}
-    .receipt-line b{color:#57454b;text-align:right;word-break:break-word}
-    .receipt-total{display:flex;justify-content:space-between;align-items:flex-end;padding:14px 0;border-top:1px dashed #d8c8bc;background:#fff4f7}
-    .receipt-total span{font-size:13px}
-    .receipt-total strong{font-size:27px;line-height:1;color:#dd6a91}
-    .receipt-message{padding:12px 0;text-align:center;font-size:12px;color:#7f7070;line-height:1.6}
-    .receipt-footer{padding-top:12px;border-top:1px dashed #d8c8bc;text-align:center;font-size:11px;color:#98847c;line-height:1.6}
-  </style></head><body><div id="ticket"></div></body></html>`);
-  doc.close();
+  const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 
-  const ticket=doc.getElementById("ticket");
-  ticket.innerHTML=el.innerHTML;
-
-  // 外链 Logo 仍然不让它拖垮导出。
-  ticket.querySelectorAll("img").forEach(img=>{
-    const src=img.getAttribute("src")||"";
-    try{
-      const absolute=new URL(src,location.href);
-      if(absolute.origin!==location.origin && !src.startsWith("data:") && !src.startsWith("blob:")) img.remove();
-    }catch{img.remove()}
-  });
+  const stage=document.createElement("div");
+  stage.style.cssText="position:fixed;left:-10000px;top:0;width:380px;background:#fffaf8;z-index:-9999;pointer-events:none;";
+  stage.innerHTML=`
+    <div style="width:380px;padding:24px;box-sizing:border-box;border:1px solid #eadbc9;border-radius:20px;background:#fffaf8;color:#57454b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif;">
+      <div style="text-align:center;padding-bottom:14px;border-bottom:1px dashed #d8c8bc;">
+        <div style="font-size:20px;font-weight:800;line-height:1.3;">${esc(source.shop)}</div>
+        <div style="margin-top:6px;font-size:11px;color:#a08c82;">${esc(source.subtitle)}</div>
+      </div>
+      <div style="padding:15px 0;">
+        ${source.rows.map(row=>`
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin:0 0 9px;font-size:13px;line-height:1.45;">
+            <span style="color:#907f78;white-space:nowrap;">${esc(row.label)}</span>
+            <b style="color:#57454b;text-align:right;word-break:break-word;">${esc(row.value)}</b>
+          </div>`).join("")}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:14px 10px;border-top:1px dashed #d8c8bc;background:#fff4f7;">
+        <span style="font-size:13px;">${esc(source.totalLabel)}</span>
+        <strong style="font-size:27px;line-height:1;color:#dd6a91;">${esc(source.total)}</strong>
+      </div>
+      ${source.message?`<div style="padding:12px 0;text-align:center;font-size:12px;line-height:1.6;color:#7f7070;">${esc(source.message)}</div>`:""}
+      <div style="padding-top:12px;border-top:1px dashed #d8c8bc;text-align:center;font-size:11px;line-height:1.6;color:#98847c;white-space:pre-line;">${esc(source.footer)}</div>
+    </div>`;
+  document.body.appendChild(stage);
 
   try{
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-    const height=Math.ceil(ticket.scrollHeight);
-    frame.style.height=(height+40)+"px";
-
-    const canvas=await window.html2canvas(ticket,{
+    const canvas=await window.html2canvas(stage.firstElementChild,{
       scale:2,
       useCORS:false,
       allowTaint:false,
       backgroundColor:"#fffaf8",
       logging:false,
-      imageTimeout:0,
       width:380,
-      height
+      height:Math.ceil(stage.firstElementChild.scrollHeight),
+      windowWidth:1200,
+      windowHeight:1200
     });
     await downloadCanvasPng(canvas,filename);
   }finally{
-    frame.remove();
+    stage.remove();
   }
 }
 async function exportReceipt(){
