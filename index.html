@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fff8fb">
+  <title>陪玩工作台</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>陪玩工作台 🎮</h1>
+      <p>独立项目已经接上新的 Supabase。现在先把账号和基础连接跑通，后面再继续搭陪玩、派单、订单、排班和结算。</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>账号测试</h2>
+        <div id="loggedOutBox">
+          <label>邮箱
+            <input id="email" type="email" autocomplete="email" placeholder="name@example.com">
+          </label>
+          <label>密码
+            <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+          </label>
+          <div class="actions">
+            <button id="signInBtn" class="primary" type="button">登录</button>
+            <button id="signUpBtn" class="ghost" type="button">注册</button>
+          </div>
+        </div>
+
+        <div id="loggedInBox" class="hidden">
+          <div class="status good">
+            <span class="dot"></span>
+            <span>已登录：<b id="accountEmail"></b></span>
+          </div>
+          <div class="actions">
+            <button id="signOutBtn" class="ghost" type="button">退出账号</button>
+          </div>
+        </div>
+
+        <div id="authHint"></div>
+      </div>
+
+      <div class="card">
+        <h2>Supabase 状态</h2>
+        <div id="connectionStatus" class="status">
+          <span class="dot"></span>
+          <span id="connectionText">正在检查连接…</span>
+        </div>
+        <p class="meta" style="margin-top:12px">
+          这里使用的是陪玩工作台自己的 Supabase 项目，不会和莓桃工作台的数据混在一起。
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
