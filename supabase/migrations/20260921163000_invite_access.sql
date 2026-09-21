@@ -277,16 +277,6 @@ begin
     'hex'
   );
 
-  select exists(
-    select 1
-    from public.invite_codes ic
-    join public.invite_redemptions ir on ir.invite_id = ic.id
-    where ic.code_hash = v_hash
-      and ir.user_id = v_uid
-  )
-  into strict v_old_until;
-
-  -- 上面的变量类型不适合 boolean，下面正式检查，保留函数清晰性。
   if exists(
     select 1
     from public.invite_codes ic
