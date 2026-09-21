@@ -11,9 +11,33 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v31">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v32">
+  <script>
+    (function(){
+      try{
+        var t=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+        if(t){
+          var r=document.documentElement.style;
+          if(t.bg)r.setProperty("--bg",t.bg);
+          if(t.paper)r.setProperty("--paper",t.paper);
+          if(t.ink)r.setProperty("--ink",t.ink);
+          if(t.accent){
+            r.setProperty("--pink",t.accent);
+            r.setProperty("--pink-deep","color-mix(in srgb,"+t.accent+" 82%, #5a3040)");
+            r.setProperty("--pink-soft","color-mix(in srgb,"+t.accent+" 14%, "+(t.paper||"#fff")+")");
+            r.setProperty("--line","color-mix(in srgb,"+t.accent+" 24%, "+(t.bg||"#fbf8f2")+")");
+          }
+        }
+        var mode=localStorage.getItem("paimini-mobile-nav-mode")==="left"?"left":"top";
+        document.documentElement.classList.add("pre-"+mode);
+      }catch(_){}
+    })();
+  </script>
 </head>
-<body>
+<body class="booting">
+  <div id="bootSplash" class="boot-splash" aria-hidden="true">
+    <div class="boot-mark">派<span>mini</span> ♡</div>
+  </div>
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <section id="authGate" class="auth-gate">
@@ -593,7 +617,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v32"></script>
+  <script type="module" src="./app.js?v=20260921-v33"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
