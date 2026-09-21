@@ -812,11 +812,11 @@ async function useCustomerProfile(id){
 }
 
 const THEME_PRESETS={
-  beige:{bg:"#fbf8f2",accent:"#e8a0b5",paper:"#fffefa",ink:"#514945"},
-  pink:{bg:"#fff6fa",accent:"#ef7fa7",paper:"#ffffff",ink:"#523944"},
-  mint:{bg:"#f2f8f3",accent:"#7fb89a",paper:"#fffefb",ink:"#3f4c44"},
-  blue:{bg:"#f2f6fb",accent:"#7ea6cf",paper:"#ffffff",ink:"#3f4752"},
-  lavender:{bg:"#f5f2fa",accent:"#a28cc8",paper:"#fffefe",ink:"#4b4257"}
+  beige:{bg:"#fbf8f2",accent:"#e8a0b5",paper:"#ffffff",ink:"#514945"},
+  pink:{bg:"#fbf8f2",accent:"#ef7fa7",paper:"#ffffff",ink:"#514945"},
+  mint:{bg:"#fbf8f2",accent:"#7fb89a",paper:"#ffffff",ink:"#514945"},
+  blue:{bg:"#fbf8f2",accent:"#7ea6cf",paper:"#ffffff",ink:"#514945"},
+  lavender:{bg:"#fbf8f2",accent:"#a28cc8",paper:"#ffffff",ink:"#514945"}
 };
 
 function applyTheme(theme){
@@ -837,11 +837,24 @@ function loadTheme(){
   try{
     let saved=JSON.parse(localStorage.getItem("paimini-theme")||"null");
 
-    // 把上一版偏深的米白自动迁移成新的浅奶油米白。
+    // 旧版预设会给整页染色。现在预设只换强调色，
+    // 页面保持淡米白，所有主要内容框保持白色。
+    const oldPresetBackgrounds=new Set([
+      "#f6f0e7","#fff6fa","#f2f8f3","#f2f6fb","#f5f2fa"
+    ]);
+    const oldPresetPapers=new Set([
+      "#fffdf9","#fffefb","#fffefe","#ffffff"
+    ]);
+
     if(saved
-      && saved.bg==="#f6f0e7"
-      && saved.paper==="#fffdf9"){
-      saved=THEME_PRESETS.beige;
+      && oldPresetBackgrounds.has(String(saved.bg||"").toLowerCase())
+      && oldPresetPapers.has(String(saved.paper||"").toLowerCase())){
+      saved={
+        bg:"#fbf8f2",
+        accent:saved.accent||THEME_PRESETS.beige.accent,
+        paper:"#ffffff",
+        ink:"#514945"
+      };
       localStorage.setItem("paimini-theme",JSON.stringify(saved));
     }
 
