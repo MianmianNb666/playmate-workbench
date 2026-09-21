@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v29">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v30">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -56,6 +56,7 @@
 
   <main id="appRoot" class="app-shell hidden">
     <header class="topbar">
+      <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="打开导航" title="打开导航">☰</button>
       <div class="top-identity">
         <div id="topAvatar" class="profile-avatar">
           <img id="topAvatarImg" class="hidden" alt="">
@@ -95,6 +96,7 @@
       <button class="nav-tab" data-page="receipt" type="button">小票设置</button>
       <button class="nav-tab" data-page="settings" type="button">设置</button>
     </nav>
+    <button id="mobileNavOverlay" class="mobile-nav-overlay" type="button" aria-label="关闭导航"></button>
 
     <section id="page-calculator" class="page active">
       <div class="page-head">
@@ -591,7 +593,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v30"></script>
+  <script type="module" src="./app.js?v=20260921-v31"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
