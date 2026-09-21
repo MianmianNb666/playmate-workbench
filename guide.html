@@ -6,79 +6,28 @@
   <meta name="theme-color" content="#fbf8f2">
   <title>派mini 使用教程</title>
   <style>
-    :root{
-      --bg:#fbf8f2;
-      --paper:#fff;
-      --ink:#514945;
-      --muted:#8f8580;
-      --accent:#e8a0b5;
-      --accent-deep:#d9839e;
-      --soft:#fbf0f3;
-      --line:#eee6dc;
-    }
+    :root{--bg:#fbf8f2;--paper:#fff;--ink:#514945;--muted:#8f8580;--accent:#e8a0b5;--accent-deep:#d9839e;--soft:#fbf0f3;--line:#eee6dc}
     *{box-sizing:border-box}
-    body{
-      margin:0;
-      background:var(--bg);
-      color:var(--ink);
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-    }
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
     a{color:inherit;text-decoration:none}
     .wrap{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0 60px}
-    .hero{
-      padding:28px;
-      border:1px solid var(--line);
-      border-radius:28px;
-      background:var(--paper);
-      box-shadow:0 12px 34px rgba(110,89,83,.06);
-    }
-    .brand{font-size:38px;font-weight:900;letter-spacing:-1.5px}
-    .brand span{color:var(--accent)}
+    .hero,.toc,.section{border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 12px 34px rgba(110,89,83,.06)}
+    .hero{padding:28px}.toc,.section{margin-top:14px;padding:22px}
+    .brand{font-size:38px;font-weight:900;letter-spacing:-1.5px}.brand span{color:var(--accent)}
     .hero p{margin:9px 0 0;color:var(--muted);line-height:1.7}
     .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-    .btn{
-      min-height:42px;
-      padding:0 16px;
-      display:inline-flex;align-items:center;justify-content:center;
-      border-radius:13px;border:1px solid var(--line);
-      background:var(--paper);font-weight:800;font-size:13px
-    }
+    .btn{min-height:42px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;border-radius:13px;border:1px solid var(--line);background:var(--paper);font-weight:800;font-size:13px}
     .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    .toc,.section{
-      margin-top:14px;
-      padding:22px;
-      border:1px solid var(--line);
-      border-radius:22px;
-      background:var(--paper);
-    }
-    h1,h2,h3{margin:0}
-    h2{font-size:22px;margin-bottom:12px}
-    h3{font-size:15px;margin:18px 0 8px}
+    h1,h2,h3{margin:0} h2{font-size:22px;margin-bottom:12px} h3{font-size:15px;margin:18px 0 8px}
     p,li{font-size:13px;line-height:1.8;color:var(--muted)}
     ul,ol{padding-left:20px;margin:8px 0}
     .toc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    .toc a{
-      padding:11px 12px;border-radius:12px;background:var(--soft);
-      color:var(--accent-deep);font-size:12px;font-weight:800
-    }
-    .step{
-      padding:13px 14px;border:1px solid var(--line);border-radius:14px;
-      background:#fff;margin-top:9px
-    }
-    .step b{display:block;font-size:13px}
-    .step p{margin:5px 0 0}
-    .note{
-      margin-top:10px;padding:12px 14px;border-radius:13px;background:var(--soft);
-      color:var(--accent-deep);font-size:12px;line-height:1.7
-    }
-    .mini{font-size:11px;color:var(--muted)}
+    .toc a{padding:11px 12px;border-radius:12px;background:var(--soft);color:var(--accent-deep);font-size:12px;font-weight:800}
+    .step{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:9px}
+    .step b{display:block;font-size:13px}.step p{margin:5px 0 0}
+    .note{margin-top:10px;padding:12px 14px;border-radius:13px;background:var(--soft);color:var(--accent-deep);font-size:12px;line-height:1.7}
     .footer{text-align:center;padding:26px 0 0;color:var(--muted);font-size:11px}
-    @media(max-width:640px){
-      .wrap{width:min(100% - 18px,920px);padding-top:12px}
-      .hero,.section,.toc{padding:17px;border-radius:18px}
-      .brand{font-size:30px}
-      .toc-grid{grid-template-columns:1fr}
-    }
+    @media(max-width:640px){.wrap{width:min(100% - 18px,920px);padding-top:12px}.hero,.section,.toc{padding:17px;border-radius:18px}.brand{font-size:30px}.toc-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -95,46 +44,41 @@
     <section class="toc">
       <h2>快速目录</h2>
       <div class="toc-grid">
-        <a href="#start">1. 注册与登录</a>
-        <a href="#shops">2. 我的店铺</a>
-        <a href="#prices">3. 价格表</a>
-        <a href="#dispatch">4. 派单计算</a>
-        <a href="#customers">5. 顾客档案</a>
-        <a href="#records">6. 消费记录</a>
-        <a href="#receipt">7. 小票与报备</a>
-        <a href="#settings">8. 设置与续费</a>
+        <a href="#start">1. 注册与登录</a><a href="#shops">2. 我的店铺</a>
+        <a href="#prices">3. 价格表</a><a href="#dispatch">4. 派单计算</a>
+        <a href="#customers">5. 顾客档案</a><a href="#records">6. 消费记录</a>
+        <a href="#receipt">7. 小票与报备</a><a href="#settings">8. 设置与续费</a>
       </div>
     </section>
 
     <section id="start" class="section">
       <h2>1. 注册与登录</h2>
       <div class="step"><b>注册新账号</b><p>填写邮箱、密码和注册邀请码，点击「注册」。注册邀请码用于开启 7 天试用。</p></div>
-      <div class="step"><b>已有账号登录</b><p>只需要邮箱和密码，登录时不需要填写邀请码。</p></div>
+      <div class="step"><b>已有账号登录</b><p>只需要邮箱和密码，登录时不需要邀请码。</p></div>
       <div class="note">如果手机内置浏览器提示注册服务连接失败，请用 Safari 或 Chrome 打开正式链接后再试。</div>
     </section>
 
     <section id="shops" class="section">
       <h2>2. 我的店铺</h2>
-      <p>进入「我的店铺」可以创建自己的店铺，也可以查看公开共享店铺。</p>
       <div class="step"><b>创建店铺</b><p>填写店铺名称、默认货币、品牌色等信息后保存。</p></div>
-      <div class="step"><b>使用其他店铺</b><p>公开店铺的价格表所有已登录用户都可以查看和使用，但只有创建者可以修改。</p></div>
-      <div class="step"><b>常用店铺</b><p>可把经常使用的店铺加入常用，之后切换会更方便。</p></div>
+      <div class="step"><b>使用公开店铺</b><p>公开店铺的价格表所有已登录用户都可以查看和使用，但只有创建者可以修改。</p></div>
+      <div class="step"><b>常用店铺</b><p>可把经常使用的店铺加入常用，之后切换更方便。</p></div>
     </section>
 
     <section id="prices" class="section">
       <h2>3. 价格表</h2>
-      <div class="step"><b>手动添加</b><p>填写项目名称、单价、单位，以及需要时填写每单位分钟数，例如「半」= 30 分钟、「小时」= 60 分钟。</p></div>
-      <div class="step"><b>图片识别</b><p>简单语聊类价格表可以尝试图片识别，识别结果确认后再导入。复杂设计图建议直接手动添加，准确率更高。</p></div>
-      <div class="step"><b>分类</b><p>分类可以不填，也可以自己建立「语聊」「游戏」「娱乐」等分类。</p></div>
+      <div class="step"><b>手动添加</b><p>填写项目名称、单价、单位；需要时填写每单位分钟数，例如「半」= 30 分钟、「小时」= 60 分钟。</p></div>
+      <div class="step"><b>图片识别</b><p>简单语聊类价格表可以尝试图片识别，确认后再导入。复杂设计图建议直接手动添加。</p></div>
+      <div class="step"><b>分类</b><p>分类可以留空，也可以自己建立「语聊」「游戏」「娱乐」等分类。</p></div>
     </section>
 
     <section id="dispatch" class="section">
       <h2>4. 派单计算</h2>
-      <div class="step"><b>选择店铺和老板</b><p>先选店铺，再输入老板 / 顾客昵称。已有顾客会自动识别并带出历史累计与折扣。</p></div>
-      <div class="step"><b>选择项目或直接手填</b><p>可以点现有价格项目，也可以直接输入新的项目名、单价和单位。</p></div>
-      <div class="step"><b>输入时长 / 数量</b><p>例如 3H、90m、6 次。系统会根据单位自动计算。</p></div>
-      <div class="step"><b>老板折扣</b><p>支持 9折、8.5折、90% 等格式。保存后该老板的折扣会被记住。</p></div>
-      <div class="step"><b>保存记录</b><p>保存后会自动计入老板累计消费，并进入消费记录。</p></div>
+      <div class="step"><b>选择店铺和老板</b><p>先选店铺，再输入老板 / 顾客昵称。已有顾客会自动带出历史累计与折扣。</p></div>
+      <div class="step"><b>选择项目或手填</b><p>可以点现有价格项目，也可以直接输入项目名、单价和单位。</p></div>
+      <div class="step"><b>输入时长 / 数量</b><p>例如 3H、90m、6 次，系统会根据单位自动计算。</p></div>
+      <div class="step"><b>老板折扣</b><p>支持 9折、8.5折、90% 等格式。保存后会记住该老板的折扣。</p></div>
+      <div class="step"><b>保存记录</b><p>保存后自动计入老板累计消费，并进入消费记录。</p></div>
     </section>
 
     <section id="customers" class="section">
@@ -142,19 +86,19 @@
       <p>每个账号只能看到自己的顾客档案。</p>
       <div class="step"><b>建立档案</b><p>可记录顾客昵称、联系方式、折扣和备注。</p></div>
       <div class="step"><b>查看统计</b><p>档案会显示累计消费、流水数量和最近消费时间。</p></div>
-      <div class="step"><b>去派单</b><p>点击「去派单」即可直接把这个顾客带入派单计算页。</p></div>
+      <div class="step"><b>去派单</b><p>点击「去派单」即可直接带入派单计算页。</p></div>
     </section>
 
     <section id="records" class="section">
       <h2>6. 消费记录</h2>
       <div class="step"><b>搜索和筛选</b><p>可以按店铺或关键词查历史流水。</p></div>
-      <div class="step"><b>再次使用</b><p>可以把以前的一单重新带回计算器，减少重复输入。</p></div>
+      <div class="step"><b>再次使用</b><p>可以把以前的一单重新带回计算器。</p></div>
       <div class="step"><b>老板流水</b><p>可以查看某个老板的全部历史消费，并生成完整流水小票。</p></div>
     </section>
 
     <section id="receipt" class="section">
       <h2>7. 小票与报备</h2>
-      <div class="step"><b>店内报备</b><p>报备模板支持老板、项目、陪陪、单价、总价、累计消费、备注、日期和时间等变量。</p></div>
+      <div class="step"><b>店内报备</b><p>模板支持老板、项目、陪陪、单价、总价、累计消费、备注、日期和时间等变量。</p></div>
       <div class="step"><b>小票</b><p>可以设置是否显示老板、陪陪、单价、数量、累计、备注、时间、Logo 和留言。</p></div>
       <div class="step"><b>导出</b><p>确认内容后可以直接导出 PNG 图片。</p></div>
     </section>
