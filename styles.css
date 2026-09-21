@@ -950,3 +950,41 @@ label>input,label>select,label>textarea{margin-top:7px}
     width:100%;
   }
 }
+
+
+/* V1.5 邀请码 + 使用期限 */
+.auth-mini-note{
+  margin:8px 0 0;
+  color:#a18490;
+  font-size:10px;
+  line-height:1.6;
+}
+.access-panel .duration-pills{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:4px 0 15px;
+}
+.duration-pills span{
+  padding:6px 10px;
+  border-radius:999px;
+  background:#fff0f5;
+  border:1px solid #efd4de;
+  color:#d5668e;
+  font-size:10px;
+  font-weight:800;
+}
+.access-status-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:8px 0 4px;
+}
+.access-status-line strong{
+  font-size:26px;
+  color:#e66b96;
+}
+.access-settings-card label{
+  margin-top:12px;
+}
