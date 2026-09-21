@@ -15,6 +15,66 @@ const state={
   currentShop:null
 };
 
+let paddleOcrPromise=null;
+
+async function getPaddleOcr(){
+  if(paddleOcrPromise) return paddleOcrPromise;
+
+  paddleOcrPromise=(async()=>{
+    setProgress(.03,"正在加载高精度中文 OCR 模型…");
+    const {PaddleOCR}=await import("https://esm.sh/@paddleocr/paddleocr-js@0.4.2?bundle");
+
+    return await PaddleOCR.create({
+      lang:"ch",
+      ocrVersion:"PP-OCRv5",
+      worker:false,
+      ortOptions:{
+        backend:"wasm",
+        wasmPaths:"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
+        numThreads:1,
+        simd:true
+      }
+    });
+  })();
+
+  try{
+    return await paddleOcrPromise;
+  }catch(error){
+    paddleOcrPromise=null;
+    throw error;
+  }
+}
+
+function sortPaddleItems(items){
+  return [...(items||[])].sort((a,b)=>{
+    const ap=a.poly||[];
+    const bp=b.poly||[];
+    const ay=ap.length?ap.reduce((s,p)=>s+Number(p?.[1]||0),0)/ap.length:0;
+    const by=bp.length?bp.reduce((s,p)=>s+Number(p?.[1]||0),0)/bp.length:0;
+    if(Math.abs(ay-by)>18) return ay-by;
+    const ax=ap.length?ap.reduce((s,p)=>s+Number(p?.[0]||0),0)/ap.length:0;
+    const bx=bp.length?bp.reduce((s,p)=>s+Number(p?.[0]||0),0)/bp.length:0;
+    return ax-bx;
+  });
+}
+
+function dedupeOcrLines(lines){
+  const out=[];
+  for(const raw of lines){
+    const line=String(raw||"").trim();
+    if(!line) continue;
+    const prev=out[out.length-1]||"";
+    if(line===prev) continue;
+    if(prev && (prev.includes(line)||line.includes(prev)) && Math.min(prev.length,line.length)>5){
+      if(line.length>prev.length) out[out.length-1]=line;
+      continue;
+    }
+    out.push(line);
+  }
+  return out;
+}
+
+
 function notify(message){
   const el=$("toast");
   if(!el){alert(message);return}
@@ -492,6 +552,41 @@ async function imageToOcrTiles(file){
   return tiles;
 }
 
+async function recognizeWithPaddle(file){
+  const ocr=await getPaddleOcr();
+  const tiles=await imageToOcrTiles(file);
+  const allLines=[];
+
+  for(let index=0;index<tiles.length;index++){
+    setProgress(
+      Math.max(.08,index/tiles.length),
+      "高精度识别第 "+(index+1)+"/"+tiles.length+" 段…"
+    );
+
+    const [result]=await ocr.predict(tiles[index],{
+      textDetLimitSideLen:1600,
+      textDetLimitType:"max",
+      textDetMaxSideLimit:2600,
+      textDetThresh:0.25,
+      textDetBoxThresh:0.45,
+      textDetUnclipRatio:1.8,
+      textRecScoreThresh:0.25
+    });
+
+    sortPaddleItems(result?.items||[]).forEach(item=>{
+      const text=String(item?.text||"").trim();
+      if(text) allLines.push(text);
+    });
+
+    setProgress(
+      Math.min(.98,(index+1)/tiles.length),
+      "已完成 "+(index+1)+"/"+tiles.length+" 段…"
+    );
+  }
+
+  return dedupeOcrLines(allLines).join("\n");
+}
+
 async function recognizeSmart(file){
   const tiles=await imageToOcrTiles(file);
   const texts=[];
@@ -591,15 +686,25 @@ async function recognize(){
   setProgress(.02,"正在准备本地 OCR…");
 
   try{
-    await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
+    let text="";
+    let engine="PaddleOCR";
 
-    const text=await recognizeSmart(state.file);
+    try{
+      text=await recognizeWithPaddle(state.file);
+    }catch(paddleError){
+      console.warn("PaddleOCR failed, falling back to Tesseract",paddleError);
+      engine="Tesseract备用识别";
+      setProgress(.04,"高精度 OCR 加载失败，正在切换备用识别…");
+      await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
+      text=await recognizeSmart(state.file);
+    }
+
     $("ocrRawText").value=text;
     state.rows=parseOcrText(text);
     renderRows();
     setProgress(1,state.rows.length
-      ? "识别完成，共整理出 "+state.rows.length+" 个项目。请先检查再导入。"
-      : "文字识别完成，但没有自动整理出价格项目。可以修改右侧文字后点「重新整理文字」。"
+      ? engine+" 完成，共整理出 "+state.rows.length+" 个项目。请先检查再导入。"
+      : engine+" 已读完图片，但没有自动整理出价格项目。可以修改右侧文字后点「重新整理文字」。"
     );
   }catch(error){
     console.error(error);
