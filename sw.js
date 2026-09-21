@@ -1,4 +1,4 @@
-const CACHE_NAME="paimini-v2";
+const CACHE_NAME="paimini-v3";
 const APP_SHELL=["./guide.html","./manifest.webmanifest","./icon.svg"];
 
 self.addEventListener("install",event=>{
