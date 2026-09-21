@@ -99,6 +99,10 @@ function setProgress(progress,text){
   if(label) label.textContent=text;
 }
 
+function plainHourLabel(hours){
+  return Number.isInteger(hours) ? hours+"小时" : hours+"小时";
+}
+
 function normalizeUnit(raw){
   let value=String(raw||"").trim().toLowerCase().replaceAll(" ","");
   if(!value) return {unitLabel:"次",unitMinutes:null};
@@ -116,6 +120,13 @@ function normalizeUnit(raw){
   if(["h","hr","hrs","hour","小时","时"].includes(value)){
     return {unitLabel:"小时",unitMinutes:60};
   }
+
+  const hourMatch=value.match(/^(\d+(?:\.\d+)?)(?:h|hr|hrs|hour|小时)$/i);
+  if(hourMatch){
+    const hours=Number(hourMatch[1]);
+    if(hours===0.5) return {unitLabel:"半",unitMinutes:30};
+    return {unitLabel:plainHourLabel(hours),unitMinutes:Math.round(hours*60)};
+  }
   if(["m","min","mins","分钟","分"].includes(value)){
     return {unitLabel:"分钟",unitMinutes:1};
   }
@@ -126,7 +137,7 @@ function normalizeUnit(raw){
     return {unitLabel:minutes+"分钟",unitMinutes:minutes};
   }
 
-  if(["局","次","首","把","单","份","个"].includes(value)){
+  if(["局","次","首","把","单","份","个","张","天","周","月","人"].includes(value)){
     return {unitLabel:value,unitMinutes:null};
   }
 
@@ -301,26 +312,74 @@ function splitNamesForCount(nameLine,count){
   return [];
 }
 
-function parseNamedPriceLine(line){
+function cleanItemName(raw){
+  return String(raw||"")
+    .replace(/[【】\[\]（）()「」『』]/g,"")
+    .replace(/^[·•—_+=:：,，;；.。\s]+|[·•—_+=:：,，;；.。\s]+$/g,"")
+    .replace(/\s+/g,"")
+    .trim();
+}
+
+function priceSpecRegex(){
+  const unit="(?:0?\\.?5\\s*[hH]|半(?:小时)?|\\d+(?:\\.\\d+)?\\s*(?:[hH]|hr|小时|min|mins|分钟|分)|[局次首把单份个张天周月人])";
+  return new RegExp(
+    "\\d+(?:\\.\\d+)?\\s*(?:"+
+      "[rR元](?:\\s*\\/?\\s*"+unit+")?"+
+      "|\\/\\s*"+unit+
+    ")(?:\\s*起)?",
+    "g"
+  );
+}
+
+function scanPairsFromLine(line){
   const cleaned=cleanLine(line);
-  if(!cleaned) return null;
+  if(!cleaned) return [];
 
-  const chunks=cleaned.split(/\s+/).filter(Boolean);
-  if(chunks.length<2) return null;
+  const matches=[...cleaned.matchAll(priceSpecRegex())];
+  if(!matches.length) return [];
 
-  const price=parsePriceToken(chunks[chunks.length-1]);
-  if(!price) return null;
+  const rows=[];
+  let previousEnd=0;
 
-  const name=chunks.slice(0,-1).join("").trim();
-  if(!name || /\d/.test(name)) return null;
+  for(const match of matches){
+    let before=cleaned.slice(previousEnd,match.index).trim();
+    previousEnd=match.index+match[0].length;
 
-  return {
-    category:"",
-    name,
-    price:price.price,
-    unitLabel:price.unitLabel,
-    unitMinutes:price.unitMinutes
-  };
+    // 去掉上一价格后面常见的“起”等连接词。
+    before=before.replace(/^(?:起|起送|起步|至|到|或)+/,"").trim();
+
+    let durationOverride=null;
+    const durationMatch=before.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(h|hr|小时)\s*$/i);
+    if(durationMatch){
+      const hours=Number(durationMatch[1]);
+      durationOverride={
+        unitLabel:hours===0.5?"半":plainHourLabel(hours),
+        unitMinutes:Math.round(hours*60)
+      };
+      before=before.slice(0,durationMatch.index).trim();
+    }
+
+    const name=cleanItemName(before);
+    if(!name || name.length>18) continue;
+
+    const price=parsePriceToken(match[0]);
+    if(!price) continue;
+
+    rows.push({
+      category:"",
+      name,
+      price:price.price,
+      unitLabel:durationOverride?.unitLabel || price.unitLabel,
+      unitMinutes:durationOverride?.unitMinutes ?? price.unitMinutes
+    });
+  }
+
+  return rows;
+}
+
+function parseNamedPriceLine(line){
+  const pairs=scanPairsFromLine(line);
+  return pairs.length===1 ? pairs[0] : null;
 }
 
 function parseOcrText(text){
@@ -333,19 +392,21 @@ function parseOcrText(text){
   let pendingNameLine="";
 
   for(const line of lines){
-    const direct=parseNamedPriceLine(line);
-    if(direct){
-      rows.push(direct);
+    // 第一优先：一行里出现多组“项目 + 价格”。
+    // 例如：语聊 25/0.5H 文聊 18/0.5H 虚恋 52/0.5H
+    // 或：送单20R评价单30R起
+    const inlinePairs=scanPairsFromLine(line);
+    if(inlinePairs.length){
+      rows.push(...inlinePairs);
       pendingNameLine="";
       continue;
     }
 
+    // 第二种：上一行是多个项目，下一行只有多个价格。
     const prices=extractPriceTokens(line);
-
     if(prices.length){
       if(pendingNameLine){
         const names=splitNamesForCount(pendingNameLine,prices.length);
-
         if(names.length===prices.length){
           names.forEach((name,index)=>{
             const price=prices[index];
@@ -363,7 +424,7 @@ function parseOcrText(text){
       continue;
     }
 
-    // 不再把纯文字行当“分类”。它只是下一组项目名称。
+    // 不把纯文字自动当分类，它只是下一组可能的项目名称。
     pendingNameLine=line;
   }
 
@@ -374,6 +435,97 @@ function parseOcrText(text){
     seen.add(key);
     return true;
   });
+}
+
+async function imageToOcrTiles(file){
+  const bitmap=await createImageBitmap(file);
+  const sourceW=bitmap.width;
+  const sourceH=bitmap.height;
+
+  // 长图切片识别，避免整张被压成“针一样细”的文字。
+  const longImage=sourceH/sourceW>2.2 || sourceH>2200;
+  const tileHeight=longImage ? Math.min(1400,Math.max(800,sourceW*1.4)) : sourceH;
+  const overlap=longImage ? 80 : 0;
+  const tiles=[];
+
+  for(let y=0;y<sourceH;y+=Math.max(1,tileHeight-overlap)){
+    const h=Math.min(tileHeight,sourceH-y);
+    const scale=Math.min(3,Math.max(1.5,1700/sourceW));
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.round(sourceW*scale);
+    canvas.height=Math.round(h*scale);
+    const ctx=canvas.getContext("2d",{willReadFrequently:true});
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality="high";
+
+    // 先画原图。
+    ctx.drawImage(bitmap,0,y,sourceW,h,0,0,canvas.width,canvas.height);
+
+    // 判断整体偏暗时反相，提高黑底价目表的文字对比度。
+    const sample=ctx.getImageData(
+      0,0,
+      Math.min(canvas.width,200),
+      Math.min(canvas.height,200)
+    ).data;
+    let lum=0,count=0;
+    for(let i=0;i<sample.length;i+=16){
+      lum+=(sample[i]+sample[i+1]+sample[i+2])/3;
+      count++;
+    }
+    const average=count?lum/count:180;
+
+    const enhanced=document.createElement("canvas");
+    enhanced.width=canvas.width;
+    enhanced.height=canvas.height;
+    const ectx=enhanced.getContext("2d");
+    ectx.filter=average<105
+      ? "invert(100%) grayscale(100%) contrast(155%)"
+      : "grayscale(100%) contrast(145%)";
+    ectx.drawImage(canvas,0,0);
+    tiles.push(enhanced);
+
+    if(!longImage) break;
+    if(y+h>=sourceH) break;
+  }
+
+  bitmap.close?.();
+  return tiles;
+}
+
+async function recognizeSmart(file){
+  const tiles=await imageToOcrTiles(file);
+  const texts=[];
+
+  for(let index=0;index<tiles.length;index++){
+    const result=await window.Tesseract.recognize(
+      tiles[index],
+      "chi_sim+eng",
+      {
+        logger(message){
+          const base=index/tiles.length;
+          const step=1/tiles.length;
+          if(message.status==="recognizing text"){
+            const overall=base+(message.progress||0)*step;
+            setProgress(
+              overall,
+              "正在识别第 "+(index+1)+"/"+tiles.length+" 段 "+Math.round((message.progress||0)*100)+"%"
+            );
+          }else{
+            const labels={
+              "loading tesseract core":"正在加载识别组件…",
+              "initializing tesseract":"正在初始化…",
+              "loading language traineddata":"正在加载中文识别模型…",
+              "initializing api":"正在准备识别…"
+            };
+            if(labels[message.status]) setProgress(base,labels[message.status]);
+          }
+        }
+      }
+    );
+    texts.push(result?.data?.text||"");
+  }
+
+  return texts.join("\n");
 }
 
 function renderRows(){
@@ -441,27 +593,7 @@ async function recognize(){
   try{
     await loadScript("https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js");
 
-    const result=await window.Tesseract.recognize(
-      state.file,
-      "chi_sim+eng",
-      {
-        logger(message){
-          if(message.status==="recognizing text"){
-            setProgress(message.progress||0,"正在识别文字 "+Math.round((message.progress||0)*100)+"%");
-          }else{
-            const labels={
-              "loading tesseract core":"正在加载识别组件…",
-              "initializing tesseract":"正在初始化…",
-              "loading language traineddata":"正在加载中文识别模型…",
-              "initializing api":"正在准备识别…"
-            };
-            if(labels[message.status]) setProgress(message.progress||.05,labels[message.status]);
-          }
-        }
-      }
-    );
-
-    const text=result?.data?.text||"";
+    const text=await recognizeSmart(state.file);
     $("ocrRawText").value=text;
     state.rows=parseOcrText(text);
     renderRows();
