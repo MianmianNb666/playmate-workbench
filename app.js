@@ -812,7 +812,7 @@ async function useCustomerProfile(id){
 }
 
 const THEME_PRESETS={
-  beige:{bg:"#f6f0e7",accent:"#e58aa7",paper:"#fffdf9",ink:"#4d413d"},
+  beige:{bg:"#fbf8f2",accent:"#e8a0b5",paper:"#fffefa",ink:"#514945"},
   pink:{bg:"#fff6fa",accent:"#ef7fa7",paper:"#ffffff",ink:"#523944"},
   mint:{bg:"#f2f8f3",accent:"#7fb89a",paper:"#fffefb",ink:"#3f4c44"},
   blue:{bg:"#f2f6fb",accent:"#7ea6cf",paper:"#ffffff",ink:"#3f4752"},
@@ -835,7 +835,16 @@ function applyTheme(theme){
 
 function loadTheme(){
   try{
-    const saved=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+    let saved=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+
+    // 把上一版偏深的米白自动迁移成新的浅奶油米白。
+    if(saved
+      && saved.bg==="#f6f0e7"
+      && saved.paper==="#fffdf9"){
+      saved=THEME_PRESETS.beige;
+      localStorage.setItem("paimini-theme",JSON.stringify(saved));
+    }
+
     applyTheme(saved||THEME_PRESETS.beige);
   }catch{
     applyTheme(THEME_PRESETS.beige);
