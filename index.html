@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
   <title>陪玩工作台</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v1">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v12">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -29,9 +29,15 @@
 
   <main id="appRoot" class="app-shell hidden">
     <header class="topbar">
-      <div>
-        <h1>陪<span>玩</span>工作台 <i>♡</i></h1>
-        <p>选项目 · 算价格 · 报备 · 小票 · 保存记录</p>
+      <div class="top-identity">
+        <div id="topAvatar" class="profile-avatar">
+          <img id="topAvatarImg" class="hidden" alt="">
+          <span id="topAvatarFallback">♡</span>
+        </div>
+        <div>
+          <h1 id="topDisplayName">陪<span>玩</span>工作台 <i>♡</i></h1>
+          <p id="topAccountLine">选项目 · 算价格 · 报备 · 小票 · 保存记录</p>
+        </div>
       </div>
       <div class="top-actions">
         <span id="accountEmail" class="account-email"></span>
@@ -41,9 +47,9 @@
 
     <section class="welcome-strip">
       <div>
-        <small>WELCOME BACK</small>
-        <h2>今天也要轻松算单 ♡</h2>
-        <p>第一版只做派单计算器，不把完整陪玩团系统塞进来。</p>
+        <small>MY LITTLE HOMEPAGE</small>
+        <h2 id="welcomeName">欢迎回来 ♡</h2>
+        <p id="welcomeMessage">今天也要轻松一点，慢慢来就很好 ♡</p>
       </div>
       <div class="hearts" aria-hidden="true"><span>♡</span><span>♥</span><span>♡</span></div>
     </section>
@@ -52,7 +58,7 @@
       <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
       <button class="nav-tab" data-page="prices" type="button">价格表</button>
       <button class="nav-tab" data-page="records" type="button">消费记录</button>
-      <button class="nav-tab" data-page="shops" type="button">店铺模板</button>
+      <button class="nav-tab" data-page="shops" type="button">店铺</button>
       <button class="nav-tab" data-page="receipt" type="button">小票设置</button>
       <button class="nav-tab" data-page="settings" type="button">设置</button>
     </nav>
@@ -194,13 +200,13 @@
 
     <section id="page-shops" class="page">
       <div class="page-head">
-        <div><small>SHOP & REPORT</small><h2>店铺模板</h2></div>
+        <div><small>SHOP LIBRARY</small><h2>店铺大厅</h2></div>
         <span class="head-heart">♡</span>
       </div>
 
       <div class="two-col">
         <div class="card">
-          <div class="card-title"><div><b id="shopFormTitle">新增店铺</b><small>不同店铺可以用不同模板</small></div></div>
+          <div class="card-title"><div><b id="shopFormTitle">新增店铺</b><small>大家都能看到启用店铺和它的公开价格表；只有创建者可以修改价格</small></div></div>
           <div class="form-grid">
             <label>店铺名称<input id="shopName" placeholder="例如 小莓店铺"></label>
             <label>默认货币<input id="shopCurrency" value="¥" maxlength="4"></label>
@@ -215,7 +221,7 @@
         </div>
 
         <div class="card">
-          <div class="card-title"><div><b>当前店铺报备模板</b><small>变量会自动替换</small></div></div>
+          <div class="card-title"><div><b>我的报备模板</b><small>模板只属于你自己，不会分享给其他派单</small></div></div>
           <select id="templateShop"></select>
           <textarea id="reportTemplateText" rows="10"></textarea>
           <div class="variable-box">
@@ -228,7 +234,13 @@
         </div>
       </div>
 
-      <div id="shopList" class="shop-grid"></div>
+      <div class="card shop-library-card">
+        <div class="card-title">
+          <div><b>全部店铺</b><small>选择一家店即可直接使用它共享的价格表。你的老板、累计和派单记录仍然只有你自己能看到。</small></div>
+          <input id="shopSearch" class="shop-search" placeholder="搜索店名">
+        </div>
+        <div id="shopList" class="shop-grid"></div>
+      </div>
     </section>
 
     <section id="page-receipt" class="page">
@@ -267,7 +279,28 @@
         <div><small>SETTINGS</small><h2>设置</h2></div>
         <span class="head-heart">♡</span>
       </div>
-      <div class="settings-grid">
+      <div class="settings-grid profile-settings-grid">
+        <div class="card profile-settings-card">
+          <div class="card-title"><div><b>我的主页</b><small>打开工作台时，先看到喜欢的自己 ♡</small></div></div>
+          <div class="profile-editor">
+            <div id="settingsAvatarPreview" class="profile-avatar large">
+              <img id="settingsAvatarImg" class="hidden" alt="">
+              <span id="settingsAvatarFallback">♡</span>
+            </div>
+            <div class="profile-fields">
+              <label>显示名字
+                <input id="profileDisplayName" maxlength="30" placeholder="例如 JiaJia">
+              </label>
+              <label>给自己说的话
+                <input id="profileHomeMessage" maxlength="120" placeholder="例如 今天也要轻松一点，慢慢来就很好 ♡">
+              </label>
+              <label>头像
+                <input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+              </label>
+              <button id="saveProfileBtn" class="btn primary" type="button">保存我的主页</button>
+            </div>
+          </div>
+        </div>
         <div class="card">
           <b>账号</b>
           <p id="settingsEmail" class="muted"></p>
@@ -297,6 +330,6 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v1"></script>
+  <script type="module" src="./app.js?v=20260921-v12"></script>
 </body>
 </html>
