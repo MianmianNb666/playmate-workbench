@@ -1712,6 +1712,9 @@ async function saveRecord(){
       customer_id:customer?.id||null,
       item_id:data.item.id||null,
       customer_name_snapshot:data.customer,
+      // consumption_records 的旧表结构仍要求 item_name NOT NULL。
+      // 同时写旧字段 + 新快照字段，兼容两代 schema。
+      item_name:data.item.name,
       item_name_snapshot:data.item.name,
       companion_name:data.companion,
       unit_price_snapshot:data.unitPrice,
