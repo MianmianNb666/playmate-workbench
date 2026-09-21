@@ -1756,57 +1756,73 @@ function renderReceiptForCurrentCalc(targetId){
   return true;
 }
 
-async function imageUrlToDataUrl(url){
-  const response=await fetch(url,{mode:"cors",cache:"no-store"});
-  if(!response.ok) throw new Error("image fetch failed");
-  const blob=await response.blob();
-  return await new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result);
-    reader.onerror=reject;
-    reader.readAsDataURL(blob);
+async function downloadCanvasPng(canvas,filename){
+  const blob=await new Promise((resolve,reject)=>{
+    canvas.toBlob(value=>value?resolve(value):reject(new Error("PNG conversion failed")),"image/png");
   });
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.download=filename;
+  link.href=url;
+  link.rel="noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
 async function captureElementPng(el,filename){
   if(!window.html2canvas) throw new Error("html2canvas unavailable");
 
-  const restorers=[];
-  const images=[...el.querySelectorAll("img")];
-
-  for(const img of images){
+  // 在独立副本里截图，避免页面上已经加载过的跨域 Logo 污染 canvas。
+  const clone=el.cloneNode(true);
+  clone.removeAttribute("id");
+  clone.style.position="fixed";
+  clone.style.left="-10000px";
+  clone.style.top="0";
+  clone.style.zIndex="-1";
+  clone.style.pointerEvents="none";
+  clone.style.width=Math.max(el.getBoundingClientRect().width,320)+"px";
+  clone.querySelectorAll("img").forEach(img=>{
     const src=img.getAttribute("src")||"";
-    if(!src || src.startsWith("data:") || src.startsWith("blob:")) continue;
+    if(!src) return;
     try{
       const absolute=new URL(src,location.href);
-      if(absolute.origin===location.origin) continue;
-      const dataUrl=await imageUrlToDataUrl(absolute.href);
-      const oldSrc=img.getAttribute("src");
-      img.setAttribute("src",dataUrl);
-      restorers.push(()=>img.setAttribute("src",oldSrc));
+      if(absolute.origin!==location.origin && !src.startsWith("data:") && !src.startsWith("blob:")){
+        img.remove();
+      }
     }catch{
-      const oldDisplay=img.style.display;
-      img.style.display="none";
-      restorers.push(()=>{img.style.display=oldDisplay});
+      img.remove();
     }
-  }
+  });
+  document.body.appendChild(clone);
 
   try{
-    const canvas=await window.html2canvas(el,{
-      scale:2,
-      useCORS:true,
-      allowTaint:false,
-      backgroundColor:null,
-      logging:false
-    });
-    const link=document.createElement("a");
-    link.download=filename;
-    link.href=canvas.toDataURL("image/png");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    let canvas;
+    try{
+      canvas=await window.html2canvas(clone,{
+        scale:2,
+        useCORS:false,
+        allowTaint:false,
+        backgroundColor:"#ffffff",
+        logging:false,
+        imageTimeout:2500
+      });
+    }catch(firstError){
+      console.warn("receipt capture retry without images",firstError);
+      clone.querySelectorAll("img").forEach(img=>img.remove());
+      canvas=await window.html2canvas(clone,{
+        scale:1.6,
+        useCORS:false,
+        allowTaint:false,
+        backgroundColor:"#ffffff",
+        logging:false,
+        imageTimeout:0
+      });
+    }
+    await downloadCanvasPng(canvas,filename);
   }finally{
-    restorers.forEach(fn=>fn());
+    clone.remove();
   }
 }
 
@@ -1815,11 +1831,12 @@ async function exportReceipt(){
   const el=$("receiptCapture");
   if(!window.html2canvas){toast("图片组件还没加载好，请稍后再试");return}
   try{
+    toast("正在生成图片…");
     await captureElementPng(el,`消费小票-${Date.now()}.png`);
     toast("小票图片已生成 ♡");
   }catch(error){
     console.error(error);
-    toast("导出失败，请刷新后再试");
+    toast("导出失败，请刷新页面后再试");
   }
 }
 
