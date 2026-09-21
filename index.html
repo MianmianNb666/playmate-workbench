@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v33">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v34">
   <script>
     (function(){
       try{
@@ -112,8 +112,11 @@
 
     <nav class="section-nav" aria-label="功能分区">
       <div class="desktop-side-brand">
-        <div class="desktop-side-logo">派<span>mini</span></div>
-        <small>PAI MINI</small>
+        <div>
+          <div class="desktop-side-logo">派<span>mini</span></div>
+          <small>PAI MINI</small>
+        </div>
+        <button id="desktopSidebarCollapseBtn" class="desktop-sidebar-collapse-btn" type="button" aria-label="收起左侧导航" title="收起左侧导航">‹</button>
       </div>
       <button id="verticalNavCollapseBtn" class="vertical-nav-collapse-btn" type="button" aria-label="收起左侧导航" title="收起左侧导航">‹</button>
       <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
@@ -621,7 +624,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v33"></script>
+  <script type="module" src="./app.js?v=20260921-v34"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
