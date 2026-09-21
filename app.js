@@ -1748,6 +1748,7 @@ function bindEvents(){
   $("signUpBtn").addEventListener("click",signUp);
   $("signInBtn").addEventListener("click",signIn);
   $("signOutBtn").addEventListener("click",signOut);
+  $("settingsSignOutBtn").addEventListener("click",signOut);
   $("expiredSignOutBtn").addEventListener("click",signOut);
   $("expiredRenewBtn").addEventListener("click",()=>redeemRenewal("expiredRenewalCode","expiredHint"));
   $("settingsRenewBtn").addEventListener("click",()=>redeemRenewal("settingsRenewalCode","settingsRenewHint"));
