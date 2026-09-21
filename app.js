@@ -60,6 +60,70 @@ const defaultReceipt = () => ({
 
 let deferredInstallPrompt=null;
 
+function mobileNavStorageKey(){
+  return "paimini-mobile-nav-mode";
+}
+
+function sidebarCollapsedKey(){
+  return "paimini-sidebar-collapsed-"+(state.session?.user?.id||"guest");
+}
+
+function getMobileNavMode(){
+  try{
+    return localStorage.getItem(mobileNavStorageKey())==="left"?"left":"top";
+  }catch{
+    return "top";
+  }
+}
+
+function getSidebarCollapsed(){
+  try{
+    return localStorage.getItem(sidebarCollapsedKey())==="1";
+  }catch{
+    return false;
+  }
+}
+
+function setSidebarCollapsed(value){
+  try{
+    localStorage.setItem(sidebarCollapsedKey(),value?"1":"0");
+  }catch{}
+  applyMobileNavLayout();
+}
+
+function applyMobileNavLayout(){
+  const mode=getMobileNavMode();
+  document.body.classList.toggle("mobile-nav-left",mode==="left");
+  document.body.classList.toggle("mobile-nav-top",mode!=="left");
+
+  const collapsed=mode==="left"&&getSidebarCollapsed();
+  document.body.classList.toggle("mobile-sidebar-collapsed",collapsed);
+
+  document.querySelectorAll("[data-mobile-nav-mode]").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.mobileNavMode===mode);
+  });
+
+  const collapseBtn=$("verticalNavCollapseBtn");
+  if(collapseBtn){
+    collapseBtn.textContent=collapsed?"›":"‹";
+    collapseBtn.title=collapsed?"展开左侧导航":"收起左侧导航";
+    collapseBtn.setAttribute("aria-label",collapsed?"展开左侧导航":"收起左侧导航");
+  }
+}
+
+function setMobileNavMode(mode){
+  const next=mode==="left"?"left":"top";
+  try{
+    localStorage.setItem(mobileNavStorageKey(),next);
+  }catch{}
+  if(next==="top"){
+    try{localStorage.setItem(sidebarCollapsedKey(),"0")}catch{}
+  }
+  applyMobileNavLayout();
+  toast(next==="left"?"已切换为左侧竖向导航":"已切换为顶部横向导航");
+}
+
+
 function desktopPrefsKey(){
   return "paimini-desktop-"+(state.session?.user?.id||"guest");
 }
@@ -2006,6 +2070,13 @@ function bindEvents(){
   $("signInBtn").addEventListener("click",signIn);
   $("signOutBtn").addEventListener("click",signOut);
   $("settingsSignOutBtn").addEventListener("click",signOut);
+  document.querySelectorAll("[data-mobile-nav-mode]").forEach(btn=>{
+    btn.addEventListener("click",()=>setMobileNavMode(btn.dataset.mobileNavMode));
+  });
+  $("verticalNavCollapseBtn").addEventListener("click",()=>{
+    if(getMobileNavMode()!=="left") return;
+    setSidebarCollapsed(!getSidebarCollapsed());
+  });
   $("installAppBtn").addEventListener("click",installPaiMini);
   $("settingsInstallAppBtn").addEventListener("click",installPaiMini);
   $("saveDesktopAppBtn").addEventListener("click",saveDesktopPrefs);
@@ -2185,6 +2256,7 @@ function bindEvents(){
 
 loadTheme();
 renderDesktopPrefs();
+applyMobileNavLayout();
 registerPaiMiniPwa();
 bindEvents();
 
