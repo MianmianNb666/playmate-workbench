@@ -3,58 +3,187 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#fff8fb">
+  <meta name="theme-color" content="#fff7fb">
   <title>陪玩工作台</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="wrap">
-    <section class="hero">
-      <h1>陪玩工作台 🎮</h1>
-      <p>独立项目已经接上新的 Supabase。现在先把账号和基础连接跑通，后面再继续搭陪玩、派单、订单、排班和结算。</p>
-    </section>
-
-    <section class="grid">
-      <div class="card">
-        <h2>账号测试</h2>
-        <div id="loggedOutBox">
-          <label>邮箱
-            <input id="email" type="email" autocomplete="email" placeholder="name@example.com">
-          </label>
-          <label>密码
-            <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
-          </label>
-          <div class="actions">
-            <button id="signInBtn" class="primary" type="button">登录</button>
-            <button id="signUpBtn" class="ghost" type="button">注册</button>
-          </div>
+  <main class="app-shell">
+    <section class="top-card">
+      <div class="top-row">
+        <div>
+          <h1 class="brand"><span>陪</span><b>玩</b><span>工作台</span><i>🐾</i></h1>
+          <p class="tagline">和可爱的人一起，创造更多快乐 ♡</p>
         </div>
-
-        <div id="loggedInBox" class="hidden">
-          <div class="status good">
-            <span class="dot"></span>
-            <span>已登录：<b id="accountEmail"></b></span>
-          </div>
-          <div class="actions">
-            <button id="signOutBtn" class="ghost" type="button">退出账号</button>
-          </div>
-        </div>
-
-        <div id="authHint"></div>
+        <button id="accountBtn" class="round-btn" type="button" aria-label="账号">
+          <span id="accountIcon">♡</span>
+        </button>
       </div>
 
-      <div class="card">
-        <h2>Supabase 状态</h2>
-        <div id="connectionStatus" class="status">
-          <span class="dot"></span>
-          <span id="connectionText">正在检查连接…</span>
+      <div class="hero-scene" aria-hidden="true">
+        <div class="hero-copy">
+          <div class="bubble">喵～<br>欢迎回来！</div>
+          <p>今天也要加油呀 ♡</p>
         </div>
-        <p class="meta" style="margin-top:12px">
-          这里使用的是陪玩工作台自己的 Supabase 项目，不会和莓桃工作台的数据混在一起。
-        </p>
+
+        <svg class="hero-cat" viewBox="0 0 420 250" role="img" aria-label="可爱小猫">
+          <defs>
+            <linearGradient id="pillow" x1="0" x2="1">
+              <stop offset="0" stop-color="#ffd7e5"/>
+              <stop offset="1" stop-color="#ffc8da"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="245" cy="210" rx="165" ry="38" fill="#ffe6ef"/>
+          <path d="M165 204 Q210 153 325 177 L355 224 H132Z" fill="url(#pillow)" stroke="#ef9fb8" stroke-width="6"/>
+          <path d="M187 91 L214 41 L246 87" fill="#fff" stroke="#5b3b46" stroke-width="7" stroke-linejoin="round"/>
+          <path d="M292 89 L330 43 L342 103" fill="#fff" stroke="#5b3b46" stroke-width="7" stroke-linejoin="round"/>
+          <path d="M211 52 L220 76 L236 83" fill="#ffc4d7"/>
+          <path d="M326 54 L319 82 L304 91" fill="#ffc4d7"/>
+          <path d="M198 91 Q257 56 326 92 Q355 113 344 160 Q337 198 286 202 L238 202 Q186 197 180 158 Q173 118 198 91Z" fill="#fff" stroke="#5b3b46" stroke-width="7"/>
+          <path d="M231 91 q12 -18 26 0" stroke="#d8d8d8" stroke-width="9" stroke-linecap="round"/>
+          <path d="M256 87 q12 -18 26 0" stroke="#d8d8d8" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="225" cy="132" r="12" fill="#4a2f39"/>
+          <path d="M302 127 q15 -14 28 0" stroke="#4a2f39" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M269 146 q8 8 16 0" stroke="#4a2f39" stroke-width="5" stroke-linecap="round" fill="none"/>
+          <path d="M277 146 v8" stroke="#4a2f39" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="205" cy="153" r="11" fill="#ffd1df" opacity=".8"/>
+          <circle cx="321" cy="150" r="11" fill="#ffd1df" opacity=".8"/>
+          <path d="M206 183 q10 24 34 9" fill="#fff" stroke="#5b3b46" stroke-width="7" stroke-linecap="round"/>
+          <path d="M311 180 q-2 24 -28 15" fill="#fff" stroke="#5b3b46" stroke-width="7" stroke-linecap="round"/>
+          <circle cx="316" cy="75" r="10" fill="#ffe49e"/>
+          <circle cx="334" cy="78" r="10" fill="#ffe49e"/>
+          <circle cx="325" cy="77" r="5" fill="#e6b960"/>
+          <path d="M89 104 C73 86 48 103 55 123 C61 139 87 153 89 154 C92 151 116 137 122 121 C128 102 105 86 89 104Z" fill="#ff8db4" opacity=".78"/>
+          <path d="M360 97 C350 85 333 96 337 110 C341 121 359 131 360 132 C362 130 379 120 383 109 C387 96 371 85 360 97Z" fill="#ff9fbe" opacity=".72"/>
+        </svg>
       </div>
     </section>
+
+    <section class="feature-card" id="calculatorCard">
+      <div class="feature-art" aria-hidden="true">
+        <svg viewBox="0 0 220 190">
+          <path d="M42 81 L58 42 L82 74" fill="#fff" stroke="#5b3b46" stroke-width="6"/>
+          <path d="M112 77 L141 41 L148 88" fill="#fff" stroke="#5b3b46" stroke-width="6"/>
+          <path d="M52 76 Q99 47 139 80 Q158 95 151 128 Q144 160 105 161 H78 Q40 158 34 127 Q28 98 52 76Z" fill="#fff" stroke="#5b3b46" stroke-width="6"/>
+          <circle cx="70" cy="108" r="8" fill="#4a2f39"/>
+          <path d="M115 105 q10 -10 19 0" stroke="#4a2f39" stroke-width="5" stroke-linecap="round"/>
+          <path d="M89 121 q7 7 14 0" stroke="#4a2f39" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <circle cx="55" cy="127" r="8" fill="#ffd0df"/>
+          <circle cx="132" cy="126" r="8" fill="#ffd0df"/>
+          <g transform="translate(95 92) rotate(7)">
+            <rect x="0" y="0" width="86" height="91" rx="17" fill="#ffbdd2" stroke="#d96f93" stroke-width="5"/>
+            <rect x="12" y="12" width="62" height="19" rx="8" fill="#fff4f8"/>
+            <text x="43" y="26" text-anchor="middle" font-size="13" fill="#7a5260">GOOD♡</text>
+            <g fill="#fff6fa" stroke="#e78ba9" stroke-width="2">
+              <rect x="12" y="40" width="16" height="16" rx="5"/><rect x="35" y="40" width="16" height="16" rx="5"/><rect x="58" y="40" width="16" height="16" rx="5"/>
+              <rect x="12" y="63" width="16" height="16" rx="5"/><rect x="35" y="63" width="16" height="16" rx="5"/><rect x="58" y="63" width="16" height="16" rx="5"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <div class="feature-text">
+        <small>快速算单 · 轻松报价～</small>
+        <h2>派单计算器</h2>
+        <p>只保留算单核心，不塞流水、订单、提成这些东西。</p>
+        <button id="jumpCalculator" class="pink-arrow" type="button">›</button>
+      </div>
+    </section>
+
+    <section class="calculator-panel" id="calculator">
+      <div class="section-title">
+        <div>
+          <span>QUICK CALCULATOR</span>
+          <h2>算一单看看 🐾</h2>
+        </div>
+        <span class="mini-paw">♡</span>
+      </div>
+
+      <div class="form-grid">
+        <label>
+          <span>单价</span>
+          <div class="money-input"><b>¥</b><input id="unitPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </label>
+        <label>
+          <span>数量 / 时长</span>
+          <input id="quantity" type="number" min="0" step="0.5" value="1">
+        </label>
+        <label class="wide">
+          <span>额外费用</span>
+          <div class="money-input"><b>¥</b><input id="extraFee" type="number" min="0" step="0.01" value="0"></div>
+        </label>
+      </div>
+
+      <div class="result-card">
+        <div>
+          <small>本单报价</small>
+          <strong id="totalPrice">¥0.00</strong>
+        </div>
+        <span>单价 × 数量 + 额外费用</span>
+      </div>
+
+      <div class="calc-actions">
+        <button id="clearCalc" class="soft-btn" type="button">清空</button>
+        <button id="copyQuote" class="primary-btn" type="button">复制报价</button>
+      </div>
+      <p id="copyHint" class="copy-hint"></p>
+    </section>
+
+    <section class="sleepy-banner">
+      <div class="sleepy-cat">🐱<span>zzz</span></div>
+      <div>
+        <h3>陪伴，让快乐更简单 ♡</h3>
+        <p>先把算单做好，其他功能以后慢慢长出来。</p>
+      </div>
+    </section>
+
+    <nav class="bottom-nav" aria-label="底部导航">
+      <button class="nav-item active" type="button" data-target="home">
+        <span>⌂</span><b>工作台</b>
+      </button>
+      <button class="nav-item" id="myNavBtn" type="button">
+        <span>🐱</span><b>我的</b>
+      </button>
+    </nav>
   </main>
+
+  <dialog id="accountDialog" class="account-dialog">
+    <form method="dialog" class="dialog-card" onsubmit="return false">
+      <button id="closeAccount" class="dialog-close" type="button" aria-label="关闭">×</button>
+      <div class="dialog-cat">🐱</div>
+      <h2>我的账号</h2>
+      <p class="dialog-sub">登录只是先留着账号底座，陪玩团功能暂时不往这里塞。</p>
+
+      <div id="loggedOutBox">
+        <label class="auth-label">邮箱
+          <input id="email" type="email" autocomplete="email" placeholder="name@example.com">
+        </label>
+        <label class="auth-label">密码
+          <input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位">
+        </label>
+        <div class="auth-actions">
+          <button id="signInBtn" class="primary-btn" type="button">登录</button>
+          <button id="signUpBtn" class="soft-btn" type="button">注册</button>
+        </div>
+      </div>
+
+      <div id="loggedInBox" class="hidden">
+        <div class="logged-in-pill">
+          <span>♡</span>
+          <div>
+            <small>已登录</small>
+            <b id="accountEmail"></b>
+          </div>
+        </div>
+        <button id="signOutBtn" class="soft-btn full" type="button">退出账号</button>
+      </div>
+
+      <p id="authHint" class="auth-hint"></p>
+      <div id="connectionStatus" class="connection-pill">
+        <span class="connection-dot"></span>
+        <span id="connectionText">正在连接 Supabase…</span>
+      </div>
+    </form>
+  </dialog>
 
   <script type="module" src="./app.js"></script>
 </body>
