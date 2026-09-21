@@ -433,6 +433,32 @@ async function checkAuthService(){
   }
 }
 
+async function runAuthDiagnostics(){
+  const btn=$("authDiagBtn");
+  const out=$("authDiagResult");
+  if(!btn||!out) return;
+  btn.disabled=true;
+  btn.textContent="诊断中…";
+  out.classList.remove("hidden");
+  out.textContent="网页 ✓ · 正在测试 Supabase…";
+  try{
+    const result=await checkAuthService();
+    if(result.ok){
+      out.textContent="网页 ✓ · Supabase ✓ · Auth ✓";
+      out.style.color="var(--good, #5f8f72)";
+    }else{
+      out.textContent="网页 ✓ · Supabase / Auth ✕ · "+(result.reason||"连接失败");
+      out.style.color="var(--bad)";
+    }
+  }catch(error){
+    out.textContent="网页 ✓ · Supabase / Auth ✕ · "+String(error?.message||error||"Load failed");
+    out.style.color="var(--bad)";
+  }finally{
+    btn.disabled=false;
+    btn.textContent="重新连接诊断";
+  }
+}
+
 function authNetworkHint(reason){
   const raw=String(reason||"");
   const inApp=/MicroMessenger|WeChat|FBAN|FBAV|Instagram|Line\//i.test(navigator.userAgent||"");
@@ -2282,6 +2308,7 @@ function showPage(name){
 function bindEvents(){
   $("signUpBtn").addEventListener("click",signUp);
   $("signInBtn").addEventListener("click",signIn);
+  $("authDiagBtn")?.addEventListener("click",runAuthDiagnostics);
   $("signOutBtn").addEventListener("click",signOut);
   $("settingsSignOutBtn").addEventListener("click",signOut);
   $("desktopSidebarCollapseBtn").addEventListener("click",toggleDesktopSidebar);
