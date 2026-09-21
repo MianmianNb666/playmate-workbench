@@ -458,19 +458,8 @@ async function signUp(){
     return;
   }
 
-  setAuthHint("正在检查注册服务…");
-  const service=await checkAuthService();
-
-  if(!service.ok){
-    setAuthHint("注册失败："+authNetworkHint(service.reason),true);
-    return;
-  }
-
-  if(service.signupEnabled===false){
-    setAuthHint("注册失败：当前 Supabase Auth 已关闭新用户注册。",true);
-    return;
-  }
-
+  // 直接尝试 Supabase 注册。不要让额外的 settings 连通性检查
+  // 在部分手机网络上偶发失败后提前拦截真正可用的注册请求。
   setAuthHint("正在验证邀请码并注册…");
   const {data,error}=await supabase.auth.signUp({
     email,
