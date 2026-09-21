@@ -15,6 +15,9 @@ const DEFAULT_TEMPLATE = `消费项目：{项目}
 
 const state = {
   session:null,
+  profile:null,
+  savedShopIds:[],
+  shopSearch:"",
   shops:[],
   shopId:null,
   categories:[],
@@ -69,6 +72,14 @@ function setConnection(text,ok=true){
 
 function currentShop(){
   return state.shops.find(s=>s.id===state.shopId) || state.shops[0] || null;
+}
+
+function ownsShop(shop=currentShop()){
+  return !!shop && !!state.session && shop.user_id===state.session.user.id;
+}
+
+function isFavoriteShop(shopId){
+  return state.savedShopIds.includes(shopId);
 }
 
 function money(value,shop=currentShop()){
@@ -142,6 +153,8 @@ async function applySession(session){
 
 async function bootstrap(){
   try{
+    await loadProfile();
+    await loadSavedShops();
     await loadShops();
     if(!state.shops.length) await createStarterShop();
     await loadShops();
@@ -152,10 +165,138 @@ async function bootstrap(){
     await loadCurrentShopData();
     await loadRecords();
     renderAll();
+    renderProfile();
   }catch(error){
     console.error(error);
     toast("数据还没准备好，请确认 V1 SQL 已部署");
   }
+}
+
+async function loadProfile(){
+  const userId=state.session?.user?.id;
+  if(!userId) return;
+  const {data,error}=await supabase.from("user_profiles")
+    .select("*")
+    .eq("user_id",userId)
+    .maybeSingle();
+  if(error) throw error;
+
+  if(data){
+    state.profile=data;
+    return;
+  }
+
+  const emailName=(state.session.user.email||"").split("@")[0] || "今天也要开心";
+  const displayName=emailName.slice(0,30);
+  const {data:created,error:createError}=await supabase.from("user_profiles")
+    .insert({
+      user_id:userId,
+      display_name:displayName,
+      home_message:"今天也要轻松一点，慢慢来就很好 ♡"
+    })
+    .select().single();
+  if(createError) throw createError;
+  state.profile=created;
+}
+
+async function loadSavedShops(){
+  const {data,error}=await supabase.from("saved_shops").select("shop_id").order("created_at");
+  if(error) throw error;
+  state.savedShopIds=(data||[]).map(row=>row.shop_id);
+}
+
+function renderAvatar(imgId,fallbackId){
+  const img=$(imgId);
+  const fallback=$(fallbackId);
+  const url=state.profile?.avatar_url || "";
+  if(url){
+    img.src=url;
+    img.classList.remove("hidden");
+    fallback.classList.add("hidden");
+  }else{
+    img.removeAttribute("src");
+    img.classList.add("hidden");
+    fallback.classList.remove("hidden");
+    const name=state.profile?.display_name?.trim() || "";
+    fallback.textContent=name ? name.slice(0,1).toUpperCase() : "♡";
+  }
+}
+
+function renderProfile(){
+  if(!state.profile) return;
+  const name=state.profile.display_name || "今天也要开心";
+  const message=state.profile.home_message || "今天也要轻松一点，慢慢来就很好 ♡";
+
+  $("topDisplayName").innerHTML=`${safe(name)} <i>♡</i>`;
+  $("topAccountLine").textContent="陪玩工作台 · 只属于你的派单主页";
+  $("welcomeName").textContent=`今天好呀，${name} ♡`;
+  $("welcomeMessage").textContent=message;
+  $("profileDisplayName").value=name;
+  $("profileHomeMessage").value=message;
+  renderAvatar("topAvatarImg","topAvatarFallback");
+  renderAvatar("settingsAvatarImg","settingsAvatarFallback");
+}
+
+async function saveProfile(){
+  if(!state.session) return;
+  const displayName=$("profileDisplayName").value.trim() || "今天也要开心";
+  const homeMessage=$("profileHomeMessage").value.trim() || "今天也要轻松一点，慢慢来就很好 ♡";
+  let avatarUrl=state.profile?.avatar_url || null;
+  const file=$("profileAvatarFile").files?.[0];
+
+  try{
+    if(file){
+      if(file.size>5*1024*1024){
+        toast("头像不能超过 5MB");
+        return;
+      }
+      const ext=(file.name.split(".").pop()||"jpg").toLowerCase();
+      const path=`${state.session.user.id}/avatar-${Date.now()}.${ext}`;
+      const {error:uploadError}=await supabase.storage.from("avatars").upload(path,file,{
+        cacheControl:"3600",
+        upsert:false
+      });
+      if(uploadError) throw uploadError;
+      const {data:publicData}=supabase.storage.from("avatars").getPublicUrl(path);
+      avatarUrl=publicData.publicUrl;
+    }
+
+    const payload={
+      user_id:state.session.user.id,
+      display_name:displayName,
+      home_message:homeMessage,
+      avatar_url:avatarUrl
+    };
+    const {data,error}=await supabase.from("user_profiles")
+      .upsert(payload,{onConflict:"user_id"})
+      .select().single();
+    if(error) throw error;
+    state.profile=data;
+    $("profileAvatarFile").value="";
+    renderProfile();
+    toast("我的主页已保存 ♡");
+  }catch(error){
+    console.error(error);
+    toast("保存主页失败："+error.message);
+  }
+}
+
+async function toggleFavoriteShop(shopId){
+  if(isFavoriteShop(shopId)){
+    const {error}=await supabase.from("saved_shops")
+      .delete().eq("shop_id",shopId);
+    if(error){toast("取消常用失败："+error.message);return}
+    state.savedShopIds=state.savedShopIds.filter(id=>id!==shopId);
+    toast("已取消常用");
+  }else{
+    const {error}=await supabase.from("saved_shops")
+      .insert({shop_id:shopId});
+    if(error){toast("添加常用失败："+error.message);return}
+    state.savedShopIds.push(shopId);
+    toast("已加入常用店铺 ♡");
+  }
+  populateShopSelectors();
+  renderShopList();
 }
 
 async function createStarterShop(){
@@ -211,7 +352,12 @@ async function loadRecords(){
 }
 
 function populateShopSelectors(){
-  const shopOptions=state.shops.map(s=>`<option value="${s.id}">${safe(s.name)}</option>`).join("");
+  const ordered=[...state.shops].sort((a,b)=>{
+    const favDiff=Number(isFavoriteShop(b.id))-Number(isFavoriteShop(a.id));
+    if(favDiff) return favDiff;
+    return String(a.name||"").localeCompare(String(b.name||""),"zh-CN");
+  });
+  const shopOptions=ordered.map(s=>`<option value="${s.id}">${isFavoriteShop(s.id)?"♡ ":""}${safe(s.name)}</option>`).join("");
   $("calcShop").innerHTML=shopOptions;
   $("templateShop").innerHTML=shopOptions;
   $("receiptShop").innerHTML=shopOptions;
@@ -234,6 +380,8 @@ function renderAll(){
   renderRecords();
   renderDataSummary();
   resetCalculatorVisual();
+  applyPriceEditPermissions();
+  renderProfile();
 }
 
 function renderCategories(){
@@ -244,12 +392,13 @@ function renderCategories(){
     )
   ].join("");
 
+  const canEdit=ownsShop();
   $("categoryManager").innerHTML=state.categories.length
     ? state.categories.map(c=>`
       <div class="manager-row">
         <div><b>${safe(c.name)}</b></div>
         <div class="row-actions">
-          <button class="tiny-btn danger" data-delete-category="${c.id}" type="button">删除</button>
+          ${canEdit?`<button class="tiny-btn danger" data-delete-category="${c.id}" type="button">删除</button>`:""}
         </div>
       </div>`).join("")
     : '<div class="empty-state">还没有分类。</div>';
@@ -287,6 +436,7 @@ function renderCustomerList(){
 }
 
 function renderPriceManager(){
+  const canEdit=ownsShop();
   $("priceItemList").innerHTML=state.items.length
     ? state.items.map(item=>{
       const category=state.categories.find(c=>c.id===item.category_id)?.name||"未分类";
@@ -299,9 +449,11 @@ function renderPriceManager(){
           <p>${safe(item.notes||"暂无备注")}</p>
           <span class="status-tag ${item.is_active===false?"off":""}">${item.is_active===false?"已停用":"已启用"}</span>
           <div class="row-actions">
-            <button class="tiny-btn" data-edit-item="${item.id}" type="button">编辑</button>
-            <button class="tiny-btn" data-toggle-item="${item.id}" type="button">${item.is_active===false?"启用":"停用"}</button>
-            <button class="tiny-btn danger" data-delete-item="${item.id}" type="button">删除</button>
+            ${canEdit?`
+              <button class="tiny-btn" data-edit-item="${item.id}" type="button">编辑</button>
+              <button class="tiny-btn" data-toggle-item="${item.id}" type="button">${item.is_active===false?"启用":"停用"}</button>
+              <button class="tiny-btn danger" data-delete-item="${item.id}" type="button">删除</button>
+            `:`<span class="status-tag">共享价格 · 只读</span>`}
           </div>
         </div>`;
     }).join("")
@@ -309,19 +461,43 @@ function renderPriceManager(){
 }
 
 function renderShopList(){
-  $("shopList").innerHTML=state.shops.map(shop=>`
-    <div class="shop-card">
-      <div class="shop-color" style="background:${safe(shop.brand_color||"#f47ea7")}"></div>
-      <b>${safe(shop.name)}</b>
-      <p>${safe(shop.currency_symbol||"¥")} · ${shop.is_active===false?"停用":"启用"}</p>
-      <p>${safe(shop.footer_text||"")}</p>
-      <div class="row-actions">
-        <button class="tiny-btn" data-use-shop="${shop.id}" type="button">使用</button>
-        <button class="tiny-btn" data-edit-shop="${shop.id}" type="button">编辑</button>
-        <button class="tiny-btn danger" data-delete-shop="${shop.id}" type="button">删除</button>
+  const q=(state.shopSearch||"").trim().toLowerCase();
+  const shops=[...state.shops]
+    .filter(shop=>!q || String(shop.name||"").toLowerCase().includes(q))
+    .sort((a,b)=>{
+      const favDiff=Number(isFavoriteShop(b.id))-Number(isFavoriteShop(a.id));
+      if(favDiff) return favDiff;
+      return String(a.name||"").localeCompare(String(b.name||""),"zh-CN");
+    });
+
+  $("shopList").innerHTML=shops.length ? shops.map(shop=>{
+    const mine=ownsShop(shop);
+    const favorite=isFavoriteShop(shop.id);
+    return `
+      <div class="shop-card ${favorite?"favorite":""}">
+        <div class="shop-card-top">
+          <div>
+            <div class="shop-color" style="background:${safe(shop.brand_color||"#f47ea7")}"></div>
+            <b>${safe(shop.name)}</b>
+          </div>
+          <div>
+            ${mine?'<span class="shop-owner-tag">我创建的</span>':""}
+            ${favorite?'<span class="shop-favorite-tag">常用 ♡</span>':""}
+          </div>
+        </div>
+        <p>${safe(shop.currency_symbol||"¥")} · ${shop.is_active===false?"停用":"公开价格表"}</p>
+        <p>${safe(shop.footer_text||"")}</p>
+        <div class="row-actions">
+          <button class="tiny-btn" data-use-shop="${shop.id}" type="button">用这个店派单</button>
+          <button class="tiny-btn" data-favorite-shop="${shop.id}" type="button">${favorite?"取消常用":"加入常用"}</button>
+          ${mine?`
+            <button class="tiny-btn" data-edit-shop="${shop.id}" type="button">编辑店铺</button>
+            <button class="tiny-btn danger" data-delete-shop="${shop.id}" type="button">删除</button>
+          `:""}
+        </div>
       </div>
-    </div>
-  `).join("");
+    `;
+  }).join("") : '<div class="empty-state">没有找到这个店。</div>';
 }
 
 function renderTemplate(){
@@ -341,7 +517,19 @@ function renderReceiptSettings(){
 }
 
 function renderDataSummary(){
-  $("dataSummary").textContent=`${state.shops.length} 个店铺 · ${state.items.length} 个当前店铺项目 · ${state.customers.length} 位当前店铺老板 · ${state.records.length} 条消费记录`;
+  $("dataSummary").textContent=`${state.shops.length} 个可见店铺 · ${state.savedShopIds.length} 个常用店铺 · ${state.items.length} 个当前店铺项目 · ${state.customers.length} 位自己的老板 · ${state.records.length} 条自己的消费记录`;
+}
+
+function applyPriceEditPermissions(){
+  const canEdit=ownsShop();
+  const ids=["newCategoryName","addCategoryBtn","priceName","priceCategory","priceValue","priceUnitLabel","priceUnitMinutes","priceSort","priceManual","priceNotes","savePriceItemBtn"];
+  ids.forEach(id=>{
+    const el=$(id);
+    if(el) el.disabled=!canEdit;
+  });
+  $("itemFormTitle").textContent=canEdit
+    ? (state.editingItemId?"编辑价格项目":"新增价格项目")
+    : "共享价格表（只读）";
 }
 
 function resetCalculatorVisual(){
@@ -660,6 +848,7 @@ function openReceiptPreview(){
 }
 
 async function addCategory(){
+  if(!ownsShop()){toast("这家店的价格表只能由创建者修改");return}
   const name=$("newCategoryName").value.trim();
   if(!name){toast("先填分类名称");return}
   const {error}=await supabase.from("price_categories").insert({shop_id:state.shopId,name,sort_order:state.categories.length*10});
@@ -685,6 +874,7 @@ function resetPriceForm(){
 }
 
 async function savePriceItem(){
+  if(!ownsShop()){toast("这家店的价格表只能由创建者修改");return}
   const payload={
     shop_id:state.shopId,
     category_id:$("priceCategory").value||null,
@@ -712,6 +902,7 @@ async function savePriceItem(){
 }
 
 function editPriceItem(id){
+  if(!ownsShop()){toast("这家店的价格表是共享只读的");return}
   const item=state.items.find(x=>x.id===id);
   if(!item) return;
   state.editingItemId=id;
@@ -730,6 +921,7 @@ function editPriceItem(id){
 }
 
 async function togglePriceItem(id){
+  if(!ownsShop()){toast("这家店的价格表只能由创建者修改");return}
   const item=state.items.find(x=>x.id===id);
   if(!item) return;
   const {error}=await supabase.from("price_items").update({is_active:!item.is_active}).eq("id",id);
@@ -738,6 +930,7 @@ async function togglePriceItem(id){
 }
 
 async function deletePriceItem(id){
+  if(!ownsShop()){toast("这家店的价格表只能由创建者修改");return}
   if(!confirm("确定删除这个价格项目吗？历史消费记录会保留当时的价格快照。")) return;
   const {error}=await supabase.from("price_items").delete().eq("id",id);
   if(error){toast("删除失败："+error.message);return}
@@ -745,6 +938,7 @@ async function deletePriceItem(id){
 }
 
 async function deleteCategory(id){
+  if(!ownsShop()){toast("这家店的价格表只能由创建者修改");return}
   if(!confirm("删除分类后，分类下的项目会变成「未分类」，继续吗？")) return;
   const {error}=await supabase.from("price_categories").delete().eq("id",id);
   if(error){toast("删除失败："+error.message);return}
@@ -795,6 +989,7 @@ async function saveShop(){
 
 function editShop(id){
   const shop=state.shops.find(s=>s.id===id);
+  if(!ownsShop(shop)){toast("只有创建者可以编辑这家店");return}
   if(!shop) return;
   state.editingShopId=id;
   $("shopFormTitle").textContent="编辑店铺";
@@ -820,7 +1015,10 @@ async function useShop(id){
 }
 
 async function deleteShop(id){
-  if(state.shops.length<=1){toast("至少保留一个店铺");return}
+  const shop=state.shops.find(s=>s.id===id);
+  if(!ownsShop(shop)){toast("只有创建者可以删除这家店");return}
+  const myShopCount=state.shops.filter(s=>ownsShop(s)).length;
+  if(myShopCount<=1){toast("至少保留一个自己创建的店铺");return}
   if(!confirm("删除店铺会一起删除它的价格表、老板和消费记录，确定吗？")) return;
   const {error}=await supabase.from("shops").delete().eq("id",id);
   if(error){toast("删除失败："+error.message);return}
@@ -1000,11 +1198,17 @@ function bindEvents(){
   $("cancelShopEditBtn").addEventListener("click",resetShopForm);
   $("shopList").addEventListener("click",e=>{
     const use=e.target.closest("[data-use-shop]");
+    const fav=e.target.closest("[data-favorite-shop]");
     const edit=e.target.closest("[data-edit-shop]");
     const del=e.target.closest("[data-delete-shop]");
     if(use) useShop(use.dataset.useShop);
+    if(fav) toggleFavoriteShop(fav.dataset.favoriteShop);
     if(edit) editShop(edit.dataset.editShop);
     if(del) deleteShop(del.dataset.deleteShop);
+  });
+  $("shopSearch").addEventListener("input",()=>{
+    state.shopSearch=$("shopSearch").value;
+    renderShopList();
   });
 
   $("templateShop").addEventListener("change",()=>loadTemplateFor($("templateShop").value));
@@ -1031,6 +1235,15 @@ function bindEvents(){
   $("closeReceiptDialog").addEventListener("click",()=>$("receiptDialog").close());
   $("dialogExportBtn").addEventListener("click",exportReceipt);
   $("refreshDataBtn").addEventListener("click",bootstrap);
+  $("saveProfileBtn").addEventListener("click",saveProfile);
+  $("profileAvatarFile").addEventListener("change",()=>{
+    const file=$("profileAvatarFile").files?.[0];
+    if(!file) return;
+    const url=URL.createObjectURL(file);
+    $("settingsAvatarImg").src=url;
+    $("settingsAvatarImg").classList.remove("hidden");
+    $("settingsAvatarFallback").classList.add("hidden");
+  });
 }
 
 bindEvents();
