@@ -502,7 +502,17 @@ bind();
 
 const {data}=await supabase.auth.getSession();
 state.session=data.session;
-if(state.session) await refreshOwnership();
+if(state.session){
+  await refreshOwnership();
+  setTimeout(refreshOwnership,700);
+  setTimeout(refreshOwnership,1600);
+}
+
+const shopSelect=$("calcShop");
+if(shopSelect){
+  const observer=new MutationObserver(()=>refreshOwnership());
+  observer.observe(shopSelect,{childList:true,subtree:true});
+}
 
 supabase.auth.onAuthStateChange(async(_event,session)=>{
   state.session=session;
