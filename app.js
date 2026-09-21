@@ -71,8 +71,13 @@ function setAuthHint(text,bad=false){
 }
 
 function setConnection(text,ok=true){
-  $("connectionStatus").className="connection-pill "+(ok?"good":"bad");
-  $("connectionText").textContent=text;
+  const box=$("connectionStatus");
+  const label=$("connectionText");
+  if(!box||!label) return;
+
+  // 连接正常时不占界面；只有连接异常才提示。
+  box.className="connection-pill "+(ok?"good hidden":"bad");
+  label.textContent=text;
 }
 
 function currentShop(){
