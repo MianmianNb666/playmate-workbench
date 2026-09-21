@@ -2342,3 +2342,45 @@ html.pre-top body:not(.booting){
     font-size:22px;
   }
 }
+
+
+/* V3.0 修复：电脑端收起后保留展开箭头 */
+@media(min-width:961px){
+  body.desktop-sidebar-collapsed .section-nav .desktop-side-brand{
+    display:block!important;
+    position:fixed;
+    left:0;
+    top:50%;
+    width:0;
+    height:0;
+    padding:0;
+    margin:0;
+    border:0;
+    overflow:visible;
+    z-index:70;
+  }
+
+  body.desktop-sidebar-collapsed .section-nav .desktop-side-brand > div{
+    display:none!important;
+  }
+
+  body.desktop-sidebar-collapsed .section-nav .desktop-sidebar-collapse-btn{
+    display:flex!important;
+    position:fixed;
+    left:0;
+    top:50%;
+    width:32px;
+    height:52px;
+    min-width:32px;
+    min-height:52px;
+    transform:translateY(-50%);
+    align-items:center;
+    justify-content:center;
+    border-radius:0 999px 999px 0;
+    background:var(--paper);
+    color:var(--pink-deep);
+    border:1px solid var(--line);
+    box-shadow:0 8px 22px color-mix(in srgb,var(--pink) 14%,transparent);
+    z-index:90;
+  }
+}
