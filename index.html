@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v17">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v18">
 </head>
 <body>
   <div id="toast" class="toast" aria-live="polite"></div>
@@ -78,6 +78,7 @@
       <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
       <button class="nav-tab" data-page="prices" type="button">价格表</button>
       <button class="nav-tab" data-page="records" type="button">消费记录</button>
+      <button class="nav-tab" data-page="customers" type="button">顾客档案</button>
       <button class="nav-tab" data-page="shops" type="button">店铺</button>
       <button class="nav-tab" data-page="receipt" type="button">小票设置</button>
       <button class="nav-tab" data-page="settings" type="button">设置</button>
@@ -291,6 +292,49 @@
       </div>
     </section>
 
+    <section id="page-customers" class="page">
+      <div class="page-head">
+        <div><small>CUSTOMERS</small><h2>顾客档案</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="two-col customer-page-grid">
+        <div class="card">
+          <div class="card-title"><div><b id="customerProfileFormTitle">建立顾客档案</b></div></div>
+          <div class="form-grid">
+            <label>店铺
+              <select id="customerShop"></select>
+            </label>
+            <label>顾客昵称
+              <input id="customerProfileName" maxlength="60" placeholder="老板昵称">
+            </label>
+            <label>联系方式
+              <input id="customerProfileContact" maxlength="120" placeholder="微信 / QQ / 其他">
+            </label>
+            <label>折扣
+              <input id="customerProfileDiscount" placeholder="例如 9折 / 8.5折 / 90%">
+            </label>
+            <label class="wide">备注
+              <textarea id="customerProfileNotes" rows="4" maxlength="500" placeholder="可记录偏好、禁忌、常点项目等"></textarea>
+            </label>
+          </div>
+          <div class="mini-actions">
+            <button id="cancelCustomerProfileBtn" class="btn ghost hidden" type="button">取消编辑</button>
+            <button id="saveCustomerProfileBtn" class="btn primary" type="button">保存顾客档案</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <div><b>我的顾客</b></div>
+            <input id="customerProfileSearch" class="shop-search" placeholder="搜索昵称 / 联系方式 / 备注">
+          </div>
+          <div id="customerProfileList" class="customer-profile-list"></div>
+          <div id="emptyCustomerProfiles" class="empty-state hidden">还没有顾客档案。</div>
+        </div>
+      </div>
+    </section>
+
     <section id="page-shops" class="page">
       <div class="page-head">
         <div><small>SHOP LIBRARY</small><h2>店铺大厅</h2></div>
@@ -422,6 +466,26 @@
           <p id="settingsEmail" class="muted"></p>
 
         </div>
+        <div class="card theme-settings-card">
+          <div class="card-title"><div><b>配色</b></div></div>
+          <div class="theme-presets">
+            <button class="theme-preset active" data-theme-preset="beige" type="button">米白</button>
+            <button class="theme-preset" data-theme-preset="pink" type="button">奶粉</button>
+            <button class="theme-preset" data-theme-preset="mint" type="button">薄荷</button>
+            <button class="theme-preset" data-theme-preset="blue" type="button">雾蓝</button>
+            <button class="theme-preset" data-theme-preset="lavender" type="button">雾紫</button>
+          </div>
+          <div class="theme-color-grid">
+            <label>底色<input id="themeBg" type="color" value="#f6f0e7"></label>
+            <label>主色<input id="themeAccent" type="color" value="#e58aa7"></label>
+            <label>卡片<input id="themePaper" type="color" value="#fffdf9"></label>
+            <label>文字<input id="themeInk" type="color" value="#4d413d"></label>
+          </div>
+          <div class="mini-actions">
+            <button id="resetThemeBtn" class="btn ghost" type="button">恢复米白</button>
+            <button id="saveThemeBtn" class="btn primary" type="button">保存配色</button>
+          </div>
+        </div>
         <div class="card">
           <b>当前数据</b>
           <p id="dataSummary" class="muted">正在读取…</p>
@@ -469,7 +533,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app.js?v=20260921-v17"></script>
+  <script type="module" src="./app.js?v=20260921-v18"></script>
   <script type="module" src="./boss-features.js?v=20260921-v13"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
