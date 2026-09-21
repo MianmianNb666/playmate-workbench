@@ -1756,20 +1756,70 @@ function renderReceiptForCurrentCalc(targetId){
   return true;
 }
 
+async function imageUrlToDataUrl(url){
+  const response=await fetch(url,{mode:"cors",cache:"no-store"});
+  if(!response.ok) throw new Error("image fetch failed");
+  const blob=await response.blob();
+  return await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function captureElementPng(el,filename){
+  if(!window.html2canvas) throw new Error("html2canvas unavailable");
+
+  const restorers=[];
+  const images=[...el.querySelectorAll("img")];
+
+  for(const img of images){
+    const src=img.getAttribute("src")||"";
+    if(!src || src.startsWith("data:") || src.startsWith("blob:")) continue;
+    try{
+      const absolute=new URL(src,location.href);
+      if(absolute.origin===location.origin) continue;
+      const dataUrl=await imageUrlToDataUrl(absolute.href);
+      const oldSrc=img.getAttribute("src");
+      img.setAttribute("src",dataUrl);
+      restorers.push(()=>img.setAttribute("src",oldSrc));
+    }catch{
+      const oldDisplay=img.style.display;
+      img.style.display="none";
+      restorers.push(()=>{img.style.display=oldDisplay});
+    }
+  }
+
+  try{
+    const canvas=await window.html2canvas(el,{
+      scale:2,
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:null,
+      logging:false
+    });
+    const link=document.createElement("a");
+    link.download=filename;
+    link.href=canvas.toDataURL("image/png");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }finally{
+    restorers.forEach(fn=>fn());
+  }
+}
+
 async function exportReceipt(){
   if(!renderReceiptForCurrentCalc("receiptCapture")) return;
   const el=$("receiptCapture");
   if(!window.html2canvas){toast("图片组件还没加载好，请稍后再试");return}
   try{
-    const canvas=await window.html2canvas(el,{scale:2,useCORS:true,backgroundColor:null});
-    const link=document.createElement("a");
-    link.download=`消费小票-${Date.now()}.png`;
-    link.href=canvas.toDataURL("image/png");
-    link.click();
+    await captureElementPng(el,`消费小票-${Date.now()}.png`);
     toast("小票图片已生成 ♡");
   }catch(error){
     console.error(error);
-    toast("导出失败，Logo 跨域时可以先关闭 Logo 再试");
+    toast("导出失败，请刷新后再试");
   }
 }
 
