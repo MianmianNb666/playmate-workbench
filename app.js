@@ -64,10 +64,6 @@ function mobileNavStorageKey(){
   return "paimini-mobile-nav-mode";
 }
 
-function sidebarCollapsedKey(){
-  return "paimini-sidebar-collapsed-"+(state.session?.user?.id||"guest");
-}
-
 function getMobileNavMode(){
   try{
     return localStorage.getItem(mobileNavStorageKey())==="left"?"left":"top";
@@ -76,38 +72,28 @@ function getMobileNavMode(){
   }
 }
 
-function getSidebarCollapsed(){
-  try{
-    return localStorage.getItem(sidebarCollapsedKey())==="1";
-  }catch{
-    return false;
-  }
+function closeMobileDrawer(){
+  document.body.classList.remove("mobile-drawer-open");
 }
 
-function setSidebarCollapsed(value){
-  try{
-    localStorage.setItem(sidebarCollapsedKey(),value?"1":"0");
-  }catch{}
-  applyMobileNavLayout();
+function openMobileDrawer(){
+  if(getMobileNavMode()!=="left") return;
+  document.body.classList.add("mobile-drawer-open");
 }
 
 function applyMobileNavLayout(){
   const mode=getMobileNavMode();
   document.body.classList.toggle("mobile-nav-left",mode==="left");
   document.body.classList.toggle("mobile-nav-top",mode!=="left");
-
-  const collapsed=mode==="left"&&getSidebarCollapsed();
-  document.body.classList.toggle("mobile-sidebar-collapsed",collapsed);
+  if(mode!=="left") closeMobileDrawer();
 
   document.querySelectorAll("[data-mobile-nav-mode]").forEach(btn=>{
     btn.classList.toggle("active",btn.dataset.mobileNavMode===mode);
   });
 
-  const collapseBtn=$("verticalNavCollapseBtn");
-  if(collapseBtn){
-    collapseBtn.textContent=collapsed?"›":"‹";
-    collapseBtn.title=collapsed?"展开左侧导航":"收起左侧导航";
-    collapseBtn.setAttribute("aria-label",collapsed?"展开左侧导航":"收起左侧导航");
+  const menuBtn=$("mobileMenuBtn");
+  if(menuBtn){
+    menuBtn.classList.toggle("show",mode==="left");
   }
 }
 
@@ -116,11 +102,9 @@ function setMobileNavMode(mode){
   try{
     localStorage.setItem(mobileNavStorageKey(),next);
   }catch{}
-  if(next==="top"){
-    try{localStorage.setItem(sidebarCollapsedKey(),"0")}catch{}
-  }
+  closeMobileDrawer();
   applyMobileNavLayout();
-  toast(next==="left"?"已切换为左侧竖向导航":"已切换为顶部横向导航");
+  toast(next==="left"?"已切换为抽屉侧边栏":"已切换为顶部横向导航");
 }
 
 
@@ -2073,10 +2057,9 @@ function bindEvents(){
   document.querySelectorAll("[data-mobile-nav-mode]").forEach(btn=>{
     btn.addEventListener("click",()=>setMobileNavMode(btn.dataset.mobileNavMode));
   });
-  $("verticalNavCollapseBtn").addEventListener("click",()=>{
-    if(getMobileNavMode()!=="left") return;
-    setSidebarCollapsed(!getSidebarCollapsed());
-  });
+  $("verticalNavCollapseBtn").addEventListener("click",closeMobileDrawer);
+  $("mobileMenuBtn").addEventListener("click",openMobileDrawer);
+  $("mobileNavOverlay").addEventListener("click",closeMobileDrawer);
   $("installAppBtn").addEventListener("click",installPaiMini);
   $("settingsInstallAppBtn").addEventListener("click",installPaiMini);
   $("saveDesktopAppBtn").addEventListener("click",saveDesktopPrefs);
@@ -2095,7 +2078,10 @@ function bindEvents(){
   $("expiredRenewBtn").addEventListener("click",()=>redeemRenewal("expiredRenewalCode","expiredHint"));
   $("settingsRenewBtn").addEventListener("click",()=>redeemRenewal("settingsRenewalCode","settingsRenewHint"));
 
-  document.querySelectorAll(".nav-tab").forEach(btn=>btn.addEventListener("click",()=>showPage(btn.dataset.page)));
+  document.querySelectorAll(".nav-tab").forEach(btn=>btn.addEventListener("click",()=>{
+    showPage(btn.dataset.page);
+    if(getMobileNavMode()==="left") closeMobileDrawer();
+  }));
 
   $("calcShop").addEventListener("change",async()=>{
     state.shopId=$("calcShop").value;
