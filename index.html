@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260921-v42">
+  <link rel="stylesheet" href="./styles.css?v=20260922-v43">
   <script>
     (function(){
       try{
@@ -208,6 +208,24 @@
             <small id="calcFormula">等待选择项目</small>
           </div>
         </div>
+      </div>
+
+      <div class="card multi-order-card">
+        <div class="card-title multi-order-title">
+          <div><b>④ 多陪玩 / 多项目</b><small>一个陪玩可以接多个项目，也可以继续添加其他陪玩</small></div>
+          <button id="addCompanionGroupBtn" class="tiny-btn" type="button">＋ 添加陪玩</button>
+        </div>
+        <div id="multiCompanionGroups" class="multi-companion-groups"></div>
+        <div class="multi-order-summary">
+          <div><span>多明细原价</span><b id="multiOriginalTotal">¥0.00</b></div>
+          <div><span>老板折扣</span><b id="multiDiscountLabel">10折</b></div>
+          <div class="grand"><span>多明细总价</span><strong id="multiGrandTotal">¥0.00</strong></div>
+        </div>
+        <div class="multi-order-actions">
+          <button id="useMultiOrderBtn" class="btn primary" type="button">使用这组明细作为本单</button>
+          <button id="clearMultiOrderBtn" class="btn ghost" type="button">清空多明细</button>
+        </div>
+        <small class="multi-order-help">启用后，下方复制报备、预览小票、导出图片和保存记录都会按这组明细的合计金额处理。</small>
       </div>
 
       <div class="action-row">
