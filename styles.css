@@ -2234,3 +2234,111 @@ html.pre-top body:not(.booting){
     width:100%;
   }
 }
+
+
+/* V2.9 手机端细化：更轻的启动页 + 更紧凑的顶部 */
+@media(max-width:720px){
+  .boot-mark{
+    font-size:22px;
+    letter-spacing:-.5px;
+    opacity:.92;
+  }
+
+  .boot-splash{
+    background:var(--bg);
+  }
+
+  .topbar{
+    padding-top:4px;
+    padding-bottom:10px;
+  }
+
+  .top-identity{
+    gap:9px;
+  }
+
+  .profile-avatar{
+    width:42px;
+    height:42px;
+    flex-basis:42px;
+    border-radius:14px;
+    font-size:20px;
+  }
+
+  .topbar h1{
+    font-size:22px;
+    max-width:52vw;
+    letter-spacing:-.6px;
+  }
+
+  .mobile-menu-btn{
+    width:36px;
+    height:36px;
+    min-width:36px;
+    min-height:36px;
+    border-radius:11px;
+    font-size:17px;
+  }
+
+  .top-actions .icon-btn{
+    height:34px;
+    min-height:34px;
+    padding:0 9px;
+    font-size:10px;
+  }
+
+  .welcome-strip{
+    min-height:132px;
+    padding:18px;
+    border-radius:20px;
+  }
+
+  .welcome-strip h2{
+    font-size:24px;
+    line-height:1.18;
+  }
+
+  .welcome-strip p{
+    font-size:11px;
+    line-height:1.55;
+  }
+
+  .home-quick-actions{
+    margin-top:12px;
+    gap:7px;
+  }
+
+  .home-quick-btn{
+    min-height:32px;
+    padding:0 10px;
+    font-size:9px;
+  }
+
+  .page-head h2{
+    font-size:25px;
+  }
+
+  .card{
+    border-radius:19px;
+    padding:16px;
+  }
+
+  .section-nav{
+    border-radius:18px;
+  }
+}
+
+@media(max-width:420px){
+  .boot-mark{
+    font-size:20px;
+  }
+
+  .topbar h1{
+    font-size:20px;
+    max-width:46vw;
+  }
+
+  .welcome-strip h2{
+    font-size:22px;
+  }
+}
