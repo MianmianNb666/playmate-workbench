@@ -839,6 +839,7 @@ function receiptHtml(data,settings){
       ${lines.map(([k,v])=>`<div class="receipt-line"><span>${safe(k)}</span><b>${safe(v)}</b></div>`).join("")}
     </div>
     <div class="receipt-total"><span>本单金额</span><strong>${money(data.total,shop)}</strong></div>
+    ${settings.boss_message?`<div class="receipt-message">${safe(settings.boss_message)}</div>`:""}
     ${settings.show_footer?`<div class="receipt-footer">${safe(shop.footer_text||"谢谢喜欢，祝你今天也开心 ♡")}</div>`:""}
   `;
 }
