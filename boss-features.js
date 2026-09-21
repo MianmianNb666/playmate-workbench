@@ -217,17 +217,57 @@ async function openBossStatement(index){
   $("bossStatementDialog").showModal();
 }
 
+async function imageUrlToDataUrl(url){
+  const response=await fetch(url,{mode:"cors",cache:"no-store"});
+  if(!response.ok) throw new Error("image fetch failed");
+  const blob=await response.blob();
+  return await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function exportElement(el,filename){
   if(!el||!window.html2canvas) return;
-  const canvas=await window.html2canvas(el,{
-    scale:2,
-    useCORS:true,
-    backgroundColor:null
-  });
-  const link=document.createElement("a");
-  link.download=filename;
-  link.href=canvas.toDataURL("image/png");
-  link.click();
+
+  const restorers=[];
+  const images=[...el.querySelectorAll("img")];
+  for(const img of images){
+    const src=img.getAttribute("src")||"";
+    if(!src || src.startsWith("data:") || src.startsWith("blob:")) continue;
+    try{
+      const absolute=new URL(src,location.href);
+      if(absolute.origin===location.origin) continue;
+      const dataUrl=await imageUrlToDataUrl(absolute.href);
+      const oldSrc=img.getAttribute("src");
+      img.setAttribute("src",dataUrl);
+      restorers.push(()=>img.setAttribute("src",oldSrc));
+    }catch{
+      const oldDisplay=img.style.display;
+      img.style.display="none";
+      restorers.push(()=>{img.style.display=oldDisplay});
+    }
+  }
+
+  try{
+    const canvas=await window.html2canvas(el,{
+      scale:2,
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:null,
+      logging:false
+    });
+    const link=document.createElement("a");
+    link.download=filename;
+    link.href=canvas.toDataURL("image/png");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }finally{
+    restorers.forEach(fn=>fn());
+  }
 }
 
 async function loadData(){
