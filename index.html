@@ -642,7 +642,46 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260922-4"></script>
+  <script>
+    // 手机端启动保险：如果模块/CDN在 Safari/PWA 中加载异常，不能永远卡在启动 Logo。
+    window.__paiminiBootWatch=setTimeout(function(){
+      if(document.body.classList.contains("booting")){
+        document.body.classList.remove("booting");
+        var gate=document.getElementById("authGate");
+        if(gate) gate.classList.remove("hidden");
+        var hint=document.getElementById("authHint");
+        if(hint){
+          hint.textContent="手机版启动文件没有加载完成，请点下方「修复手机版缓存」后重试。";
+          hint.style.color="var(--bad)";
+        }
+        var panel=document.querySelector("#authGate .auth-panel");
+        if(panel && !document.getElementById("mobileCacheRepairBtn")){
+          var btn=document.createElement("button");
+          btn.id="mobileCacheRepairBtn";
+          btn.type="button";
+          btn.className="btn soft full-btn";
+          btn.textContent="修复手机版缓存";
+          btn.onclick=async function(){
+            try{
+              if("serviceWorker" in navigator){
+                var regs=await navigator.serviceWorker.getRegistrations();
+                await Promise.all(regs.map(function(r){return r.unregister()}));
+              }
+              if("caches" in window){
+                var keys=await caches.keys();
+                await Promise.all(keys.map(function(k){return caches.delete(k)}));
+              }
+            }catch(e){}
+            var u=new URL(location.href);
+            u.searchParams.set("_fresh",Date.now());
+            location.replace(u.toString());
+          };
+          panel.appendChild(btn);
+        }
+      }
+    },4500);
+  </script>
+  <script type="module" src="./app-v20260921-8.js?v=20260922-5"></script>
   <script type="module" src="./boss-features.js?v=20260921-v16"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
