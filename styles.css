@@ -530,3 +530,15 @@ button{cursor:pointer}
   .banner-copy p{font-size:10px;line-height:1.5}
   .leaf{font-size:48px;right:10px;bottom:8px}
 }
+
+.hero-illustration,.calculator-cat,.sleepy-illustration{filter:drop-shadow(0 10px 16px rgba(119,72,91,.06))}
+.feature-visual{overflow:visible}
+@media(max-width:850px){
+  .hero-illustration{right:-54px;width:590px}
+  .calculator-cat{left:-16px;width:410px}
+}
+@media(max-width:620px){
+  .hero-illustration{right:-92px;width:500px;bottom:0}
+  .calculator-cat{left:-58px;width:330px}
+  .sleepy-illustration{width:150px;max-width:42%}
+}
