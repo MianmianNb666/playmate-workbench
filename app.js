@@ -60,6 +60,38 @@ const defaultReceipt = () => ({
 
 let deferredInstallPrompt=null;
 
+function desktopSidebarStorageKey(){
+  return "paimini-desktop-sidebar-collapsed";
+}
+
+function getDesktopSidebarCollapsed(){
+  try{
+    return localStorage.getItem(desktopSidebarStorageKey())==="1";
+  }catch{
+    return false;
+  }
+}
+
+function applyDesktopSidebarState(){
+  const collapsed=getDesktopSidebarCollapsed();
+  document.body.classList.toggle("desktop-sidebar-collapsed",collapsed);
+
+  const btn=$("desktopSidebarCollapseBtn");
+  if(btn){
+    btn.textContent=collapsed?"›":"‹";
+    btn.title=collapsed?"展开左侧导航":"收起左侧导航";
+    btn.setAttribute("aria-label",collapsed?"展开左侧导航":"收起左侧导航");
+  }
+}
+
+function toggleDesktopSidebar(){
+  const next=!getDesktopSidebarCollapsed();
+  try{
+    localStorage.setItem(desktopSidebarStorageKey(),next?"1":"0");
+  }catch{}
+  applyDesktopSidebarState();
+}
+
 function mobileNavStorageKey(){
   return "paimini-mobile-nav-mode";
 }
@@ -2054,6 +2086,7 @@ function bindEvents(){
   $("signInBtn").addEventListener("click",signIn);
   $("signOutBtn").addEventListener("click",signOut);
   $("settingsSignOutBtn").addEventListener("click",signOut);
+  $("desktopSidebarCollapseBtn").addEventListener("click",toggleDesktopSidebar);
   document.querySelectorAll("[data-mobile-nav-mode]").forEach(btn=>{
     btn.addEventListener("click",()=>setMobileNavMode(btn.dataset.mobileNavMode));
   });
@@ -2242,6 +2275,7 @@ function bindEvents(){
 
 loadTheme();
 renderDesktopPrefs();
+applyDesktopSidebarState();
 applyMobileNavLayout();
 registerPaiMiniPwa();
 bindEvents();
