@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260922-v43">
+  <link rel="stylesheet" href="./styles.css?v=20260921-v42">
   <script>
     (function(){
       try{
@@ -208,24 +208,6 @@
             <small id="calcFormula">等待选择项目</small>
           </div>
         </div>
-      </div>
-
-      <div class="card multi-order-card">
-        <div class="card-title multi-order-title">
-          <div><b>④ 多陪玩 / 多项目</b><small>一个陪玩可以接多个项目，也可以继续添加其他陪玩</small></div>
-          <button id="addCompanionGroupBtn" class="tiny-btn" type="button">＋ 添加陪玩</button>
-        </div>
-        <div id="multiCompanionGroups" class="multi-companion-groups"></div>
-        <div class="multi-order-summary">
-          <div><span>多明细原价</span><b id="multiOriginalTotal">¥0.00</b></div>
-          <div><span>老板折扣</span><b id="multiDiscountLabel">10折</b></div>
-          <div class="grand"><span>多明细总价</span><strong id="multiGrandTotal">¥0.00</strong></div>
-        </div>
-        <div class="multi-order-actions">
-          <button id="useMultiOrderBtn" class="btn primary" type="button">使用这组明细作为本单</button>
-          <button id="clearMultiOrderBtn" class="btn ghost" type="button">清空多明细</button>
-        </div>
-        <small class="multi-order-help">启用后，下方复制报备、预览小票、导出图片和保存记录都会按这组明细的合计金额处理。</small>
       </div>
 
       <div class="action-row">
@@ -642,46 +624,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script>
-    // 手机端启动保险：如果模块/CDN在 Safari/PWA 中加载异常，不能永远卡在启动 Logo。
-    window.__paiminiBootWatch=setTimeout(function(){
-      if(document.body.classList.contains("booting")){
-        document.body.classList.remove("booting");
-        var gate=document.getElementById("authGate");
-        if(gate) gate.classList.remove("hidden");
-        var hint=document.getElementById("authHint");
-        if(hint){
-          hint.textContent="手机版启动文件没有加载完成，请点下方「修复手机版缓存」后重试。";
-          hint.style.color="var(--bad)";
-        }
-        var panel=document.querySelector("#authGate .auth-panel");
-        if(panel && !document.getElementById("mobileCacheRepairBtn")){
-          var btn=document.createElement("button");
-          btn.id="mobileCacheRepairBtn";
-          btn.type="button";
-          btn.className="btn soft full-btn";
-          btn.textContent="修复手机版缓存";
-          btn.onclick=async function(){
-            try{
-              if("serviceWorker" in navigator){
-                var regs=await navigator.serviceWorker.getRegistrations();
-                await Promise.all(regs.map(function(r){return r.unregister()}));
-              }
-              if("caches" in window){
-                var keys=await caches.keys();
-                await Promise.all(keys.map(function(k){return caches.delete(k)}));
-              }
-            }catch(e){}
-            var u=new URL(location.href);
-            u.searchParams.set("_fresh",Date.now());
-            location.replace(u.toString());
-          };
-          panel.appendChild(btn);
-        }
-      }
-    },4500);
-  </script>
-  <script type="module" src="./app-v20260921-8.js?v=20260922-5"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260922-1"></script>
   <script type="module" src="./boss-features.js?v=20260921-v16"></script>
   <script type="module" src="./price-import.js?v=20260921-v19"></script>
 </body>
