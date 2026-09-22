@@ -2,6 +2,15 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js";
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const READONLY_CHECK_TIMEOUT_MS=7000;
+
+function withDeadline(promise,ms=READONLY_CHECK_TIMEOUT_MS){
+  let timer;
+  const timeout=new Promise((_,reject)=>{
+    timer=setTimeout(()=>reject(new Error('readonly access check timeout')),ms);
+  });
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
 
 function formatDate(value){
   if(!value)return '';
@@ -20,31 +29,50 @@ function injectStyle(){
   document.head.appendChild(style);
 }
 
+function markReadonlyDisabled(el){
+  if(!el)return;
+  el.disabled=true;
+  el.dataset.paiminiReadonlyDisabled='1';
+  el.classList.add('readonly-disabled');
+  el.title='账号已到期，当前为只读模式';
+}
+
 function disableKnownWrites(){
   const ids=[
     'saveRecordBtn','saveWholeOrderBtn','savePriceItemBtn','saveItemBtn','saveCategoryBtn','saveShopBtn','saveCustomerBtn',
     'saveTemplateBtn','saveReceiptBtn','saveProfileBtn','saveWalletPresetBtn','addDraftBenefitBtn',
-    'joinShopBtn','toggleShopInviteBtn','regenerateShopInviteBtn',
-    'settingsRenewBtn','expiredRenewBtn'
+    'joinShopBtn','toggleShopInviteBtn','regenerateShopInviteBtn'
   ];
-  ids.forEach(id=>{
-    const el=document.getElementById(id);
-    if(el && !['settingsRenewBtn','expiredRenewBtn'].includes(id)){
-      el.disabled=true;
-      el.classList.add('readonly-disabled');
-      el.title='账号已到期，当前为只读模式';
+  ids.forEach(id=>markReadonlyDisabled(document.getElementById(id)));
+  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],[data-leave-shop],[data-remove-shop-member],#toggleDeleteModeBtn').forEach(markReadonlyDisabled);
+}
+
+function restoreReadonlyDisabled(){
+  document.querySelectorAll('[data-paimini-readonly-disabled="1"],.readonly-disabled').forEach(el=>{
+    if(el.dataset.paiminiReadonlyDisabled==='1' || el.title==='账号已到期，当前为只读模式'){
+      el.disabled=false;
+      delete el.dataset.paiminiReadonlyDisabled;
+      el.classList.remove('readonly-disabled');
+      if(el.title==='账号已到期，当前为只读模式') el.removeAttribute('title');
     }
-  });
-  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],[data-leave-shop],[data-remove-shop-member],#toggleDeleteModeBtn').forEach(el=>{
-    el.disabled=true;
-    el.classList.add('readonly-disabled');
-    el.title='账号已到期，当前为只读模式';
   });
 }
 
-function removeBanner(){
+function removeReadonlyState(){
   document.getElementById('readonlyAccessBanner')?.remove();
   document.body.classList.remove('paimini-readonly');
+  restoreReadonlyDisabled();
+}
+
+function shouldBeReadonly(status){
+  if(!status || typeof status!=='object') return false;
+  // 核心权限判定优先。只要 has_access 明确为 true，就绝不进入只读。
+  if(status.has_access===true) return false;
+
+  const until=status.valid_until ? new Date(status.valid_until).getTime() : NaN;
+  if(Number.isFinite(until) && until>Date.now()) return false;
+
+  return status.read_only===true || status.has_access===false;
 }
 
 async function renderReadonly(status){
@@ -82,29 +110,48 @@ async function renderReadonly(status){
     const hint=document.getElementById('readonlyRenewHint');
     if(!code){if(hint)hint.textContent='先输入续费邀请码';return}
     if(hint)hint.textContent='正在兑换…';
-    const {data,error}=await supabase.rpc('redeem_renewal_code',{p_code:code});
-    if(error){if(hint)hint.textContent='续费失败：'+error.message;return}
-    if(!data?.success){
-      if(hint)hint.textContent=data?.reason==='ALREADY_USED_BY_USER'?'这个邀请码你已经使用过':'邀请码无效、已使用或已过期';
-      return;
+    try{
+      const {data,error}=await withDeadline(supabase.rpc('redeem_renewal_code',{p_code:code}));
+      if(error){if(hint)hint.textContent='续费失败：'+error.message;return}
+      if(!data?.success){
+        if(hint)hint.textContent=data?.reason==='ALREADY_USED_BY_USER'?'这个邀请码你已经使用过':'邀请码无效、已使用或已过期';
+        return;
+      }
+      if(hint)hint.textContent=`续费成功，+${data.added_days}天，正在恢复编辑…`;
+      setTimeout(()=>location.reload(),700);
+    }catch(error){
+      if(hint)hint.textContent='续费检查超时，请稍后重试';
+      console.warn('readonly renewal failed',error);
     }
-    if(hint)hint.textContent=`续费成功，+${data.added_days}天，正在恢复编辑…`;
-    setTimeout(()=>location.reload(),700);
   });
 }
 
 async function refreshAccess(){
-  const {data:sessionData}=await supabase.auth.getSession();
-  if(!sessionData?.session){removeBanner();return}
-  const {data,error}=await supabase.rpc('get_access_status');
-  if(error)return;
-  if(data?.read_only)await renderReadonly(data);else removeBanner();
+  try{
+    const {data:sessionData}=await withDeadline(supabase.auth.getSession());
+    if(!sessionData?.session){removeReadonlyState();return}
+
+    const {data,error}=await withDeadline(supabase.rpc('get_access_status'));
+    if(error){
+      console.warn('readonly access rpc failed',error);
+      removeReadonlyState();
+      return;
+    }
+
+    if(shouldBeReadonly(data)) await renderReadonly(data);
+    else removeReadonlyState();
+  }catch(error){
+    // 检查失败时宁可保持可编辑，也绝不能误锁有效账号。
+    console.warn('readonly access check skipped',error);
+    removeReadonlyState();
+  }
 }
 
-await refreshAccess();
-supabase.auth.onAuthStateChange(()=>setTimeout(refreshAccess,80));
+// 不使用顶层 await，避免只读模块自己阻塞页面启动。
+void refreshAccess();
+supabase.auth.onAuthStateChange(()=>setTimeout(()=>void refreshAccess(),120));
 
-// 动态模块（预存套餐 / 店铺成员 / 删除模式）可能稍后才生成按钮，过期模式下再补一次禁用。
+// 动态模块稍后生成按钮时，只有已经确认只读才补禁用。
 const observer=new MutationObserver(()=>{
   if(document.body.classList.contains('paimini-readonly'))disableKnownWrites();
 });
