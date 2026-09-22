@@ -13,7 +13,8 @@ const state={
   invites:[],
   shops:[],
   logs:[],
-  userSearch:""
+  userSearch:"",
+  shopDetails:{}
 };
 
 function safe(value){
@@ -52,6 +53,20 @@ function setLoginHint(text,bad=false){
   if(!el) return;
   el.textContent=text;
   el.style.color=bad?"#c65f76":"#9c818c";
+}
+
+function injectAdminShopStyle(){
+  if(document.getElementById("adminShopDetailStyle"))return;
+  const style=document.createElement("style");
+  style.id="adminShopDetailStyle";
+  style.textContent=`
+    .admin-shop-detail{margin:10px 0 4px;padding:12px;border:1px solid #eadde2;border-radius:14px;background:#fffafc;display:grid;gap:12px}
+    .admin-shop-detail h4{margin:0 0 6px;font-size:14px}.admin-shop-detail p{margin:3px 0;color:#8f7881;font-size:12px}
+    .admin-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.admin-detail-box{padding:10px;border-radius:12px;background:white;border:1px solid #f0e4e8}
+    .admin-mini-list{display:grid;gap:6px;margin-top:7px}.admin-mini-row{padding:7px 9px;border-radius:10px;background:#fff7fa;font-size:12px;line-height:1.45}
+    @media(max-width:720px){.admin-detail-grid{grid-template-columns:1fr}}
+  `;
+  document.head.appendChild(style);
 }
 
 async function signIn(){
@@ -122,6 +137,7 @@ async function loadAll(){
   state.invites=invites.data||[];
   state.shops=shops.data||[];
   state.logs=logs.data||[];
+  state.shopDetails={};
 
   renderStats();
   renderUsers();
@@ -189,16 +205,8 @@ async function grantDays(userId,days){
     p_days:Number(days)
   });
 
-  if(error){
-    alert("加时失败："+error.message);
-    return;
-  }
-
-  if(!data?.success){
-    alert("加时失败");
-    return;
-  }
-
+  if(error){alert("加时失败："+error.message);return}
+  if(!data?.success){alert("加时失败");return}
   await loadAll();
 }
 
@@ -216,9 +224,7 @@ function renderInvites(){
     const type=item.purpose==="signup"?"注册邀请码":"续费邀请码";
     const statusClass=item.is_active?"status":"status off";
     const statusText=item.is_active?"有效":"失效";
-    const expiry=item.expires_at
-      ? '<p>邀请码失效：'+safe(dateText(item.expires_at))+'</p>'
-      : '';
+    const expiry=item.expires_at?'<p>邀请码失效：'+safe(dateText(item.expires_at))+'</p>':'';
 
     return ''
       +'<div class="invite-row">'
@@ -246,9 +252,7 @@ async function createInvite(){
   const purpose=$("invitePurpose").value;
   const duration=purpose==="signup"?7:Number($("inviteDuration").value);
   const mode=$("inviteMode").value;
-  const maxUses=mode==="multi"
-    ? Math.max(1,Number($("inviteMaxUses").value||1))
-    : 1;
+  const maxUses=mode==="multi"?Math.max(1,Number($("inviteMaxUses").value||1)):1;
   const label=$("inviteLabel").value.trim()||null;
   const expiresRaw=$("inviteExpires").value;
   const expires=expiresRaw?new Date(expiresRaw).toISOString():null;
@@ -269,11 +273,7 @@ async function createInvite(){
   btn.disabled=false;
   btn.textContent="生成邀请码";
 
-  if(error){
-    alert("生成失败："+error.message);
-    return;
-  }
-
+  if(error){alert("生成失败："+error.message);return}
   $("generatedCode").textContent=data?.code||"";
   $("generatedInvite").classList.remove("hidden");
   await loadAll();
@@ -292,7 +292,39 @@ async function copyInvite(){
   }
 }
 
+function renderShopDetail(shopId){
+  const detail=state.shopDetails[shopId];
+  if(detail===undefined)return "";
+  if(detail==="loading")return '<div class="admin-shop-detail">正在读取店铺详情…</div>';
+  if(!detail?.success)return '<div class="admin-shop-detail">店铺详情读取失败。</div>';
+
+  const members=Array.isArray(detail.members)?detail.members:[];
+  const prices=Array.isArray(detail.prices)?detail.prices:[];
+  const invite=detail.invite;
+
+  const memberHtml=members.length?members.map(m=>{
+    const who=m.display_name||m.email||m.user_id||"未命名账号";
+    return '<div class="admin-mini-row"><b>'+safe(who)+'</b> · '+safe(m.role==="owner"?"店主":"成员")+'<br>'+safe(m.email||"")+'</div>';
+  }).join(""):'<div class="admin-mini-row">暂无成员</div>';
+
+  const priceHtml=prices.length?prices.map(p=>{
+    return '<div class="admin-mini-row"><b>'+safe(p.name)+'</b> · '+safe(p.category||"未分类")+' · '+Number(p.unit_price||0).toFixed(2)+' / '+safe(p.unit_label||"次")+(p.is_active===false?' · 已停用':'')+'</div>';
+  }).join(""):'<div class="admin-mini-row">暂无价格项目</div>';
+
+  return ''
+    +'<div class="admin-shop-detail">'
+    +  '<div class="admin-detail-grid">'
+    +    '<div class="admin-detail-box"><h4>店铺成员</h4><div class="admin-mini-list">'+memberHtml+'</div></div>'
+    +    '<div class="admin-detail-box"><h4>邀请状态</h4>'
+    +      (invite?'<p>邀请码：<b>'+safe(invite.code||"")+'</b></p><p>状态：'+safe(invite.is_enabled?"已开启":"已关闭")+'</p><p>更新时间：'+safe(dateText(invite.updated_at))+'</p>':'<p>尚未生成店铺邀请。</p>')
+    +    '</div>'
+    +  '</div>'
+    +  '<div class="admin-detail-box"><h4>价格表</h4><div class="admin-mini-list">'+priceHtml+'</div></div>'
+    +'</div>';
+}
+
 function renderShops(){
+  injectAdminShopStyle();
   if(!state.shops.length){
     $("shopAdminList").innerHTML='<div class="empty">还没有店铺。</div>';
     return;
@@ -300,28 +332,52 @@ function renderShops(){
 
   $("shopAdminList").innerHTML=state.shops.map(shop=>{
     const statusClass=shop.is_active?"status":"status off";
-    const statusText=shop.is_active?"公开中":"已隐藏";
-    const buttonText=shop.is_active?"隐藏店铺":"重新公开";
+    const statusText=shop.is_active?"可用":"已停用";
+    const buttonText=shop.is_active?"停用店铺":"恢复店铺";
     const next=shop.is_active?"0":"1";
+    const inviteText=shop.invite_enabled?"邀请已开启":"邀请关闭/未生成";
+    const detailOpen=state.shopDetails[shop.id]!==undefined;
 
     return ''
       +'<div class="shop-row">'
       +  '<div class="row-title">'
       +    '<b>'+safe(shop.name)+'</b>'
-      +    '<p>'+safe(shop.owner_email||"")+' · '+Number(shop.item_count||0)+' 个价格项目</p>'
-      +    '<p>创建 '+safe(dateText(shop.created_at))+'</p>'
+      +    '<p>'+safe(shop.owner_email||"")+' · '+Number(shop.item_count||0)+' 个价格项目 · '+Number(shop.member_count||1)+' 人（含店主）</p>'
+      +    '<p>'+safe(inviteText)+' · 创建 '+safe(dateText(shop.created_at))+'</p>'
       +  '</div>'
       +  '<div class="quick">'
       +    '<span class="'+statusClass+'">'+statusText+'</span>'
+      +    '<button data-shop-detail="'+safe(shop.id)+'" type="button">'+(detailOpen?'收起详情':'查看详情')+'</button>'
       +    '<button data-shop-id="'+safe(shop.id)+'" data-shop-active="'+next+'" type="button">'+buttonText+'</button>'
       +  '</div>'
-      +'</div>';
+      +'</div>'
+      +renderShopDetail(shop.id);
   }).join("");
+}
+
+async function toggleShopDetail(shopId){
+  if(state.shopDetails[shopId]!==undefined){
+    delete state.shopDetails[shopId];
+    renderShops();
+    return;
+  }
+
+  state.shopDetails[shopId]="loading";
+  renderShops();
+  const {data,error}=await supabase.rpc("admin_get_shop_detail",{p_shop_id:shopId});
+  if(error){
+    delete state.shopDetails[shopId];
+    renderShops();
+    alert("详情读取失败："+error.message+"\n如果这是刚更新的功能，请先运行最新店铺成员 SQL。");
+    return;
+  }
+  state.shopDetails[shopId]=data||{success:false};
+  renderShops();
 }
 
 async function toggleShop(shopId,nextActive){
   const shop=state.shops.find(s=>s.id===shopId);
-  const label=nextActive?"重新公开":"隐藏";
+  const label=nextActive?"恢复":"停用";
 
   if(!confirm(label+"「"+(shop?.name||"这家店")+"」？")) return;
 
@@ -330,16 +386,8 @@ async function toggleShop(shopId,nextActive){
     p_active:!!nextActive
   });
 
-  if(error){
-    alert("操作失败："+error.message);
-    return;
-  }
-
-  if(!data?.success){
-    alert("没有找到店铺");
-    return;
-  }
-
+  if(error){alert("操作失败："+error.message);return}
+  if(!data?.success){alert("没有找到店铺");return}
   await loadAll();
 }
 
@@ -374,9 +422,7 @@ function showPanel(name){
 
 function bind(){
   $("adminLoginBtn").addEventListener("click",signIn);
-  $("adminPassword").addEventListener("keydown",e=>{
-    if(e.key==="Enter") signIn();
-  });
+  $("adminPassword").addEventListener("keydown",e=>{if(e.key==="Enter") signIn()});
 
   $("adminLogoutBtn").addEventListener("click",signOut);
   $("deniedLogoutBtn").addEventListener("click",signOut);
@@ -408,7 +454,9 @@ function bind(){
   $("copyInviteBtn").addEventListener("click",copyInvite);
 
   $("shopAdminList").addEventListener("click",e=>{
+    const detail=e.target.closest("[data-shop-detail]");
     const btn=e.target.closest("[data-shop-id]");
+    if(detail){toggleShopDetail(detail.dataset.shopDetail);return}
     if(btn) toggleShop(btn.dataset.shopId,btn.dataset.shopActive==="1");
   });
 
