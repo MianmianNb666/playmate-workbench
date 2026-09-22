@@ -100,6 +100,14 @@ if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
   setTimeout(()=>clearInterval(timer),20000);
 }
 
+// 店铺成员制第一阶段：只加载隔离空壳，不调用任何成员 RPC。
+// 只有核心工作台已经显示后才启动。加载/初始化有独立超时，失败只关闭本模块。
+if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
+  window.__paiMiniMembershipShellScheduled=true;
+  import("./shop-membership-loader.js?v=20260923-shell1")
+    .catch(error=>console.warn("membership shell loader failed",error));
+}
+
 // 其他扩展继续关闭，后续逐个恢复。
 
 // 外层启动保险。核心脚本如果仍然卡住，8 秒后至少解除启动遮罩。
