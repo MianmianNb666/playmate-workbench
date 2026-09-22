@@ -58,9 +58,14 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 启动故障二分排查：暂时停用所有可选扩展模块的自动加载。
-// 功能文件和数据库都保留，只是不在启动阶段 import。
-// 若核心页面恢复，后续将逐个恢复扩展以定位具体模块。
+// 启动故障二分排查：先只恢复删除模式，其余可选扩展继续停用。
+if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
+  window.__paiMiniDeleteModeLoading=true;
+  import("./delete-mode.js?v=20260923-1").catch(error=>{
+    console.warn("delete mode load failed",error);
+    window.__paiMiniDeleteModeLoading=false;
+  });
+}
 
 // 启动保险：核心程序如果卡在 Supabase 会话/初始化请求，最多等待 8 秒。
 // 只解除启动遮罩并显示登录区，不修改任何业务数据，也不触碰数据库。
