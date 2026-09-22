@@ -23,7 +23,9 @@ function ensureStyle(){
 function applyBadges(){
   const list=$('customerProfileList');if(!list)return;
   list.querySelectorAll('.customer-profile-card').forEach(card=>{
-    const id=card.querySelector('[data-edit-customer]')?.dataset.editCustomer||card.querySelector('[data-use-customer]')?.dataset.useCustomer;
+    const checkout=card.querySelector('[data-use-customer]');
+    if(checkout&&checkout.textContent.trim()!=='去结账')checkout.textContent='去结账';
+    const id=card.querySelector('[data-edit-customer]')?.dataset.editCustomer||checkout?.dataset.useCustomer;
     if(!id)return;
     const balance=balances.has(id)?balances.get(id):Number((ctx()?.state?.customers||[]).find(x=>x.id===id)?.prepaid_balance||0);
     const text=safeMoney(balance,id);
