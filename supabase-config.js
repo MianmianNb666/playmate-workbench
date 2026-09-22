@@ -109,6 +109,26 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
     .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
+// 派单预存 / 权益联动先恢复为安全读取阶段。
+// 只读取老板余额与权益，不接管保存按钮，不扣款，不修改订单。
+if(typeof window!=="undefined" && !window.__paiMiniOrderWalletSafeScheduled){
+  window.__paiMiniOrderWalletSafeScheduled=true;
+  let walletStarted=false;
+  const startWallet=()=>{
+    const app=document.getElementById("appRoot");
+    if(walletStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    walletStarted=true;
+    import("./order-wallet-safe.js?v=20260923-wallet-safe1")
+      .then(mod=>mod.initOrderWalletSafe?.())
+      .catch(error=>console.warn("order wallet safe module failed",error));
+  };
+  const walletTimer=setInterval(()=>{
+    if(walletStarted){clearInterval(walletTimer);return;}
+    startWallet();
+  },300);
+  setTimeout(()=>clearInterval(walletTimer),30000);
+}
+
 // 其他扩展继续关闭，后续逐个恢复。
 
 // 外层启动保险。核心脚本如果仍然卡住，8 秒后至少解除启动遮罩。
