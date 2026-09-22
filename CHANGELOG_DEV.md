@@ -1,9 +1,12 @@
 # CHANGELOG_DEV.md
 
 ## 2026-09-23
+- 新增老板资金/权益底层 migration：店铺公开/私密、老板预存余额与流水、老板权益与权益流水、预存/权益快捷模板、团抽/派抽/到手结算字段、小票相关显示字段。
+- 新增 `wallet-features.js`：在「我的店铺」加入公开/私密设置；在「价格表」加入「预存 / 权益库」，可保存常用预存/权益模板，选老板后一键发放，并自动写入余额/权益流水。
+- `supabase-config.js` 以独立动态模块方式加载上述扩展，避免重构主应用、OCR、多项目、保存整单等现有正常逻辑。
 - 修复 iPhone / Safari 登录诊断出现 `FetchEvent.respondWith ... Returned response is null`：Service Worker 不再接管 Supabase、CDN 等跨域请求；同源请求网络失败且无缓存时返回明确 503 Response，避免向 `respondWith()` 返回空值。
 - Service Worker 缓存版本从 `paimini-v3` 更新为 `paimini-v4`，安装后继续使用 `skipWaiting()` + `clients.claim()` 尽快接管新版。
-- 本次未修改 Supabase、Auth、数据库或账号逻辑。
+- 本次未修改 Supabase Auth 账号逻辑。
 
 ## 2026-09-22
 - 第二轮修复电脑端 OCR 修改文字后无法提交匹配：新增 `lastParsedText`，提交时直接比对当前文本与上次匹配文本，变化时强制重新整理；补充 `input/change/paste` 监听，并将 OCR 资源版本更新到 v21。数据库和手机端逻辑未改。
