@@ -24,6 +24,7 @@ function disableKnownWrites(){
   const ids=[
     'saveRecordBtn','saveWholeOrderBtn','savePriceItemBtn','saveItemBtn','saveCategoryBtn','saveShopBtn','saveCustomerBtn',
     'saveTemplateBtn','saveReceiptBtn','saveProfileBtn','saveWalletPresetBtn','addDraftBenefitBtn',
+    'joinShopBtn','toggleShopInviteBtn','regenerateShopInviteBtn',
     'settingsRenewBtn','expiredRenewBtn'
   ];
   ids.forEach(id=>{
@@ -34,7 +35,7 @@ function disableKnownWrites(){
       el.title='账号已到期，当前为只读模式';
     }
   });
-  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],#toggleDeleteModeBtn').forEach(el=>{
+  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],[data-leave-shop],#toggleDeleteModeBtn').forEach(el=>{
     el.disabled=true;
     el.classList.add('readonly-disabled');
     el.title='账号已到期，当前为只读模式';
@@ -103,7 +104,7 @@ async function refreshAccess(){
 await refreshAccess();
 supabase.auth.onAuthStateChange(()=>setTimeout(refreshAccess,80));
 
-// 动态模块（预存套餐 / 删除模式）可能稍后才生成按钮，过期模式下再补一次禁用。
+// 动态模块（预存套餐 / 店铺成员 / 删除模式）可能稍后才生成按钮，过期模式下再补一次禁用。
 const observer=new MutationObserver(()=>{
   if(document.body.classList.contains('paimini-readonly'))disableKnownWrites();
 });
