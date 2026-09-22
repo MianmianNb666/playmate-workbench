@@ -18,6 +18,7 @@ function toast(message,bad=false){
   const el=$("toast");if(!el)return;el.textContent=message;el.classList.add("show");if(bad)el.style.background="#fff0f2";
   clearTimeout(toast.t);toast.t=setTimeout(()=>{el.classList.remove("show");el.style.background=""},2400);
 }
+function stagedLines(){return window.paiMiniMultiOrder?.lines||[]}
 function currentOrderTotal(){
   const multi=window.paiMiniMultiOrder;
   if(multi?.lines?.length)return num(multi.total);
@@ -77,6 +78,7 @@ function availableBenefits(){
 }
 
 function render(){
+  const chosen=new Map(selectedBenefits().map(x=>[x.benefit_id,x.quantity]));
   const total=currentOrderTotal();
   const c=state.customer;
   const balance=num(c?.prepaid_balance);
@@ -100,11 +102,13 @@ function render(){
   const list=$("orderBenefitList");if(!list)return;
   const rows=availableBenefits();
   if(!c){list.innerHTML='<div class="order-wallet-empty">先选择一个已经建立档案的老板。</div>';return}
-  list.innerHTML=rows.length?rows.map(b=>`
-    <div class="order-wallet-benefit">
+  list.innerHTML=rows.length?rows.map(b=>{
+    const value=Math.min(num(chosen.get(b.id)),num(b.quantity));
+    return `<div class="order-wallet-benefit">
       <div><b>${safe(b.name)}</b><small>剩余 ${qty(b.quantity)} ${safe(b.unit_label||"个")}${b.expires_at?` · 有效至 ${safe(new Date(b.expires_at).toLocaleDateString("zh-CN"))}`:""}</small></div>
-      <label>本次使用<input data-order-benefit-use="${safe(b.id)}" type="number" min="0" max="${safe(b.quantity)}" step="0.01" value="0" ${isReadonly()?"disabled":""}></label>
-    </div>`).join(""):'<div class="order-wallet-empty">这个老板当前没有可用权益。</div>';
+      <label>本次使用<input data-order-benefit-use="${safe(b.id)}" type="number" min="0" max="${safe(b.quantity)}" step="0.01" value="${safe(value)}" ${isReadonly()?"disabled":""}></label>
+    </div>`;
+  }).join(""):'<div class="order-wallet-empty">这个老板当前没有可用权益。</div>';
 }
 
 async function refreshCustomer(){
@@ -164,7 +168,7 @@ function buildReport(record,history,next,cctx){
 function recordsForSave(mode,cctx){
   const customerName=cctx.customerName;
   const note=cctx.note||"";
-  const staged=window.paiMiniMultiOrder?.lines||[];
+  const staged=stagedLines();
   const history=num(cctx.state?.historyTotal);
   let running=history;
   if(mode==="multi"){
@@ -185,7 +189,7 @@ function recordsForSave(mode,cctx){
   const itemName=($("calcItemName")?.value||"").trim();
   const unit=($("calcUnitLabel")?.value||"").trim()||"次";
   const unitMinutes=num($("calcUnitMinutes")?.value)||null;
-  const amount=currentOrderTotal();
+  const amount=num(($("calcTotal")?.textContent||"").replace(/[^0-9.-]/g,""));
   const discount=num(cctx.discountRate)||100;
   const record={
     item_id:item?.id||null,customer_name_snapshot:customerName,item_name:itemName,item_name_snapshot:itemName,
@@ -214,6 +218,7 @@ async function saveWithWallet(mode,button){
   const cctx=ctx();if(!cctx?.state?.shopId){toast("先选择店铺",true);return}
   if(!cctx.customerName){toast("先填写老板 / 顾客",true);return}
   if(!state.customer || state.customer.name!==cctx.customerName){toast("预存 / 权益只能用于已经建立档案的老板",true);return}
+  if(mode==="multi"&&!stagedLines().length){toast("先添加至少一个项目",true);return}
   const records=recordsForSave(mode,cctx);
   if(!records.length){toast(mode==="multi"?"先添加至少一个项目":"先把本单信息填写完整",true);return}
   if(records.some(r=>!r.item_name_snapshot||!r.companion_name||!(r.amount>=0))){toast("项目、陪陪或金额还没有填写完整",true);return}
@@ -251,6 +256,10 @@ document.addEventListener("click",event=>{
   const button=event.target.closest?.("#saveRecordBtn,#saveWholeOrderBtn");
   if(!button||!hasUsage())return;
   event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+  if(button.id==="saveRecordBtn"&&stagedLines().length){
+    toast("已经添加了整单项目，请点「保存整单」使用预存 / 权益",true);
+    return;
+  }
   saveWithWallet(button.id==="saveWholeOrderBtn"?"multi":"single",button);
 },true);
 
