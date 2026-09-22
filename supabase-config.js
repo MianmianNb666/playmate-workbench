@@ -28,8 +28,6 @@ function toProxyUrl(input){
   return SUPABASE_PROXY_URL.replace(/\/$/,"") + url.pathname + url.search;
 }
 
-// Supabase 仍然优先直连。只有真正的网络级失败才尝试代理；
-// HTTP 401/403/500 等正常服务端响应不会被代理重试，避免掩盖真实错误。
 if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.__paiMiniSupabaseProxyFetchInstalled=true;
   globalThis.fetch=async function paiMiniFetch(input,init){
@@ -50,36 +48,16 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
         credentials:"omit"
       };
 
-      // GET / HEAD 不能带 body。
       if(retryInit.method==="GET" || retryInit.method==="HEAD") delete retryInit.body;
-
       return nativeFetch(proxyUrl,retryInit);
     }
   };
 }
 
-// 分阶段恢复：删除模式已通过。
-if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
-  window.__paiMiniDeleteModeLoading=true;
-  import("./delete-mode.js?v=20260923-1").catch(error=>{
-    console.warn("delete mode load failed",error);
-    window.__paiMiniDeleteModeLoading=false;
-  });
-}
-
-// 分阶段恢复：只读模式已通过。
-if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
-  window.__paiMiniReadonlyAccessLoading=true;
-  import("./readonly-access.js?v=20260923-4").catch(error=>{
-    console.warn("readonly access load failed",error);
-    window.__paiMiniReadonlyAccessLoading=false;
-  });
-}
-
-// 店铺成员制模块暂时停用：恢复后会导致启动异常，待单独排查 shop-membership.js。
+// 紧急稳定模式：所有扩展模块暂时关闭，只保留核心派Mini。
+// 不删除任何扩展文件，也不修改数据库。
 
 // 启动保险：核心程序如果卡在 Supabase 会话/初始化请求，最多等待 8 秒。
-// 只解除启动遮罩并显示登录区，不修改任何业务数据，也不触碰数据库。
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
   setTimeout(()=>{
