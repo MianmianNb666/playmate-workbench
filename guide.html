@@ -7,36 +7,17 @@
   <title>派mini 使用教程</title>
   <style>
     :root{--bg:#fbf8f2;--paper:#fff;--ink:#514945;--muted:#8f8580;--accent:#e8a0b5;--accent-deep:#d9839e;--soft:#fbf0f3;--line:#eee6dc}
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
-    a{color:inherit;text-decoration:none}
-    .wrap{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0 60px}
-    .hero,.toc,.section{border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 12px 34px rgba(110,89,83,.06)}
-    .hero{padding:28px}.toc,.section{margin-top:14px;padding:22px}
-    .brand{font-size:38px;font-weight:900;letter-spacing:-1.5px}.brand span{color:var(--accent)}
-    .hero p{margin:9px 0 0;color:var(--muted);line-height:1.7}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-    .btn{min-height:42px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;border-radius:13px;border:1px solid var(--line);background:var(--paper);font-weight:800;font-size:13px}
-    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
-    h1,h2,h3{margin:0} h2{font-size:22px;margin-bottom:12px} h3{font-size:15px;margin:18px 0 8px}
-    p,li{font-size:13px;line-height:1.8;color:var(--muted)}
-    ul,ol{padding-left:20px;margin:8px 0}
-    .toc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-    .toc a{padding:11px 12px;border-radius:12px;background:var(--soft);color:var(--accent-deep);font-size:12px;font-weight:800}
-    .step{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:9px}
-    .step b{display:block;font-size:13px}.step p{margin:5px 0 0}
-    .note{margin-top:10px;padding:12px 14px;border-radius:13px;background:var(--soft);color:var(--accent-deep);font-size:12px;line-height:1.7}
-    .footer{text-align:center;padding:26px 0 0;color:var(--muted);font-size:11px}
-    @media(max-width:640px){.wrap{width:min(100% - 18px,920px);padding-top:12px}.hero,.section,.toc{padding:17px;border-radius:18px}.brand{font-size:30px}.toc-grid{grid-template-columns:1fr}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}a{color:inherit;text-decoration:none}.wrap{width:min(920px,calc(100% - 28px));margin:0 auto;padding:28px 0 60px}.hero,.toc,.section{border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 12px 34px rgba(110,89,83,.06)}.hero{padding:28px}.toc,.section{margin-top:14px;padding:22px}.brand{font-size:38px;font-weight:900;letter-spacing:-1.5px}.brand span{color:var(--accent)}.hero p{margin:9px 0 0;color:var(--muted);line-height:1.7}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.btn{min-height:42px;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;border-radius:13px;border:1px solid var(--line);background:var(--paper);font-weight:800;font-size:13px}.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}h1,h2,h3{margin:0}h2{font-size:22px;margin-bottom:12px}h3{font-size:15px;margin:18px 0 8px}p,li{font-size:13px;line-height:1.8;color:var(--muted)}ul,ol{padding-left:20px;margin:8px 0}.toc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.toc a{padding:11px 12px;border-radius:12px;background:var(--soft);color:var(--accent-deep);font-size:12px;font-weight:800}.step{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:9px}.step b{display:block;font-size:13px}.step p{margin:5px 0 0}.note{margin-top:10px;padding:12px 14px;border-radius:13px;background:var(--soft);color:var(--accent-deep);font-size:12px;line-height:1.7}.footer{text-align:center;padding:26px 0 0;color:var(--muted);font-size:11px}@media(max-width:640px){.wrap{width:min(100% - 18px,920px);padding-top:12px}.hero,.section,.toc{padding:17px;border-radius:18px}.brand{font-size:30px}.toc-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <main class="wrap">
     <section class="hero">
       <div class="brand">派<span>mini</span> ♡</div>
-      <p>派单计算、店铺价格表、顾客档案、消费记录、小票和报备模板的一站式小工具。</p>
+      <p>派单计算、店铺价格表、顾客档案、预存、消费记录、小票和报备模板的一站式小工具。</p>
       <div class="actions">
         <a class="btn primary" href="./index.html">打开派mini</a>
+        <a class="btn" href="./feature-overview.html">功能总览</a>
         <a class="btn" href="#start">开始看教程</a>
       </div>
     </section>
@@ -44,74 +25,82 @@
     <section class="toc">
       <h2>快速目录</h2>
       <div class="toc-grid">
-        <a href="#start">1. 注册与登录</a><a href="#shops">2. 我的店铺</a>
+        <a href="#start">1. 注册与登录</a><a href="#shops">2. 我的店铺 / 店友</a>
         <a href="#prices">3. 价格表</a><a href="#dispatch">4. 派单计算</a>
-        <a href="#customers">5. 顾客档案</a><a href="#records">6. 消费记录</a>
-        <a href="#receipt">7. 小票与报备</a><a href="#settings">8. 设置与续费</a>
+        <a href="#customers">5. 顾客档案</a><a href="#prepaid">6. 预存与权益</a>
+        <a href="#records">7. 消费记录</a><a href="#receipt">8. 小票与报备</a>
+        <a href="#settings">9. 设置与续费</a>
       </div>
     </section>
 
     <section id="start" class="section">
       <h2>1. 注册与登录</h2>
-      <div class="step"><b>注册新账号</b><p>填写邮箱、密码和注册邀请码，点击「注册」。注册邀请码用于开启 7 天试用。</p></div>
+      <div class="step"><b>注册新账号</b><p>填写邮箱、密码和注册邀请码，点击「注册」。邀请码用于开启试用期。</p></div>
       <div class="step"><b>已有账号登录</b><p>只需要邮箱和密码，登录时不需要邀请码。</p></div>
-      <div class="note">如果手机内置浏览器提示注册服务连接失败，请用 Safari 或 Chrome 打开正式链接后再试。</div>
+      <div class="note">如果手机内置浏览器连接不稳定，可以切换 Safari / Chrome，或在 Wi‑Fi 与流量之间切换后重试。</div>
     </section>
 
     <section id="shops" class="section">
-      <h2>2. 我的店铺</h2>
+      <h2>2. 我的店铺 / 店友</h2>
       <div class="step"><b>创建店铺</b><p>填写店铺名称、默认货币、品牌色等信息后保存。</p></div>
-      <div class="step"><b>使用公开店铺</b><p>公开店铺的价格表所有已登录用户都可以查看和使用，但只有创建者可以修改。</p></div>
-      <div class="step"><b>常用店铺</b><p>可把经常使用的店铺加入常用，之后切换更方便。</p></div>
+      <div class="step"><b>店铺成员</b><p>店主可以生成邀请，其他人通过邀请码加入。可查看成员、移除成员、退出店铺并管理邀请状态。</p></div>
+      <div class="step"><b>数据范围</b><p>店铺和共享价格表可以给成员使用，但老板档案、预存、消费记录等个人数据仍属于各自账号。</p></div>
     </section>
 
     <section id="prices" class="section">
       <h2>3. 价格表</h2>
-      <div class="step"><b>手动添加</b><p>填写项目名称、单价、单位；需要时填写每单位分钟数，例如「半」= 30 分钟、「小时」= 60 分钟。</p></div>
-      <div class="step"><b>图片识别</b><p>简单语聊类价格表可以尝试图片识别，确认后再导入。复杂设计图建议直接手动添加。</p></div>
-      <div class="step"><b>分类</b><p>分类可以留空，也可以自己建立「语聊」「游戏」「娱乐」等分类。</p></div>
+      <div class="step"><b>手动添加</b><p>填写项目名称、单价、单位；需要时填写每单位分钟数，例如「半」=30分钟、「小时」=60分钟。</p></div>
+      <div class="step"><b>图片识别</b><p>上传价格表图片后先检查识别文字和项目，确认无误再导入。</p></div>
+      <div class="step"><b>分类与停用</b><p>可以建立语聊、游戏、娱乐等分类。停用项目后不会出现在派单计算页。</p></div>
     </section>
 
     <section id="dispatch" class="section">
       <h2>4. 派单计算</h2>
-      <div class="step"><b>选择店铺和老板</b><p>先选店铺，再输入老板 / 顾客昵称。已有顾客会自动带出历史累计与折扣。</p></div>
+      <div class="step"><b>选择店铺和老板</b><p>先选店铺，再输入老板昵称。匹配到已有顾客档案后会自动带出折扣、累计消费和预存余额。</p></div>
       <div class="step"><b>选择项目或手填</b><p>可以点现有价格项目，也可以直接输入项目名、单价和单位。</p></div>
-      <div class="step"><b>输入时长 / 数量</b><p>例如 3H、90m、6 次，系统会根据单位自动计算。</p></div>
-      <div class="step"><b>老板折扣</b><p>支持 9折、8.5折、90% 等格式。保存后会记住该老板的折扣。</p></div>
-      <div class="step"><b>保存记录</b><p>保存后自动计入老板累计消费，并进入消费记录。</p></div>
+      <div class="step"><b>多个陪玩 / 多个项目</b><p>可以把多个项目加入本单，再统一保存整单。</p></div>
+      <div class="step"><b>本单预存扣除</b><p>匹配真实老板档案后，可直接看到当前预存、本单扣除和扣后余额。勾选使用预存后，订单保存和余额扣减会一起完成。</p></div>
+      <div class="note">派单页只负责“本单怎么扣”。最近消费和完整历史仍在「消费记录 / 老板全部流水」中查看。</div>
     </section>
 
     <section id="customers" class="section">
       <h2>5. 顾客档案</h2>
       <p>每个账号只能看到自己的顾客档案。</p>
       <div class="step"><b>建立档案</b><p>可记录顾客昵称、联系方式、折扣和备注。</p></div>
-      <div class="step"><b>查看统计</b><p>档案会显示累计消费、流水数量和最近消费时间。</p></div>
+      <div class="step"><b>预存余额</b><p>顾客卡片会直接显示该老板当前剩余预存金额。</p></div>
       <div class="step"><b>去派单</b><p>点击「去派单」即可直接带入派单计算页。</p></div>
     </section>
 
+    <section id="prepaid" class="section">
+      <h2>6. 预存与权益</h2>
+      <div class="step"><b>建立预存套餐</b><p>可以预设套餐名称、预存金额、备注，并添加多个附赠权益，例如冠、折扣券、赠送时长等。</p></div>
+      <div class="step"><b>给老板添加预存</b><p>选择老板 → 选择预存套餐 → 自动带出金额和权益。发放前可以临时调整金额、权益数量、单位和有效天数，这些调整不会修改原来的预设。</p></div>
+      <div class="step"><b>流水记录</b><p>预存和权益发放、消费、调整都会保留流水，方便后续核对。</p></div>
+    </section>
+
     <section id="records" class="section">
-      <h2>6. 消费记录</h2>
+      <h2>7. 消费记录</h2>
       <div class="step"><b>搜索和筛选</b><p>可以按店铺或关键词查历史流水。</p></div>
-      <div class="step"><b>再次使用</b><p>可以把以前的一单重新带回计算器。</p></div>
-      <div class="step"><b>老板流水</b><p>可以查看某个老板的全部历史消费，并生成完整流水小票。</p></div>
+      <div class="step"><b>老板档案</b><p>在消费记录顶部进入某个老板，可查看该老板全部历史消费。</p></div>
+      <div class="step"><b>导出老板全部流水</b><p>打开「查看全部流水」后，可以导出 PNG。普通长度导出一张，流水非常长时会自动分成多张，避免手机浏览器因为图片过高而导出失败。</p></div>
     </section>
 
     <section id="receipt" class="section">
-      <h2>7. 小票与报备</h2>
-      <div class="step"><b>店内报备</b><p>模板支持老板、项目、陪陪、单价、总价、累计消费、备注、日期和时间等变量。</p></div>
-      <div class="step"><b>小票</b><p>可以设置是否显示老板、陪陪、单价、数量、累计、备注、时间、Logo 和留言。</p></div>
-      <div class="step"><b>导出</b><p>确认内容后可以直接导出 PNG 图片。</p></div>
+      <h2>8. 小票与报备</h2>
+      <div class="step"><b>复制报备</b><p>继续使用原来的「我的报备模板 + 可用变量」。支持老板、项目、陪陪、单价、总价、累计消费、备注、日期、时间，以及团抽、派抽、到手、来源等变量。</p></div>
+      <div class="step"><b>小票</b><p>可以设置是否显示老板、陪陪、单价、数量、累计、备注、时间、Logo、留言和页脚。</p></div>
+      <div class="step"><b>导出</b><p>本次小票和老板完整流水都可以导出 PNG。</p></div>
     </section>
 
     <section id="settings" class="section">
-      <h2>8. 设置与续费</h2>
+      <h2>9. 设置与续费</h2>
       <div class="step"><b>个人主页</b><p>可以修改显示名字、主页文案和头像。</p></div>
-      <div class="step"><b>主题配色</b><p>页面保持淡米白和白色内容框，主色会同步控制爱心、按钮、边框和选中状态。</p></div>
-      <div class="step"><b>续费</b><p>在「使用期限」中输入续费邀请码，可增加 7 / 30 / 90 / 365 天。</p></div>
-      <div class="step"><b>退出登录</b><p>可以从顶部或「设置 → 账号」退出当前账号。</p></div>
+      <div class="step"><b>手机 / 电脑布局</b><p>支持顶部导航或左侧导航、桌面侧栏收缩，以及添加到主屏幕。</p></div>
+      <div class="step"><b>主题与桌面样式</b><p>可调整主题配色、桌面名称和桌面图标。</p></div>
+      <div class="step"><b>续费</b><p>在「使用期限」中输入续费邀请码增加使用时间。到期后进入只读保护，不会清空数据。</p></div>
     </section>
 
-    <div class="footer">派mini 使用教程 · 请以页面最新功能为准 ♡</div>
+    <div class="footer">派mini 使用教程 · 更新于 2026-09-23 ♡</div>
   </main>
 </body>
 </html>
