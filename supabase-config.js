@@ -79,7 +79,7 @@ if(typeof window!=="undefined" && !window.__paiMiniBossWalletLoading){
 // 派单联动老板钱包：保存订单时可直接使用预存余额与权益。
 if(typeof window!=="undefined" && !window.__paiMiniOrderWalletLoading){
   window.__paiMiniOrderWalletLoading=true;
-  import("./order-wallet.js?v=20260923-1").catch(error=>{
+  import("./order-wallet.js?v=20260923-2").catch(error=>{
     console.warn("order wallet load failed",error);
     window.__paiMiniOrderWalletLoading=false;
   });
