@@ -61,14 +61,10 @@ function requestInit(input,init){
   return next;
 }
 
-// 核心 app-v20260921-8.js 里有多处无超时 await。
-// 这里在 createClient 之前统一给 Supabase 请求加“调用方可返回”的硬截止时间，
-// 避免 getSession / get_access_status / bootstrap 任一请求无限悬挂。
 if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.__paiMiniSupabaseProxyFetchInstalled=true;
   globalThis.fetch=async function paiMiniFetch(input,init){
     if(!isSupabaseUrl(input)) return nativeFetch(input,init);
-
     try{
       return await withDeadline(nativeFetch(input,init));
     }catch(error){
@@ -79,59 +75,51 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 只读模式恢复，但绝不参与核心启动。
-// 只有核心已经退出 booting 后才加载；模块自身也没有顶层 await。
 if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
   window.__paiMiniReadonlyScheduled=true;
   let started=false;
-
   const startReadonly=()=>{
     if(started || !document.body || document.body.classList.contains("booting")) return;
     started=true;
     import("./readonly-access.js?v=20260923-safe1")
       .catch(error=>console.warn("readonly mode load failed",error));
   };
-
   const timer=setInterval(()=>{
     if(started){clearInterval(timer);return;}
     startReadonly();
   },250);
-
   setTimeout(()=>clearInterval(timer),20000);
 }
 
-// 店铺成员制第4阶段：核心启动后再加载。
-// 开放成员加入、退出、店主移出成员、邀请开关与重新生成。
-// 所有操作仍在隔离模块内，每个 RPC 独立超时，不参与核心启动。
 if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
   window.__paiMiniMembershipShellScheduled=true;
   import("./shop-membership-loader.js?v=20260923-phase4")
     .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
-// 派单预存 / 权益联动先恢复为安全读取阶段。
-// 只读取老板余额与权益，不接管保存按钮，不扣款，不修改订单。
-if(typeof window!=="undefined" && !window.__paiMiniOrderWalletSafeScheduled){
-  window.__paiMiniOrderWalletSafeScheduled=true;
-  let walletStarted=false;
-  const startWallet=()=>{
+// 独立“预存”分区：主程序可见后再加载，避免参与核心启动。
+// 先加载现有老板余额/权益模块，再把整张账务卡移动到一级导航“预存”。
+if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
+  window.__paiMiniPrepaidSectionScheduled=true;
+  let prepaidStarted=false;
+  const startPrepaid=()=>{
     const app=document.getElementById("appRoot");
-    if(walletStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
-    walletStarted=true;
-    import("./order-wallet-safe.js?v=20260923-wallet-safe1")
-      .then(mod=>mod.initOrderWalletSafe?.())
-      .catch(error=>console.warn("order wallet safe module failed",error));
+    if(prepaidStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    prepaidStarted=true;
+    import("./prepaid-page.js?v=20260923-prepaid2")
+      .catch(error=>console.warn("prepaid page load failed",error));
+    import("./boss-wallet.js?v=20260923-prepaid2")
+      .catch(error=>console.warn("boss wallet load failed",error));
   };
-  const walletTimer=setInterval(()=>{
-    if(walletStarted){clearInterval(walletTimer);return;}
-    startWallet();
+  const prepaidTimer=setInterval(()=>{
+    if(prepaidStarted){clearInterval(prepaidTimer);return;}
+    startPrepaid();
   },300);
-  setTimeout(()=>clearInterval(walletTimer),30000);
+  setTimeout(()=>clearInterval(prepaidTimer),30000);
 }
 
-// 其他扩展继续关闭，后续逐个恢复。
+// 派单页“⑤预存/权益”安全预览暂时关闭，统一放入独立“预存”栏目。
 
-// 外层启动保险。核心脚本如果仍然卡住，8 秒后至少解除启动遮罩。
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
   setTimeout(()=>{
