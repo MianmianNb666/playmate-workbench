@@ -97,23 +97,27 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
     .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
-// 独立“预存”分区：主程序可见后再加载，避免参与核心启动。
-// 先加载现有老板余额/权益模块，再把整张账务卡移动到一级导航“预存”。
+// 独立“预存”分区：只在核心主程序已经显示后加载。
+// 账务管理复用核心 Supabase，模块失败不会阻塞登录和派单主流程。
 if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
   window.__paiMiniPrepaidSectionScheduled=true;
   let prepaidStarted=false;
-  const startPrepaid=()=>{
+  const startPrepaid=async()=>{
     const app=document.getElementById("appRoot");
     if(prepaidStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     prepaidStarted=true;
-    import("./prepaid-page.js?v=20260923-prepaid2")
-      .catch(error=>console.warn("prepaid page load failed",error));
-    import("./boss-wallet.js?v=20260923-prepaid2")
-      .catch(error=>console.warn("boss wallet load failed",error));
+    try{
+      await import("./prepaid-page.js?v=20260923-prepaid3");
+      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid3");
+      await mod.initPrepaidManagerSafe?.();
+    }catch(error){
+      console.warn("prepaid section load failed",error);
+      prepaidStarted=false;
+    }
   };
   const prepaidTimer=setInterval(()=>{
     if(prepaidStarted){clearInterval(prepaidTimer);return;}
-    startPrepaid();
+    void startPrepaid();
   },300);
   setTimeout(()=>clearInterval(prepaidTimer),30000);
 }
