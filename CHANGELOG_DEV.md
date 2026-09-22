@@ -1,15 +1,18 @@
 # CHANGELOG_DEV.md
 
 ## 2026-09-23
+- 将「预存套餐」从「价格表」中移出，新增与「价格表」并列的一级分区「预存套餐」，避免价格管理页过于拥挤；原预存业务逻辑继续复用，不重写主应用。
+- 新增邀请码到期只读模式：账号过期后仍可进入主界面、查看已有店铺/价格/顾客/消费/预存/权益等数据，但数据库层禁止新增、修改、删除；页面显示只读提示和续费入口，续费成功后恢复编辑。
+- 新增 `20260923030000_expired_readonly.sql`：调整 `get_access_status()` 返回 `read_only` / `is_active`，放开过期账号的读取策略，并保留所有业务写入的有效期校验；同时给新增资金/权益表补齐到期写保护。
 - 将「预存 / 权益库」调整为「预存套餐库」：预存为主体，权益作为该笔预存的附赠内容，不再作为同层级独立模板创建。
 - 预存套餐可一次附赠多项权益，例如冠、折扣券、赠送时长等；保存后选老板可一键同时增加预存余额和全部赠送权益。
 - 新增 `20260923023500_prepaid_packages_with_benefits.sql`：`wallet_presets` 增加 `bundled_benefits`，预存/权益流水增加套餐来源 `preset_id`，并新增原子 RPC `apply_prepaid_package`，确保余额和附赠权益一起发放并留痕。
 - 新增老板资金/权益底层 migration：店铺公开/私密、老板预存余额与流水、老板权益与权益流水、预存/权益快捷模板、团抽/派抽/到手结算字段、小票相关显示字段。
-- 新增 `wallet-features.js`：在「我的店铺」加入公开/私密设置；在「价格表」加入预存相关快捷管理。
+- 新增 `wallet-features.js`：在「我的店铺」加入公开/私密设置；预存套餐使用独立模块承载。
 - `supabase-config.js` 以独立动态模块方式加载上述扩展，避免重构主应用、OCR、多项目、保存整单等现有正常逻辑。
 - 修复 iPhone / Safari 登录诊断出现 `FetchEvent.respondWith ... Returned response is null`：Service Worker 不再接管 Supabase、CDN 等跨域请求；同源请求网络失败且无缓存时返回明确 503 Response，避免向 `respondWith()` 返回空值。
 - Service Worker 缓存版本从 `paimini-v3` 更新为 `paimini-v4`，安装后继续使用 `skipWaiting()` + `clients.claim()` 尽快接管新版。
-- 本次未修改 Supabase Auth 账号逻辑。
+- 本次未修改 Supabase Auth 账号登录/密码逻辑。
 
 ## 2026-09-22
 - 第二轮修复电脑端 OCR 修改文字后无法提交匹配：新增 `lastParsedText`，提交时直接比对当前文本与上次匹配文本，变化时强制重新整理；补充 `input/change/paste` 监听，并将 OCR 资源版本更新到 v21。数据库和手机端逻辑未改。
