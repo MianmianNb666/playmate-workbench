@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <title>派mini · 安全启动</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;background:#fbf8f2;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#514945}
+    #loading{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:#fbf8f2;z-index:2}
+    #loading b{display:block;font-size:28px;margin-bottom:10px}#loading span{color:#dc7899}#loading p{font-size:13px;color:#8b7972;line-height:1.7}
+    #app{border:0;width:100%;height:100%;display:none;background:#fbf8f2}
+    .bad{color:#b94d61!important}
+  </style>
+</head>
+<body>
+  <div id="loading"><div><b>派<span>mini</span> ♡</b><p id="msg">正在使用安全入口启动，不会修改数据库。</p></div></div>
+  <iframe id="app" title="派mini"></iframe>
+<script>
+(async()=>{
+  const loading=document.getElementById('loading');
+  const msg=document.getElementById('msg');
+  const frame=document.getElementById('app');
+  try{
+    let html=await fetch('./index.html?safe-source=20260923-1',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('index '+r.status);return r.text()});
+
+    // 安全入口只启动核心程序。先拿掉会阻塞首屏或并发初始化的可选脚本。
+    html=html.replace(/<script\s+src="https:\/\/cdn\.jsdelivr\.net\/npm\/html2canvas@1\.4\.1\/dist\/html2canvas\.min\.js"><\/script>/i,'');
+    html=html.replace(/<script\s+type="module"\s+src="\.\/app-v20260921-8\.js\?v=[^"]+"><\/script>/i,'');
+    html=html.replace(/<script\s+type="module"\s+src="\.\/boss-features\.js\?v=[^"]+"><\/script>/i,'');
+    html=html.replace(/<script\s+type="module"\s+src="\.\/price-import\.js\?v=[^"]+"><\/script>/i,'');
+    html=html.replace(/<script\s+type="module"\s+src="\.\/multi-order\.js\?v=[^"]+"><\/script>/i,'');
+
+    const guard=`<script>(function(){if(window.__paiMiniOuterGuard)return;window.__paiMiniOuterGuard=true;setTimeout(function(){try{if(!document.body||!document.body.classList.contains('booting'))return;document.body.classList.remove('booting');var a=document.getElementById('authGate');var x=document.getElementById('accessGate');var r=document.getElementById('appRoot');if(a)a.classList.remove('hidden');if(x)x.classList.add('hidden');if(r)r.classList.add('hidden');var t=document.getElementById('connectionText');if(t)t.textContent='核心启动超时，已解除卡死';var h=document.getElementById('authHint');if(h)h.textContent='安全入口已阻止页面一直卡在启动画面。';}catch(e){}},8000)})();<\/script>`;
+    html=html.replace('</head>',`<base href="./">${guard}</head>`);
+
+    const loader=`<script type="module">(async()=>{try{let source=await fetch('./app-v20260921-8.js?safe-core=20260923-1',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('core '+r.status);return r.text()});source=source.replace('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm','https://esm.sh/@supabase/supabase-js@2?bundle');const cfg=new URL('./supabase-config.js?safe=20260923-1',document.baseURI).href;source=source.replace('from "./supabase-config.js"','from "'+cfg+'"');const blob=URL.createObjectURL(new Blob([source],{type:'text/javascript'}));try{await import(blob)}finally{URL.revokeObjectURL(blob)}}catch(error){console.error('PaiMini safe core failed',error);document.body?.classList.remove('booting');const a=document.getElementById('authGate');a?.classList.remove('hidden');document.getElementById('accessGate')?.classList.add('hidden');document.getElementById('appRoot')?.classList.add('hidden');const t=document.getElementById('connectionText');if(t)t.textContent='安全启动失败';const h=document.getElementById('authHint');if(h)h.textContent='核心加载失败：'+(error?.message||error);}})();<\/script>`;
+    html=html.replace('</body>',loader+'</body>');
+
+    frame.srcdoc=html;
+    frame.style.display='block';
+    loading.style.display='none';
+  }catch(error){
+    msg.textContent='安全入口准备失败：'+(error?.message||error);
+    msg.className='bad';
+  }
+})();
+</script>
+</body>
+</html>
