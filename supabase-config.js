@@ -100,13 +100,13 @@ if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
   setTimeout(()=>clearInterval(timer),20000);
 }
 
-// 店铺成员制第3阶段：核心启动后再加载。
-// 只启用一个真实的只读 RPC：list_my_shop_members。
-// 成员模块自身允许核心网络层完成“7秒直连 + 7秒中转”后再判定失败。
+// 店铺成员制第4阶段：核心启动后再加载。
+// 开放成员加入、退出、店主移出成员、邀请开关与重新生成。
+// 所有操作仍在隔离模块内，每个 RPC 独立超时，不参与核心启动。
 if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
   window.__paiMiniMembershipShellScheduled=true;
-  import("./shop-membership-loader.js?v=20260923-phase3b")
-    .catch(error=>console.warn("membership phase3b loader failed",error));
+  import("./shop-membership-loader.js?v=20260923-phase4")
+    .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
 // 其他扩展继续关闭，后续逐个恢复。
