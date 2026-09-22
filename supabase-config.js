@@ -5,51 +5,76 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_z
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
+const REQUEST_TIMEOUT_MS = 7000;
+
+function isSupabaseUrl(input){
+  const raw=typeof input==="string" ? input : input?.url;
+  if(!raw) return false;
+  try{return new URL(raw).origin===new URL(SUPABASE_URL).origin}catch{return false}
+}
 
 function isNetworkFailure(error){
   const message=String(error?.message||error||"").toLowerCase();
-  return error instanceof TypeError ||
+  return error?.name==="AbortError" ||
     message.includes("load failed") ||
     message.includes("failed to fetch") ||
-    message.includes("network");
+    message.includes("network") ||
+    message.includes("timeout");
 }
 
 function toProxyUrl(input){
   if(!SUPABASE_PROXY_URL) return null;
   const raw=typeof input==="string" ? input : input?.url;
   if(!raw) return null;
-
   let url;
-  try{ url=new URL(raw); }catch{ return null; }
-
+  try{url=new URL(raw)}catch{return null}
   const upstream=new URL(SUPABASE_URL);
   if(url.origin!==upstream.origin) return null;
-
-  return SUPABASE_PROXY_URL.replace(/\/$/,"") + url.pathname + url.search;
+  return SUPABASE_PROXY_URL.replace(/\/$/,"")+url.pathname+url.search;
 }
 
+function withDeadline(promise,ms=REQUEST_TIMEOUT_MS){
+  let timer;
+  const timeout=new Promise((_,reject)=>{
+    timer=setTimeout(()=>{
+      const error=new Error("Supabase request timeout");
+      error.name="TimeoutError";
+      reject(error);
+    },ms);
+  });
+  return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
+}
+
+function requestInit(input,init){
+  const request=input instanceof Request ? input : null;
+  const method=init?.method || request?.method || "GET";
+  const next={
+    method,
+    headers:init?.headers || request?.headers,
+    body:init?.body,
+    signal:init?.signal || request?.signal,
+    cache:init?.cache || "no-store",
+    redirect:init?.redirect || request?.redirect,
+    credentials:init?.credentials || "omit"
+  };
+  if(method==="GET" || method==="HEAD") delete next.body;
+  return next;
+}
+
+// 核心 app-v20260921-8.js 里有多处无超时 await。
+// 这里在 createClient 之前统一给 Supabase 请求加“调用方可返回”的硬截止时间，
+// 避免 getSession / get_access_status / bootstrap 任一请求无限悬挂。
 if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.__paiMiniSupabaseProxyFetchInstalled=true;
   globalThis.fetch=async function paiMiniFetch(input,init){
+    if(!isSupabaseUrl(input)) return nativeFetch(input,init);
+
     try{
-      return await nativeFetch(input,init);
+      return await withDeadline(nativeFetch(input,init));
     }catch(error){
       const proxyUrl=toProxyUrl(input);
       if(!proxyUrl || !isNetworkFailure(error)) throw error;
-
-      const request=input instanceof Request ? input : null;
-      const retryInit={
-        method:init?.method || request?.method || "GET",
-        headers:init?.headers || request?.headers,
-        body:init?.body,
-        signal:init?.signal || request?.signal,
-        cache:"no-store",
-        redirect:init?.redirect || request?.redirect,
-        credentials:"omit"
-      };
-
-      if(retryInit.method==="GET" || retryInit.method==="HEAD") delete retryInit.body;
-      return nativeFetch(proxyUrl,retryInit);
+      return withDeadline(nativeFetch(proxyUrl,requestInit(input,init)));
     }
   };
 }
@@ -57,7 +82,7 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
 // 紧急稳定模式：所有扩展模块暂时关闭，只保留核心派Mini。
 // 不删除任何扩展文件，也不修改数据库。
 
-// 启动保险：核心程序如果卡在 Supabase 会话/初始化请求，最多等待 8 秒。
+// 外层启动保险。核心脚本如果仍然卡住，8 秒后至少解除启动遮罩。
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
   setTimeout(()=>{
@@ -70,10 +95,10 @@ if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
       const box=document.getElementById("connectionStatus");
       const text=document.getElementById("connectionText");
       if(box) box.className="connection-pill bad";
-      if(text) text.textContent="启动等待超时，请使用连接诊断或稍后重试";
+      if(text) text.textContent="启动等待超时，请稍后重试或使用连接诊断";
       const hint=document.getElementById("authHint");
-      if(hint && !hint.textContent) hint.textContent="页面已解除卡死，当前仍在等待登录服务响应。";
-      console.warn("PaiMini boot watchdog released splash after 8s");
+      if(hint && !hint.textContent) hint.textContent="页面已解除卡死，当前有启动请求未及时返回。";
+      console.warn("PaiMini outer watchdog released splash after 8s");
     }catch(error){
       console.warn("PaiMini boot watchdog failed",error);
     }
