@@ -1,10 +1,10 @@
 -- 派Mini：店铺成员制 + 加入邀请码 / 链接
 -- 规则：
 -- 1) 店铺默认不向所有登录用户公开，只允许店主本人和已加入成员读取。
--- 2) 店主可以复制邀请码 / 邀请链接、关闭邀请、重新生成邀请码。
--- 3) 普通成员只能读取共享店铺和价格表，不能修改店铺或共享价格表。
+-- 2) 店主可以复制邀请码 / 邀请链接、关闭邀请、重新生成邀请码、查看/移出成员。
+-- 3) 普通成员只能读取共享店铺和启用中的价格表，不能修改店铺或共享价格表。
 -- 4) 老板档案、消费记录、预存、权益等仍按各自 user_id 隔离，不因加入同一店铺而共享。
--- 5) 管理端继续通过 SECURITY DEFINER RPC 查看全部店铺，不受成员制 RLS 影响。
+-- 5) 管理端通过 SECURITY DEFINER RPC 查看全部店铺、成员、邀请状态与价格表，仅 app_admins 可调用。
 
 begin;
 
@@ -13,6 +13,9 @@ create extension if not exists pgcrypto with schema extensions;
 -- 旧 visibility 字段保留兼容，但从本版本起不再作为正常用户的可见性判断。
 alter table public.shops
   add column if not exists visibility text not null default 'private';
+
+alter table public.shops
+  alter column visibility set default 'private';
 
 update public.shops
 set visibility='private'
@@ -251,6 +254,57 @@ $$;
 revoke all on function public.regenerate_shop_invite(uuid) from public, anon;
 grant execute on function public.regenerate_shop_invite(uuid) to authenticated;
 
+-- ---------- 邀请预览：邀请链接登录后先确认店名，再加入 ----------
+create or replace function public.preview_shop_invite(p_code text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_shop public.shops%rowtype;
+  v_already boolean;
+begin
+  if v_uid is null then raise exception 'NOT_AUTHENTICATED'; end if;
+
+  select s.* into v_shop
+  from public.shop_invites i
+  join public.shops s on s.id=i.shop_id
+  where upper(i.code)=upper(trim(coalesce(p_code,'')))
+    and i.is_enabled=true
+    and s.is_active=true
+    and exists(
+      select 1
+      from public.user_access ua
+      where ua.user_id=s.user_id
+        and ua.valid_until>now()
+    )
+  limit 1;
+
+  if not found then
+    return jsonb_build_object('success',false,'reason','INVALID_OR_CLOSED');
+  end if;
+
+  v_already := v_shop.user_id=v_uid or exists(
+    select 1 from public.shop_members m
+    where m.shop_id=v_shop.id and m.user_id=v_uid
+  );
+
+  return jsonb_build_object(
+    'success',true,
+    'shop_id',v_shop.id,
+    'shop_name',v_shop.name,
+    'already_joined',v_already,
+    'is_owner',v_shop.user_id=v_uid
+  );
+end;
+$$;
+
+revoke all on function public.preview_shop_invite(text) from public, anon;
+grant execute on function public.preview_shop_invite(text) to authenticated;
+
 -- ---------- 通过加入码加入店铺 ----------
 create or replace function public.join_shop_by_code(p_code text)
 returns jsonb
@@ -314,6 +368,105 @@ $$;
 revoke all on function public.join_shop_by_code(text) from public, anon;
 grant execute on function public.join_shop_by_code(text) to authenticated;
 
+-- ---------- 店主查看成员 ----------
+create or replace function public.list_my_shop_members(p_shop_id uuid)
+returns table(
+  user_id uuid,
+  display_name text,
+  email text,
+  role text,
+  joined_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
+
+  if not exists(
+    select 1 from public.shops s
+    where s.id=p_shop_id and s.user_id=auth.uid()
+  ) then
+    raise exception 'SHOP_OWNER_ONLY';
+  end if;
+
+  return query
+  select
+    u.id,
+    coalesce(p.display_name,'')::text,
+    coalesce(u.email,'')::text,
+    'owner'::text,
+    s.created_at
+  from public.shops s
+  join auth.users u on u.id=s.user_id
+  left join public.user_profiles p on p.user_id=u.id
+  where s.id=p_shop_id
+
+  union all
+
+  select
+    u.id,
+    coalesce(p.display_name,'')::text,
+    coalesce(u.email,'')::text,
+    'member'::text,
+    m.joined_at
+  from public.shop_members m
+  join auth.users u on u.id=m.user_id
+  left join public.user_profiles p on p.user_id=u.id
+  where m.shop_id=p_shop_id
+  order by joined_at;
+end;
+$$;
+
+revoke all on function public.list_my_shop_members(uuid) from public, anon;
+grant execute on function public.list_my_shop_members(uuid) to authenticated;
+
+-- ---------- 店主移出成员 ----------
+create or replace function public.remove_my_shop_member(
+  p_shop_id uuid,
+  p_user_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_count integer;
+begin
+  if auth.uid() is null then raise exception 'NOT_AUTHENTICATED'; end if;
+  if not public.has_active_access() then raise exception 'account_read_only_expired'; end if;
+
+  if not exists(
+    select 1 from public.shops s
+    where s.id=p_shop_id and s.user_id=auth.uid()
+  ) then
+    raise exception 'SHOP_OWNER_ONLY';
+  end if;
+
+  if exists(
+    select 1 from public.shops s
+    where s.id=p_shop_id and s.user_id=p_user_id
+  ) then
+    return jsonb_build_object('success',false,'reason','OWNER_CANNOT_REMOVE');
+  end if;
+
+  delete from public.shop_members
+  where shop_id=p_shop_id and user_id=p_user_id;
+  get diagnostics v_count = row_count;
+
+  return jsonb_build_object(
+    'success',v_count>0,
+    'reason',case when v_count>0 then 'REMOVED' else 'NOT_MEMBER' end
+  );
+end;
+$$;
+
+revoke all on function public.remove_my_shop_member(uuid,uuid) from public, anon;
+grant execute on function public.remove_my_shop_member(uuid,uuid) to authenticated;
+
 -- ---------- 成员退出店铺 ----------
 create or replace function public.leave_joined_shop(p_shop_id uuid)
 returns jsonb
@@ -363,19 +516,22 @@ using (
   )
 );
 
--- 共享价格表同样只对店主和成员可见。
+-- 共享价格表同样只对店主和成员可见；成员只看启用项目。
 drop policy if exists price_categories_select_authenticated on public.price_categories;
 drop policy if exists price_categories_select_own on public.price_categories;
 create policy price_categories_select_authenticated
 on public.price_categories for select to authenticated
 using (
   user_id=(select auth.uid())
-  or exists(
-    select 1
-    from public.shops s
-    where s.id=price_categories.shop_id
-      and s.is_active=true
-      and public.is_shop_member(s.id)
+  or (
+    is_active=true
+    and exists(
+      select 1
+      from public.shops s
+      where s.id=price_categories.shop_id
+        and s.is_active=true
+        and public.is_shop_member(s.id)
+    )
   )
 );
 
@@ -385,16 +541,19 @@ create policy price_items_select_authenticated
 on public.price_items for select to authenticated
 using (
   user_id=(select auth.uid())
-  or exists(
-    select 1
-    from public.shops s
-    where s.id=price_items.shop_id
-      and s.is_active=true
-      and public.is_shop_member(s.id)
+  or (
+    is_active=true
+    and exists(
+      select 1
+      from public.shops s
+      where s.id=price_items.shop_id
+        and s.is_active=true
+        and public.is_shop_member(s.id)
+    )
   )
 );
 
--- ---------- 管理端：仍可查看全部店铺 ----------
+-- ---------- 管理端：全部店铺仅管理员可见 ----------
 -- 重新创建 admin_list_shops，新增成员数与邀请状态。
 drop function if exists public.admin_list_shops();
 
@@ -425,7 +584,7 @@ begin
     u.email::text,
     s.is_active,
     (select count(*) from public.price_items pi where pi.shop_id=s.id) as item_count,
-    (select count(*) from public.shop_members sm where sm.shop_id=s.id) as member_count,
+    (1 + (select count(*) from public.shop_members sm where sm.shop_id=s.id))::bigint as member_count,
     coalesce((select si.is_enabled from public.shop_invites si where si.shop_id=s.id),false) as invite_enabled,
     s.created_at
   from public.shops s
@@ -436,5 +595,109 @@ $$;
 
 revoke all on function public.admin_list_shops() from public, anon;
 grant execute on function public.admin_list_shops() to authenticated;
+
+-- 管理端单店详情：成员 + 邀请 + 价格表，只能管理员调用。
+create or replace function public.admin_get_shop_detail(p_shop_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, auth
+as $$
+declare
+  v_shop jsonb;
+  v_members jsonb;
+  v_prices jsonb;
+  v_invite jsonb;
+begin
+  if not public.is_app_admin() then
+    raise exception 'ADMIN_ONLY';
+  end if;
+
+  select jsonb_build_object(
+    'id',s.id,
+    'name',s.name,
+    'owner_user_id',s.user_id,
+    'owner_email',u.email,
+    'is_active',s.is_active,
+    'created_at',s.created_at
+  )
+  into v_shop
+  from public.shops s
+  left join auth.users u on u.id=s.user_id
+  where s.id=p_shop_id;
+
+  if v_shop is null then
+    return jsonb_build_object('success',false,'reason','NOT_FOUND');
+  end if;
+
+  select coalesce(jsonb_agg(member_row order by (member_row->>'joined_at')),'[]'::jsonb)
+  into v_members
+  from (
+    select jsonb_build_object(
+      'user_id',u.id,
+      'display_name',coalesce(p.display_name,''),
+      'email',coalesce(u.email,''),
+      'role','owner',
+      'joined_at',s.created_at
+    ) as member_row
+    from public.shops s
+    join auth.users u on u.id=s.user_id
+    left join public.user_profiles p on p.user_id=u.id
+    where s.id=p_shop_id
+
+    union all
+
+    select jsonb_build_object(
+      'user_id',u.id,
+      'display_name',coalesce(p.display_name,''),
+      'email',coalesce(u.email,''),
+      'role','member',
+      'joined_at',m.joined_at
+    ) as member_row
+    from public.shop_members m
+    join auth.users u on u.id=m.user_id
+    left join public.user_profiles p on p.user_id=u.id
+    where m.shop_id=p_shop_id
+  ) q;
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id',pi.id,
+    'name',pi.name,
+    'category',coalesce(pc.name,'未分类'),
+    'unit_price',pi.unit_price,
+    'unit_label',pi.unit_label,
+    'is_active',pi.is_active
+  ) order by coalesce(pc.sort_order,0),pi.sort_order,pi.created_at),'[]'::jsonb)
+  into v_prices
+  from public.price_items pi
+  left join public.price_categories pc on pc.id=pi.category_id
+  where pi.shop_id=p_shop_id;
+
+  select case
+    when si.shop_id is null then null
+    else jsonb_build_object(
+      'code',si.code,
+      'is_enabled',si.is_enabled,
+      'created_at',si.created_at,
+      'updated_at',si.updated_at
+    )
+  end
+  into v_invite
+  from (select 1) z
+  left join public.shop_invites si on si.shop_id=p_shop_id;
+
+  return jsonb_build_object(
+    'success',true,
+    'shop',v_shop,
+    'members',coalesce(v_members,'[]'::jsonb),
+    'prices',coalesce(v_prices,'[]'::jsonb),
+    'invite',v_invite
+  );
+end;
+$$;
+
+revoke all on function public.admin_get_shop_detail(uuid) from public, anon;
+grant execute on function public.admin_get_shop_detail(uuid) to authenticated;
 
 commit;
