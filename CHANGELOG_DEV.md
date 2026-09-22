@@ -1,5 +1,10 @@
 # CHANGELOG_DEV.md
 
+## 2026-09-23
+- 修复 iPhone / Safari 登录诊断出现 `FetchEvent.respondWith ... Returned response is null`：Service Worker 不再接管 Supabase、CDN 等跨域请求；同源请求网络失败且无缓存时返回明确 503 Response，避免向 `respondWith()` 返回空值。
+- Service Worker 缓存版本从 `paimini-v3` 更新为 `paimini-v4`，安装后继续使用 `skipWaiting()` + `clients.claim()` 尽快接管新版。
+- 本次未修改 Supabase、Auth、数据库或账号逻辑。
+
 ## 2026-09-22
 - 第二轮修复电脑端 OCR 修改文字后无法提交匹配：新增 `lastParsedText`，提交时直接比对当前文本与上次匹配文本，变化时强制重新整理；补充 `input/change/paste` 监听，并将 OCR 资源版本更新到 v21。数据库和手机端逻辑未改。
 - 多人 / 多项目派单现在支持统一小票预览与 PNG 导出：按陪陪分组展示多个项目、小计和整单合计，沿用现有小票显示设置。
