@@ -79,8 +79,28 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 紧急稳定模式：所有扩展模块暂时关闭，只保留核心派Mini。
-// 不删除任何扩展文件，也不修改数据库。
+// 只读模式恢复，但绝不参与核心启动。
+// 只有核心已经退出 booting 后才加载；模块自身也没有顶层 await。
+if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
+  window.__paiMiniReadonlyScheduled=true;
+  let started=false;
+
+  const startReadonly=()=>{
+    if(started || !document.body || document.body.classList.contains("booting")) return;
+    started=true;
+    import("./readonly-access.js?v=20260923-safe1")
+      .catch(error=>console.warn("readonly mode load failed",error));
+  };
+
+  const timer=setInterval(()=>{
+    if(started){clearInterval(timer);return;}
+    startReadonly();
+  },250);
+
+  setTimeout(()=>clearInterval(timer),20000);
+}
+
+// 其他扩展继续关闭，后续逐个恢复。
 
 // 外层启动保险。核心脚本如果仍然卡住，8 秒后至少解除启动遮罩。
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
