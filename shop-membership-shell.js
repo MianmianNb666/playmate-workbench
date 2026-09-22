@@ -1,8 +1,12 @@
 // PaiMini shop membership isolated shell.
-// Phase 2: read joined shops from the already-loaded core state only.
-// No membership RPCs, no extra auth reads, no page reloads.
+// Phase 3: keep phase-2 joined-shop display, plus ONE real read-only RPC.
+// The only RPC enabled here is list_my_shop_members for a shop owned by the current user.
+// No invite reads, no writes, no auth reads, no reloads.
 
 let mounted=false;
+let destroyed=false;
+let rpcBusy=false;
+const RPC_TIMEOUT_MS=5000;
 
 function safe(value){
   return String(value??'')
@@ -17,6 +21,10 @@ function coreContext(){
   try{return window.paiMiniOrderBridge?.getContext?.()||null}catch{return null}
 }
 
+function timeoutPromise(ms,label){
+  return new Promise((_,reject)=>setTimeout(()=>reject(new Error(label||'membership rpc timeout')),ms));
+}
+
 function ensureStyle(){
   if(document.getElementById('shopMembershipShellStyle')) return;
   const style=document.createElement('style');
@@ -24,13 +32,15 @@ function ensureStyle(){
   style.textContent=`
     .shop-membership-shell{margin-top:16px}
     .shop-membership-shell .shell-note{padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:var(--paper)}
-    .shop-membership-shell .shell-note b{display:block;margin-bottom:4px}
+    .shop-membership-shell .shell-note+.shell-note{margin-top:10px}
+    .shop-membership-shell .shell-note>b{display:block;margin-bottom:4px}
     .shop-membership-shell .shell-note small{color:var(--muted);line-height:1.55}
-    .shop-membership-shell .joined-list{display:grid;gap:9px;margin-top:10px}
-    .shop-membership-shell .joined-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
-    .shop-membership-shell .joined-item small{display:block;color:var(--muted);margin-top:3px}
-    .shop-membership-shell .joined-badge{font-size:12px;padding:5px 9px;border-radius:999px;background:var(--pink-soft);white-space:nowrap}
-    .shop-membership-shell .joined-empty{padding:12px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:12px}
+    .shop-membership-shell .joined-list,.shop-membership-shell .member-list{display:grid;gap:9px;margin-top:10px}
+    .shop-membership-shell .joined-item,.shop-membership-shell .member-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+    .shop-membership-shell .joined-item small,.shop-membership-shell .member-item small{display:block;color:var(--muted);margin-top:3px}
+    .shop-membership-shell .joined-badge,.shop-membership-shell .member-badge{font-size:12px;padding:5px 9px;border-radius:999px;background:var(--pink-soft);white-space:nowrap}
+    .shop-membership-shell .joined-empty,.shop-membership-shell .member-state{padding:12px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:12px}
+    .shop-membership-shell .phase3-actions{margin-top:10px;display:flex;justify-content:flex-end}
   `;
   document.head.appendChild(style);
 }
@@ -48,18 +58,78 @@ function renderJoinedShops(){
   if(!box) return;
   const rows=joinedShopsFromCore();
   if(!rows.length){
-    box.innerHTML='<div class="joined-empty">目前没有已加入的店铺。当前阶段只读取核心已经加载好的店铺数据，不会额外请求 Supabase。</div>';
+    box.innerHTML='<div class="joined-empty">目前没有已加入的店铺。这里仍只读取主程序已经加载好的店铺数据。</div>';
     return;
   }
   box.innerHTML=rows.map(shop=>`
     <div class="joined-item">
-      <div><b>${safe(shop.name||'未命名店铺')}</b><small>已加入 · 只读展示</small></div>
+      <div><b>${safe(shop.name||'未命名店铺')}</b><small>已加入 · 核心现成数据</small></div>
       <span class="joined-badge">成员</span>
     </div>`).join('');
 }
 
+function currentOwnedShop(){
+  const ctx=coreContext();
+  const uid=ctx?.state?.session?.user?.id;
+  const shop=ctx?.shop || null;
+  if(!uid || !shop || shop.user_id!==uid) return null;
+  return {ctx,shop};
+}
+
+function renderMemberState(html){
+  const box=document.getElementById('shopMembershipRealMembers');
+  if(box) box.innerHTML=html;
+}
+
+async function loadRealMembers(){
+  if(rpcBusy || destroyed) return;
+  const owned=currentOwnedShop();
+  if(!owned){
+    renderMemberState('<div class="member-state">当前选中的店铺不是你创建的店铺，所以本阶段不会读取它的成员名单。</div>');
+    return;
+  }
+
+  const {ctx,shop}=owned;
+  const supabase=ctx?.supabase;
+  if(!supabase?.rpc){
+    renderMemberState('<div class="member-state">核心连接尚未准备好。成员模块已降级，不影响其他功能。</div>');
+    return;
+  }
+
+  rpcBusy=true;
+  renderMemberState(`<div class="member-state">正在安全读取「${safe(shop.name||'当前店铺')}」成员…</div>`);
+  try{
+    const result=await Promise.race([
+      supabase.rpc('list_my_shop_members',{p_shop_id:shop.id}),
+      timeoutPromise(RPC_TIMEOUT_MS,'list_my_shop_members timeout')
+    ]);
+    if(destroyed) return;
+    if(result?.error) throw result.error;
+    const rows=Array.isArray(result?.data)?result.data:[];
+    if(!rows.length){
+      renderMemberState('<div class="member-state">成员读取成功，目前没有返回成员记录。</div>');
+      return;
+    }
+    renderMemberState(`<div class="member-list">${rows.map(member=>`
+      <div class="member-item">
+        <div>
+          <b>${safe(member.display_name || member.email || (member.role==='owner'?'店主':'成员'))}</b>
+          <small>${member.role==='owner'?'店主':'成员'}${member.email?` · ${safe(member.email)}`:''}</small>
+        </div>
+        <span class="member-badge">${member.role==='owner'?'店主':'成员'}</span>
+      </div>`).join('')}</div>`);
+    window.__paiMiniMembershipRpcStatus='list-members-ok';
+  }catch(error){
+    if(destroyed) return;
+    window.__paiMiniMembershipRpcStatus='list-members-degraded';
+    console.warn('membership phase3 read-only RPC degraded',error);
+    renderMemberState('<div class="member-state">成员名单暂时读取失败或超时。店铺、价格表、顾客档案和派单功能不受影响。</div>');
+  }finally{
+    rpcBusy=false;
+  }
+}
+
 function mountShell(){
-  if(mounted) return true;
   const page=document.getElementById('page-shops');
   if(!page) return false;
   ensureStyle();
@@ -68,26 +138,39 @@ function mountShell(){
     card=document.createElement('div');
     card.id='shopMembershipShellCard';
     card.className='card shop-membership-shell';
-    card.innerHTML=`
-      <div class="card-title">
-        <div><b>店铺成员制 ♡</b><small>隔离加载 · 第2阶段</small></div>
-      </div>
-      <div class="shell-note">
-        <b>我加入的店铺</b>
-        <small>只读取主程序已经加载好的店铺状态，不调用任何成员 RPC，不读取邀请，不允许加入、退出或成员管理。</small>
-        <div id="shopMembershipJoinedList" class="joined-list"></div>
-      </div>`;
     page.querySelector('.page-head')?.insertAdjacentElement('afterend',card);
   }
+
+  // Always replace membership-owned content so a cached phase-2 shell can be safely upgraded.
+  card.innerHTML=`
+    <div class="card-title">
+      <div><b>店铺成员制 ♡</b><small>隔离加载 · 第3阶段（只读）</small></div>
+    </div>
+    <div class="shell-note">
+      <b>我加入的店铺</b>
+      <small>继续使用主程序已经加载好的店铺状态，不增加网络请求。</small>
+      <div id="shopMembershipJoinedList" class="joined-list"></div>
+    </div>
+    <div class="shell-note">
+      <b>真实成员数据</b>
+      <small>本阶段只启用一个只读 RPC：读取你自己当前店铺的成员名单。5 秒超时，失败只降级本卡片。</small>
+      <div id="shopMembershipRealMembers" class="member-list"></div>
+      <div class="phase3-actions"><button id="shopMembershipRetryRead" class="tiny-btn" type="button">重新读取成员</button></div>
+    </div>`;
+
+  document.getElementById('shopMembershipRetryRead')?.addEventListener('click',()=>loadRealMembers());
   renderJoinedShops();
   mounted=true;
   return true;
 }
 
 export async function initShopMembershipShell(){
+  destroyed=false;
   const ok=mountShell();
   if(!ok) throw new Error('shop page not ready');
-  return {status:'ready',phase:'joined-shops-readonly'};
+  // Do not block module init on the RPC. Core and shell stay usable even if RPC stalls.
+  queueMicrotask(()=>loadRealMembers());
+  return {status:'ready',phase:'real-members-readonly'};
 }
 
 export function refreshShopMembershipShell(){
@@ -95,6 +178,7 @@ export function refreshShopMembershipShell(){
 }
 
 export function destroyShopMembershipShell(){
+  destroyed=true;
   document.getElementById('shopMembershipShellCard')?.remove();
   document.getElementById('shopMembershipShellStyle')?.remove();
   mounted=false;
