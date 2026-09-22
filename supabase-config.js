@@ -98,7 +98,7 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
 }
 
 // 预存恢复版：只先创建轻量页面，不立即读取账务数据。
-// 用户真正点进「预存」时才加载余额管理 + 预存套餐预设。
+// 用户真正点进「预存」时才加载余额管理 + 预存套餐预设 + 统一发放流程。
 if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
   window.__paiMiniPrepaidSectionScheduled=true;
   let shellReady=false;
@@ -114,6 +114,8 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260923-prepaid-layout1");
       polish.applyPrepaidLayoutPolish?.();
+      const unified=await import("./prepaid-unified-safe.js?v=20260923-prepaid-unified1");
+      await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
       console.warn("prepaid manager lazy load failed",error);
@@ -140,6 +142,29 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     void startPrepaidShell();
   },300);
   setTimeout(()=>clearInterval(prepaidTimer),30000);
+}
+
+// 顾客档案显示预存余额。只增强展示，不改顾客保存逻辑。
+if(typeof window!=="undefined" && !window.__paiMiniCustomerPrepaidBadgesScheduled){
+  window.__paiMiniCustomerPrepaidBadgesScheduled=true;
+  let badgesStarted=false;
+  const startBadges=async()=>{
+    const app=document.getElementById("appRoot");
+    if(badgesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    badgesStarted=true;
+    try{
+      const mod=await import("./customer-prepaid-badge-safe.js?v=20260923-customer-prepaid1");
+      await mod.initCustomerPrepaidBadgesSafe?.();
+    }catch(error){
+      badgesStarted=false;
+      console.warn("customer prepaid badges load failed",error);
+    }
+  };
+  const badgesTimer=setInterval(()=>{
+    if(badgesStarted){clearInterval(badgesTimer);return;}
+    void startBadges();
+  },450);
+  setTimeout(()=>clearInterval(badgesTimer),30000);
 }
 
 // 派单页结算选择器：核心页面显示后独立加载。
