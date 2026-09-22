@@ -1,7 +1,6 @@
 // PaiMini resilient bootstrap.
 // Keeps the main UI local and only reaches external CDNs for the Supabase SDK.
 
-const bootStarted=Date.now();
 let coreStarted=false;
 
 function unlockBoot(message){
@@ -56,8 +55,8 @@ async function start(){
   try{
     const [sdk,config,coreResponse]=await Promise.all([
       loadSupabaseSdk(),
-      import('./supabase-config.js?v=20260923-stable'),
-      fetch('./app-core-v20260922.js?v=20260923-stable',{cache:'no-store'})
+      import('./supabase-config.js?v=20260923-rescue2'),
+      fetch('./app-core-v20260922.js?v=20260923-rescue2',{cache:'no-store'})
     ]);
 
     if(!coreResponse.ok) throw new Error('主程序文件 HTTP '+coreResponse.status);
