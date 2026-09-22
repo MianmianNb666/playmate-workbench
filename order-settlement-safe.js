@@ -53,11 +53,11 @@ function ensureStyle(){
   const s=document.createElement('style');
   s.id='orderSettlementSafeStyle';
   s.textContent=`
-    .settlement-safe-card{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+    .settlement-safe-card{margin-top:12px;padding:12px;border-top:1px dashed var(--line);background:transparent}
     .settlement-safe-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
     .settlement-safe-head small{display:block;color:var(--muted);margin-top:3px}
     .settlement-safe-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0}
-    .settlement-safe-stat{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--bg,#fff)}
+    .settlement-safe-stat{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--paper)}
     .settlement-safe-stat span{display:block;color:var(--muted);font-size:10px}.settlement-safe-stat b{display:block;margin-top:3px;font-size:15px}
     .settlement-safe-controls{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
     .settlement-safe-benefits{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.settlement-safe-benefit{border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:10px}
@@ -72,21 +72,21 @@ function mount(){
   const page=$('page-calculator');
   if(!page)return false;
   if($('orderSettlementSafeCard'))return true;
-  const baseCard=page.querySelector('.two-col .card');
-  if(!baseCard)return false;
+  const totalBox=page.querySelector('.multi-order-total');
+  if(!totalBox)return false;
   const card=document.createElement('div');
   card.id='orderSettlementSafeCard';
   card.className='settlement-safe-card';
   card.innerHTML=`
     <div class="settlement-safe-head">
-      <div><b>老板预存 · 本单扣除</b><small>选到已建档老板后，直接看余额并处理这一单</small></div>
+      <div><b>老板预存 · 本单扣除</b><small>跟本单合计一起看，直接处理这一单</small></div>
       <button id="settlementRefresh" class="tiny-btn" type="button">刷新</button>
     </div>
     <div id="settlementEmpty" class="empty-state">选择已有老板档案后显示预存余额。</div>
     <div id="settlementBody" class="hidden">
       <div class="settlement-safe-summary">
         <div class="settlement-safe-stat"><span>剩余预存</span><b id="settlementBalance">¥0.00</b></div>
-        <div class="settlement-safe-stat"><span>本单金额</span><b id="settlementOrderTotal">¥0.00</b></div>
+        <div class="settlement-safe-stat"><span>本单合计</span><b id="settlementOrderTotal">¥0.00</b></div>
         <div class="settlement-safe-stat"><span>本单扣除</span><b id="settlementDeduct">¥0.00</b></div>
         <div class="settlement-safe-stat"><span>扣后余额</span><b id="settlementAfter">¥0.00</b></div>
       </div>
@@ -95,10 +95,9 @@ function mount(){
         <label>本单扣除金额<input id="settlementPrepaidAmount" type="number" min="0" step="0.01" placeholder="0.00" disabled></label>
       </div>
       <div id="settlementBenefits" class="settlement-safe-benefits"></div>
-      <p class="settlement-safe-note">这里不显示最近消费。消费历史仍在「消费记录」；这里只处理本单预存扣除。</p>
+      <p class="settlement-safe-note">这里仅处理本单结算；过往消费继续在「消费记录 / 老板档案」查看。</p>
     </div>`;
-  const customerTotal=baseCard.querySelector('.customer-total');
-  if(customerTotal)customerTotal.insertAdjacentElement('afterend',card);else baseCard.appendChild(card);
+  totalBox.insertAdjacentElement('afterend',card);
   bind();
   return true;
 }
@@ -179,6 +178,6 @@ function bind(){
 export async function initOrderSettlementSafe(){
   if(started)return;
   started=true;ensureStyle();
-  if(!mount()){started=false;throw new Error('calculator base card not ready')}
+  if(!mount()){started=false;throw new Error('order total section not ready')}
   await refresh();
 }
