@@ -3,7 +3,15 @@
 // 使用 sessionStorage：刷新当前标签页仍保留，但新会话默认关闭，减少误删风险。
 
 const DELETE_MODE_KEY='paimini-delete-mode-enabled';
-const DELETE_SELECTOR='[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet]';
+const DELETE_SELECTORS=[
+  '[data-delete-shop]',
+  '[data-delete-category]',
+  '[data-delete-item]',
+  '[data-delete-customer]',
+  '[data-delete-record]',
+  '[data-delete-wallet]'
+];
+const DELETE_SELECTOR=DELETE_SELECTORS.join(',');
 
 function toast(message){
   if(window.paiMiniOrderBridge?.toast){window.paiMiniOrderBridge.toast(message);return}
@@ -31,8 +39,9 @@ function injectStyle(){
   if(document.getElementById('deleteModeStyle'))return;
   const style=document.createElement('style');
   style.id='deleteModeStyle';
+  const hiddenSelectors=DELETE_SELECTORS.map(selector=>`body:not(.paimini-delete-mode) ${selector}`).join(',');
   style.textContent=`
-    body:not(.paimini-delete-mode) ${DELETE_SELECTOR}{display:none!important}
+    ${hiddenSelectors}{display:none!important}
     .delete-mode-card{margin-top:16px}
     .delete-mode-row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .delete-mode-copy small{display:block;color:var(--muted);line-height:1.55;margin-top:4px}
