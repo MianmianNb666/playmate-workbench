@@ -166,6 +166,29 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
   setTimeout(()=>clearInterval(settlementTimer),30000);
 }
 
+// 报备规则：核心页面显示后独立加载，只增强“我的店铺 / 派单计算 / 复制报备”。
+if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
+  window.__paiMiniReportRulesScheduled=true;
+  let reportRulesStarted=false;
+  const startReportRules=async()=>{
+    const app=document.getElementById("appRoot");
+    if(reportRulesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    reportRulesStarted=true;
+    try{
+      const mod=await import("./report-rules-safe.js?v=20260923-report-rules1");
+      await mod.initReportRulesSafe?.();
+    }catch(error){
+      reportRulesStarted=false;
+      console.warn("report rules safe load failed",error);
+    }
+  };
+  const reportRulesTimer=setInterval(()=>{
+    if(reportRulesStarted){clearInterval(reportRulesTimer);return;}
+    void startReportRules();
+  },400);
+  setTimeout(()=>clearInterval(reportRulesTimer),30000);
+}
+
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
   setTimeout(()=>{
