@@ -731,6 +731,9 @@ async function recognize(){
 function reparse(){
   const text=$("ocrRawText").value;
   if(!text.trim()){
+    state.rows=[];
+    state.rawTextEdited=false;
+    renderRows();
     notify("识别文字还是空的");
     return;
   }
