@@ -1,1 +1,650 @@
-<!-- placeholder -->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fbf8f2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="派mini">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <title>派mini</title>
+  <link rel="stylesheet" href="./styles.css?v=20260921-v42">
+  <script>
+    (function(){
+      try{
+        var t=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+        if(t){
+          var r=document.documentElement.style;
+          if(t.bg)r.setProperty("--bg",t.bg);
+          if(t.paper)r.setProperty("--paper",t.paper);
+          if(t.ink)r.setProperty("--ink",t.ink);
+          if(t.accent){
+            r.setProperty("--pink",t.accent);
+            r.setProperty("--pink-deep","color-mix(in srgb,"+t.accent+" 82%, #5a3040)");
+            r.setProperty("--pink-soft","color-mix(in srgb,"+t.accent+" 14%, "+(t.paper||"#fff")+")");
+            r.setProperty("--line","color-mix(in srgb,"+t.accent+" 24%, "+(t.bg||"#fbf8f2")+")");
+          }
+        }
+        var mode=localStorage.getItem("paimini-mobile-nav-mode")==="left"?"left":"top";
+        document.documentElement.classList.add("pre-"+mode);
+      }catch(_){}
+    })();
+  </script>
+</head>
+<body class="booting">
+  <div id="bootSplash" class="boot-splash" aria-hidden="true">
+    <div class="boot-mark">派<span>mini</span> ♡</div>
+  </div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <section id="authGate" class="auth-gate">
+    <div class="auth-panel">
+      <div class="auth-brand">派<span>mini</span> ♡</div>
+      <p>独立派单计算器</p>
+      <label>邮箱<input id="email" type="email" autocomplete="email" placeholder="name@example.com"></label>
+      <label>密码<input id="password" type="password" autocomplete="current-password" placeholder="至少 6 位"></label>
+      <label>注册邀请码
+        <input id="signupInviteCode" autocomplete="off" placeholder="注册时填写 · 登录不用">
+      </label>
+      <p class="auth-mini-note">新账号使用 7 天试用邀请码注册；登录已有账号不需要邀请码。</p>
+      <a class="auth-guide-link" href="./guide.html">查看使用教程</a>
+      <div class="auth-actions">
+        <button id="signInBtn" class="btn primary" type="button">登录</button>
+        <button id="signUpBtn" class="btn soft" type="button">注册</button>
+      </div>
+      <p id="authHint" class="hint"></p>
+      <button id="authDiagBtn" class="btn ghost full-btn" type="button">连接诊断</button>
+      <p id="authDiagResult" class="auth-mini-note hidden"></p>
+      <p class="auth-mini-note">Version 20260922-9</p>
+      <div id="connectionStatus" class="connection-pill">
+        <span class="dot"></span><span id="connectionText">正在连接 Supabase…</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="accessGate" class="auth-gate hidden">
+    <div class="auth-panel access-panel">
+      <div class="auth-brand">使用期已到 ♡</div>
+      <p id="expiredAccessText">输入续费邀请码即可继续使用。</p>
+      <div class="duration-pills">
+        <span>7天</span><span>30天</span><span>90天</span><span>365天</span>
+      </div>
+      <label>续费邀请码
+        <input id="expiredRenewalCode" autocomplete="off" placeholder="输入续费邀请码">
+      </label>
+      <button id="expiredRenewBtn" class="btn primary full-btn" type="button">兑换并继续使用</button>
+      <button id="expiredSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
+      <p id="expiredHint" class="hint"></p>
+    </div>
+  </section>
+
+  <main id="appRoot" class="app-shell hidden">
+    <header class="topbar">
+      <button id="mobileMenuBtn" class="mobile-menu-btn" type="button" aria-label="打开导航" title="打开导航">☰</button>
+      <div class="top-identity">
+        <div id="topAvatar" class="profile-avatar">
+          <img id="topAvatarImg" class="hidden" alt="">
+          <span id="topAvatarFallback">♡</span>
+        </div>
+        <div>
+          <h1 id="topDisplayName">派<span>mini</span> <i>♡</i></h1>
+          <p id="topAccountLine">选项目 · 算价格 · 报备 · 小票 · 保存记录</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="accountEmail" class="account-email"></span>
+        <button id="signOutBtn" class="icon-btn" type="button" title="退出登录">退出登录</button>
+      </div>
+    </header>
+
+    <section class="welcome-strip">
+      <div class="welcome-copy">
+        <small>MY LITTLE HOMEPAGE</small>
+        <h2 id="welcomeName">欢迎回来 ♡</h2>
+        <p id="welcomeMessage">今天也要轻松一点，慢慢来就很好 ♡</p>
+        <div class="home-quick-actions">
+          <button id="installAppBtn" class="home-quick-btn" type="button">添加到主屏幕</button>
+          <a class="home-quick-btn" href="./guide.html">使用教程</a>
+        </div>
+      </div>
+      <div class="hearts" aria-hidden="true"><span>♡</span><span>♥</span><span>♡</span></div>
+    </section>
+
+    <nav class="section-nav" aria-label="功能分区">
+      <div class="desktop-side-brand">
+        <div>
+          <div class="desktop-side-logo">派<span>mini</span></div>
+          <small>PAI MINI</small>
+        </div>
+        <button id="desktopSidebarCollapseBtn" class="desktop-sidebar-collapse-btn" type="button" aria-label="收起左侧导航" title="收起左侧导航">‹</button>
+      </div>
+      <button id="verticalNavCollapseBtn" class="vertical-nav-collapse-btn" type="button" aria-label="收起左侧导航" title="收起左侧导航">‹</button>
+      <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
+      <button class="nav-tab" data-page="shops" type="button">我的店铺</button>
+      <button class="nav-tab" data-page="prices" type="button">价格表</button>
+      <button class="nav-tab" data-page="customers" type="button">顾客档案</button>
+      <button class="nav-tab" data-page="records" type="button">消费记录</button>
+      <button class="nav-tab" data-page="receipt" type="button">小票设置</button>
+      <button class="nav-tab" data-page="settings" type="button">设置</button>
+    </nav>
+    <button id="mobileNavOverlay" class="mobile-nav-overlay" type="button" aria-label="关闭导航"></button>
+
+    <section id="page-calculator" class="page active">
+      <div class="page-head">
+        <div><small>CORE FLOW</small><h2>派单计算</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">
+            <div><b>① 本单基础信息</b><small>先选店铺和老板</small></div>
+          </div>
+          <div class="form-grid">
+            <label>店铺
+              <select id="calcShop"></select>
+            </label>
+            <label>老板 / 顾客
+              <input id="customerName" list="customerList" placeholder="输入昵称，已有老板可直接选">
+              <datalist id="customerList"></datalist>
+            </label>
+            <label>老板折扣
+              <input id="customerDiscount" placeholder="默认10折，例如 9折 / 8.5折 / 90%">
+              <small id="discountHelp">已有老板会自动带出保存的折扣</small>
+            </label>
+            <label>陪陪
+              <input id="companionName" placeholder="直接手填，例如 A">
+            </label>
+            <label>备注
+              <input id="calcNote" placeholder="可选">
+            </label>
+          </div>
+          <div class="customer-total">
+            <span>历史累计</span>
+            <b id="historyTotal">¥0.00</b>
+            <i>保存后预计 <strong id="newTotal">¥0.00</strong></i>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <div><b>② 消费项目</b><small>分类 + 搜索 + 卡片墙</small></div>
+          </div>
+          <div class="item-toolbar">
+            <input id="itemSearch" placeholder="搜索消费项目">
+          </div>
+          <div id="categoryChips" class="chips"></div>
+          <div id="itemWall" class="item-wall"></div>
+          <div id="emptyItems" class="empty-state hidden">还没有价格项目，先去「价格表」添加吧 ♡</div>
+        </div>
+      </div>
+
+      <div class="card calc-card">
+        <div class="card-title">
+          <div><b>③ 算价</b><small id="selectedItemText">还没选择项目</small></div>
+        </div>
+        <div class="calc-grid manual-calc-grid">
+          <label>项目
+            <input id="calcItemName" list="calcItemList" placeholder="选择已有项目，或直接输入">
+            <datalist id="calcItemList"></datalist>
+            <small>已有项目会自动带出价格和单位；新项目可以直接手填</small>
+          </label>
+          <label>单价
+            <div class="money-field"><span id="currencyPrefix">¥</span><input id="calcUnitPrice" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          </label>
+          <label>单位
+            <input id="calcUnitLabel" placeholder="例如 半 / 小时 / 局 / 次">
+          </label>
+          <label>每单位分钟
+            <input id="calcUnitMinutes" type="number" min="0" step="1" placeholder="半填30，小时填60，可留空">
+          </label>
+          <label>时长 / 数量
+            <input id="durationInput" placeholder="例如 3H / 90m / 6">
+            <small id="durationHelp">已有项目自动识别；手动项目按你填写的单位计算</small>
+          </label>
+          <div class="price-result">
+            <span>本单总价</span>
+            <strong id="calcTotal">¥0.00</strong>
+            <small id="calcFormula">等待选择项目</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="card multi-order-card">
+        <div class="card-title">
+          <div><b>④ 本单陪玩 / 项目</b><small>可以添加多个陪玩，每个陪玩也可以添加多个项目</small></div>
+          <div class="mini-actions"><button id="addOrderLineBtn" class="tiny-btn" type="button">＋ 添加当前项目</button><button id="saveWholeOrderBtn" class="btn primary" type="button">保存整单</button></div>
+        </div>
+        <div id="orderLineList" class="order-line-list">
+          <div class="empty-state">还没有添加项目。填好上面的陪陪、项目和数量后，点「添加当前项目」。</div>
+        </div>
+        <div class="multi-order-total">
+          <span>本单合计</span>
+          <strong id="orderGrandTotal">¥0.00</strong>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button id="copyReportBtn" class="btn soft" type="button">复制报备</button>
+        <button id="previewReceiptBtn" class="btn soft" type="button">预览小票</button>
+        <button id="exportReceiptBtn" class="btn soft" type="button">导出图片</button>
+        <button id="saveRecordBtn" class="btn primary" type="button">保存记录</button>
+      </div>
+    </section>
+
+    <section id="page-prices" class="page">
+      <div class="page-head">
+        <div><small>PRICE BOOK</small><h2>价格表</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="card price-import-card">
+        <div class="card-title">
+          <div>
+            <b>图片识别导入 ♡</b>
+            <small>上传现成价格表图片，自动提取项目和价格，再确认后导入</small>
+          </div>
+          <span class="local-only-tag">仅本地识别 · 原图不保存</span>
+        </div>
+
+        <div class="import-layout">
+          <div class="import-upload-box">
+            <label class="image-drop">
+              <input id="priceImageInput" type="file" accept="image/png,image/jpeg,image/webp">
+              <span class="image-drop-title">选择价格表图片</span>
+              <small>PNG / JPG / WEBP · 图片不会上传到 Supabase</small>
+            </label>
+
+            <div id="priceImagePreviewWrap" class="price-image-preview hidden">
+              <img id="priceImagePreview" alt="价格表预览">
+            </div>
+
+            <div class="import-actions">
+              <button id="recognizePriceImageBtn" class="btn primary" type="button">开始识别</button>
+              <button id="clearPriceImageBtn" class="btn ghost" type="button">清除</button>
+            </div>
+
+            <div id="ocrProgressWrap" class="ocr-progress-wrap hidden">
+              <div class="ocr-progress-track"><span id="ocrProgressBar"></span></div>
+              <p id="ocrProgressText">准备识别…</p>
+            </div>
+          </div>
+
+          <div class="import-result-box">
+            <div class="import-result-head">
+              <div>
+                <b>识别结果</b>
+                <small>先检查，错的可以直接改，确认后才会写入价格表</small>
+              </div>
+              <button id="reparseOcrBtn" class="tiny-btn" type="button">重新整理文字</button>
+            </div>
+
+            <textarea id="ocrRawText" rows="6" placeholder="识别出的文字会显示在这里，也可以手动修改后重新整理"></textarea>
+
+            <div id="ocrRows" class="ocr-rows"></div>
+            <div id="ocrEmpty" class="empty-state">还没有识别结果。</div>
+
+            <button id="importRecognizedPricesBtn" class="btn primary full-btn" type="button" disabled>
+              确认导入当前店铺
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title"><div><b>分类</b><small>计算页顶部标签来自这里</small></div></div>
+          <div class="inline-form">
+            <input id="newCategoryName" placeholder="例如 语音 / 游戏">
+            <button id="addCategoryBtn" class="btn primary" type="button">新增分类</button>
+          </div>
+          <div id="categoryManager" class="manager-list"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><div><b id="itemFormTitle">新增价格项目</b><small>支持半小时 / 小时 / 局 / 次 / 首</small></div></div>
+          <div class="form-grid">
+            <label>项目名称<input id="priceName" placeholder="例如 语聊"></label>
+            <label>分类<select id="priceCategory"></select></label>
+            <label>单价<input id="priceValue" type="number" min="0" step="0.01" placeholder="25"></label>
+            <label>显示单位<input id="priceUnitLabel" placeholder="例如 半小时 / 局"></label>
+            <label>每单位分钟数
+              <input id="priceUnitMinutes" type="number" min="0" step="1" placeholder="半小时填 30；非时间留空">
+            </label>
+            <label>排序<input id="priceSort" type="number" step="1" value="0"></label>
+            <label class="wide check-label"><input id="priceManual" type="checkbox"> 允许算单时临时改价</label>
+            <label class="wide">备注<input id="priceNotes" placeholder="可选"></label>
+          </div>
+          <div class="mini-actions">
+            <button id="cancelItemEditBtn" class="btn ghost hidden" type="button">取消编辑</button>
+            <button id="savePriceItemBtn" class="btn primary" type="button">保存项目</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><div><b>全部项目</b><small>停用后不会出现在计算页</small></div></div>
+        <div id="priceItemList" class="price-list"></div>
+      </div>
+    </section>
+
+    <section id="page-records" class="page">
+      <div class="page-head">
+        <div><small>HISTORY</small><h2>消费记录</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+      <div class="card boss-summary-card">
+        <div class="card-title">
+          <div><b>老板档案</b><small>点进某个老板，可以查看并导出这个老板的全部流水</small></div>
+        </div>
+        <div id="bossSummaryList" class="boss-summary-list"></div>
+        <div id="emptyBossSummary" class="empty-state hidden">还没有老板记录。</div>
+      </div>
+
+      <div class="card">
+        <div class="record-toolbar">
+          <input id="recordSearch" placeholder="搜索老板 / 项目 / 陪陪">
+          <select id="recordShopFilter"></select>
+        </div>
+        <div id="recordList" class="record-list"></div>
+        <div id="emptyRecords" class="empty-state hidden">还没有保存过消费记录。</div>
+      </div>
+    </section>
+
+    <section id="page-customers" class="page">
+      <div class="page-head">
+        <div><small>CUSTOMERS</small><h2>顾客档案</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="two-col customer-page-grid">
+        <div class="card">
+          <div class="card-title"><div><b id="customerProfileFormTitle">建立顾客档案</b></div></div>
+          <div class="form-grid">
+            <label>店铺
+              <select id="customerShop"></select>
+            </label>
+            <label>顾客昵称
+              <input id="customerProfileName" maxlength="60" placeholder="老板昵称">
+            </label>
+            <label>联系方式
+              <input id="customerProfileContact" maxlength="120" placeholder="微信 / QQ / 其他">
+            </label>
+            <label>折扣
+              <input id="customerProfileDiscount" placeholder="例如 9折 / 8.5折 / 90%">
+            </label>
+            <label class="wide">备注
+              <textarea id="customerProfileNotes" rows="4" maxlength="500" placeholder="可记录偏好、禁忌、常点项目等"></textarea>
+            </label>
+          </div>
+          <div class="mini-actions">
+            <button id="cancelCustomerProfileBtn" class="btn ghost hidden" type="button">取消编辑</button>
+            <button id="saveCustomerProfileBtn" class="btn primary" type="button">保存顾客档案</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <div><b>我的顾客</b></div>
+            <input id="customerProfileSearch" class="shop-search" placeholder="搜索昵称 / 联系方式 / 备注">
+          </div>
+          <div id="customerProfileList" class="customer-profile-list"></div>
+          <div id="emptyCustomerProfiles" class="empty-state hidden">还没有顾客档案。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-shops" class="page">
+      <div class="page-head">
+        <div><small>MY SHOPS</small><h2>我的店铺</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title"><div><b id="shopFormTitle">新增店铺</b><small>大家都能看到启用店铺和它的公开价格表；只有创建者可以修改价格</small></div></div>
+          <div class="form-grid">
+            <label>店铺名称<input id="shopName" placeholder="例如 小莓店铺"></label>
+            <label>默认货币<input id="shopCurrency" value="¥" maxlength="4"></label>
+            <label>品牌色<input id="shopBrandColor" type="color" value="#f47ea7"></label>
+            <label>Logo 图片链接<input id="shopLogo" placeholder="可选"></label>
+            <label class="wide">页脚文案<input id="shopFooter" value="谢谢喜欢，祝你今天也开心 ♡"></label>
+          </div>
+          <div class="mini-actions">
+            <button id="cancelShopEditBtn" class="btn ghost hidden" type="button">取消编辑</button>
+            <button id="saveShopBtn" class="btn primary" type="button">保存店铺</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><div><b>我的报备模板</b><small>模板只属于你自己，不会分享给其他派单</small></div></div>
+          <select id="templateShop"></select>
+          <textarea id="reportTemplateText" rows="10"></textarea>
+          <div class="variable-box">
+            <b>可用变量</b>
+            <span>{老板}</span><span>{项目}</span><span>{陪陪}</span><span>{单价}</span><span>{单位}</span>
+            <span>{时长}</span><span>{数量}</span><span>{总价}</span><span>{历史累计}</span><span>{累计消费}</span>
+            <span>{备注}</span><span>{日期}</span><span>{时间}</span>
+          </div>
+          <button id="saveTemplateBtn" class="btn primary full-btn" type="button">保存报备模板</button>
+        </div>
+      </div>
+
+      <div class="card shop-library-card">
+        <div class="card-title">
+          <div><b>全部店铺</b><small>选择一家店即可直接使用它共享的价格表。你的老板、累计和派单记录仍然只有你自己能看到。</small></div>
+          <input id="shopSearch" class="shop-search" placeholder="搜索店名">
+        </div>
+        <div id="shopList" class="shop-grid"></div>
+      </div>
+    </section>
+
+    <section id="page-receipt" class="page">
+      <div class="page-head">
+        <div><small>RECEIPT</small><h2>小票设置</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+
+      <div class="two-col receipt-layout">
+        <div class="card">
+          <div class="card-title"><div><b>显示内容</b><small>内部报备和老板小票分开控制</small></div></div>
+          <label>店铺<select id="receiptShop"></select></label>
+
+          <label class="receipt-message-label">给老板留言
+            <textarea id="bossMessage" rows="3" maxlength="180" placeholder="例如：谢谢老板支持，祝你今天也开心 ♡"></textarea>
+          </label>
+
+          <div class="receipt-mode-tabs">
+            <button id="previewCurrentReceiptTab" class="receipt-mode active" type="button">本次小票</button>
+            <button id="previewBossStatementTab" class="receipt-mode" type="button">老板流水</button>
+          </div>
+
+          <div class="switch-list">
+            <label><input id="showCustomer" type="checkbox">老板昵称</label>
+            <label><input id="showCompanion" type="checkbox">陪陪</label>
+            <label><input id="showUnitPrice" type="checkbox">单价</label>
+            <label><input id="showQuantity" type="checkbox">时长 / 数量</label>
+            <label><input id="showTotalSpent" type="checkbox">累计消费</label>
+            <label><input id="showNote" type="checkbox">备注</label>
+            <label><input id="showTime" type="checkbox">日期时间</label>
+            <label><input id="showLogo" type="checkbox">店铺 Logo</label>
+            <label><input id="showFooter" type="checkbox">页脚文案</label>
+          </div>
+          <button id="saveReceiptSettingsBtn" class="btn primary full-btn" type="button">保存小票设置</button>
+        </div>
+
+        <div class="card preview-card">
+          <div class="card-title"><div><b id="receiptPreviewTitle">本次小票预览</b><small>本次订单和老板完整流水都可以导出</small></div></div>
+          <div id="receiptPreviewInline" class="receipt-paper"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page-settings" class="page">
+      <div class="page-head">
+        <div><small>SETTINGS</small><h2>设置</h2></div>
+        <span class="head-heart">♡</span>
+      </div>
+      <div class="settings-grid profile-settings-grid">
+        <div class="card profile-settings-card">
+          <div class="card-title"><div><b>我的主页</b></div></div>
+          <div class="profile-editor">
+            <div id="settingsAvatarPreview" class="profile-avatar large">
+              <img id="settingsAvatarImg" class="hidden" alt="">
+              <span id="settingsAvatarFallback">♡</span>
+            </div>
+            <div class="profile-fields">
+              <label>显示名字
+                <input id="profileDisplayName" maxlength="30" placeholder="例如 JiaJia">
+              </label>
+              <label>给自己说的话
+                <input id="profileHomeMessage" maxlength="120" placeholder="例如 今天也要轻松一点，慢慢来就很好 ♡">
+              </label>
+              <label>头像
+                <input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+              </label>
+              <button id="saveProfileBtn" class="btn primary" type="button">保存我的主页</button>
+            </div>
+          </div>
+        </div>
+        <div class="card desktop-settings-card">
+          <div class="card-title"><div><b>桌面图标与名称</b></div></div>
+          <div class="desktop-app-editor">
+            <div class="desktop-app-preview">
+              <img id="desktopIconPreview" src="./icon.svg" alt="">
+              <span id="desktopNamePreview">派mini</span>
+            </div>
+            <div class="desktop-app-fields">
+              <label>桌面名称
+                <input id="desktopAppName" maxlength="20" placeholder="例如 派mini / 我的派单">
+              </label>
+              <label>桌面图标
+                <input id="desktopIconFile" type="file" accept="image/png,image/jpeg,image/webp">
+              </label>
+              <div class="mini-actions desktop-app-actions">
+                <button id="resetDesktopAppBtn" class="btn ghost" type="button">恢复默认</button>
+                <button id="saveDesktopAppBtn" class="btn primary" type="button">保存桌面样式</button>
+              </div>
+              <button id="settingsInstallAppBtn" class="btn soft full-btn" type="button">添加到主屏幕</button>
+            </div>
+          </div>
+        </div>
+        <div class="card access-settings-card">
+          <div class="card-title"><div><b>使用期限</b></div></div>
+          <div class="access-status-line">
+            <span id="accessStatusBadge" class="status-tag">读取中</span>
+            <strong id="accessDaysLeft">--</strong>
+          </div>
+          <p id="accessValidUntil" class="muted"></p>
+          <label>续费邀请码
+            <input id="settingsRenewalCode" autocomplete="off" placeholder="7 / 30 / 90 / 365 天">
+          </label>
+          <button id="settingsRenewBtn" class="btn primary full-btn" type="button">兑换续费</button>
+          <p id="settingsRenewHint" class="hint"></p>
+        </div>
+        <div class="card">
+          <b>账号</b>
+          <p id="settingsEmail" class="muted"></p>
+          <p class="muted">派mini · Version 20260922-7</p>
+          <button id="settingsSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
+        </div>
+        <div class="card mobile-nav-settings-card">
+          <div class="card-title"><div><b>手机导航布局</b></div></div>
+          <div class="mobile-nav-mode-row">
+            <button class="theme-preset" data-mobile-nav-mode="top" type="button">顶部横向</button>
+            <button class="theme-preset" data-mobile-nav-mode="left" type="button">左侧竖向</button>
+          </div>
+          <p class="muted">左侧竖向模式和美工端一样，可以随时收起导航。</p>
+        </div>
+        <div class="card theme-settings-card">
+          <div class="card-title"><div><b>配色</b></div></div>
+          <div class="theme-presets">
+            <button class="theme-preset active" data-theme-preset="beige" type="button">米白</button>
+            <button class="theme-preset" data-theme-preset="pink" type="button">奶粉</button>
+            <button class="theme-preset" data-theme-preset="mint" type="button">薄荷</button>
+            <button class="theme-preset" data-theme-preset="blue" type="button">雾蓝</button>
+            <button class="theme-preset" data-theme-preset="lavender" type="button">雾紫</button>
+          </div>
+          <div class="theme-color-grid">
+            <label>底色<input id="themeBg" type="color" value="#fbf8f2"></label>
+            <label>主色<input id="themeAccent" type="color" value="#e58aa7"></label>
+            <label>卡片<input id="themePaper" type="color" value="#ffffff"></label>
+            <label>文字<input id="themeInk" type="color" value="#4d413d"></label>
+          </div>
+          <div class="mini-actions">
+            <button id="resetThemeBtn" class="btn ghost" type="button">恢复米白</button>
+            <button id="saveThemeBtn" class="btn primary" type="button">保存配色</button>
+          </div>
+        </div>
+        <div id="adminDataSummaryCard" class="card hidden">
+          <b>当前数据</b>
+          <p id="dataSummary" class="muted">正在读取…</p>
+          <button id="refreshDataBtn" class="btn soft" type="button">刷新数据</button>
+        </div>
+        <div class="card">
+          <b>使用教程</b>
+          <div class="admin-entry-actions">
+            <a class="btn soft admin-link-btn" href="./guide.html">打开教程</a>
+          </div>
+        </div>
+        <div id="adminEntryCard" class="card hidden">
+          <b>我的管理端</b>
+          <div class="admin-entry-actions">
+            <a class="btn primary admin-link-btn" href="./admin.html">进入管理端</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <dialog id="installHelpDialog" class="receipt-dialog install-help-dialog">
+    <div class="dialog-shell">
+      <button id="closeInstallHelpDialog" class="dialog-close" type="button">×</button>
+      <div class="install-help">
+        <b>添加派mini到主屏幕</b>
+        <p id="installHelpText"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="receiptDialog" class="receipt-dialog">
+    <div class="dialog-shell">
+      <button id="closeReceiptDialog" class="dialog-close" type="button">×</button>
+      <div id="receiptCapture" class="receipt-paper"></div>
+      <div class="dialog-actions">
+        <button id="dialogExportBtn" class="btn primary" type="button">导出 PNG</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="bossStatementDialog" class="receipt-dialog">
+    <div class="dialog-shell">
+      <button id="closeBossStatementDialog" class="dialog-close" type="button">×</button>
+      <div id="bossStatementCapture" class="receipt-paper statement-paper"></div>
+      <div class="dialog-actions">
+        <button id="exportBossStatementBtn" class="btn primary" type="button">导出老板全部流水 PNG</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/+esm",
+      "@techstark/opencv-js": "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/+esm",
+      "clipper-lib": "https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/+esm",
+      "js-yaml": "https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm"
+    }
+  }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260922-10"></script>
+  <script type="module" src="./boss-features.js?v=20260921-v16"></script>
+  <script type="module" src="./price-import.js?v=20260922-v21"></script>
+  <script type="module" src="./multi-order.js?v=20260922-2"></script>
+</body>
+</html>
