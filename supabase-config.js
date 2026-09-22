@@ -143,7 +143,6 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
 }
 
 // 派单页结算选择器：核心页面显示后独立加载。
-// 当前只提供“选择使用预存 / 查看余额权益”，不接管核心保存按钮。
 if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
   window.__paiMiniSettlementScheduled=true;
   let settlementStarted=false;
@@ -154,6 +153,8 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     try{
       const mod=await import("./order-settlement-safe.js?v=20260923-settlement1");
       await mod.initOrderSettlementSafe?.();
+      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic1");
+      await atomic.initOrderWalletAtomicSafe?.();
     }catch(error){
       settlementStarted=false;
       console.warn("order settlement safe load failed",error);
