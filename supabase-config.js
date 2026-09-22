@@ -57,3 +57,13 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
     }
   };
 }
+
+// 派Mini 扩展功能：店铺公开/私密、预存/权益快捷库。
+// 使用独立模块并加全局守卫，避免多个页面模块重复加载。
+if(typeof window!=="undefined" && !window.__paiMiniWalletFeaturesLoading){
+  window.__paiMiniWalletFeaturesLoading=true;
+  import("./wallet-features.js?v=20260923-1").catch(error=>{
+    console.warn("wallet features load failed",error);
+    window.__paiMiniWalletFeaturesLoading=false;
+  });
+}
