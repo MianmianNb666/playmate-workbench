@@ -98,7 +98,7 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
 }
 
 // 预存恢复版：只先创建轻量页面，不立即读取账务数据。
-// 用户真正点进「预存」时才加载管理模块，避免它影响主站点击和启动。
+// 用户真正点进「预存」时才加载余额管理 + 预存套餐预设。
 if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
   window.__paiMiniPrepaidSectionScheduled=true;
   let shellReady=false;
@@ -108,8 +108,10 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(managerStarted)return;
     managerStarted=true;
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy1");
+      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy2");
       await mod.initPrepaidManagerSafe?.();
+      const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets1");
+      await presets.initPrepaidPresetsSafe?.();
     }catch(error){
       managerStarted=false;
       console.warn("prepaid manager lazy load failed",error);
@@ -122,7 +124,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(shellReady || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     shellReady=true;
     try{
-      await import("./prepaid-page.js?v=20260923-prepaid-shell-clean1");
+      await import("./prepaid-page.js?v=20260923-prepaid-shell-clean2");
       const btn=document.querySelector('.nav-tab[data-page="prepaid"]');
       btn?.addEventListener("click",()=>void loadManager(),{passive:true});
     }catch(error){
@@ -136,6 +138,30 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     void startPrepaidShell();
   },300);
   setTimeout(()=>clearInterval(prepaidTimer),30000);
+}
+
+// 派单页结算选择器：核心页面显示后独立加载。
+// 当前只提供“选择使用预存 / 查看余额权益”，不接管核心保存按钮。
+if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
+  window.__paiMiniSettlementScheduled=true;
+  let settlementStarted=false;
+  const startSettlement=async()=>{
+    const app=document.getElementById("appRoot");
+    if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    settlementStarted=true;
+    try{
+      const mod=await import("./order-settlement-safe.js?v=20260923-settlement1");
+      await mod.initOrderSettlementSafe?.();
+    }catch(error){
+      settlementStarted=false;
+      console.warn("order settlement safe load failed",error);
+    }
+  };
+  const settlementTimer=setInterval(()=>{
+    if(settlementStarted){clearInterval(settlementTimer);return;}
+    void startSettlement();
+  },350);
+  setTimeout(()=>clearInterval(settlementTimer),30000);
 }
 
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
