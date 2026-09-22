@@ -56,6 +56,12 @@ async function start(){
       mod.initShopMembershipShell(),
       timeoutPromise(INIT_TIMEOUT_MS,'membership init timeout')
     ]);
+
+    // Production copy is presentation-only and must never affect membership/core behavior.
+    import('./shop-membership-polish.js?v=20260923-prod1')
+      .then(polish=>polish.polishShopMembershipUi?.())
+      .catch(error=>console.warn('membership production copy polish skipped',error));
+
     window.__paiMiniMembershipStatus='ready-phase4';
     finished=true;
     try{sessionStorage.removeItem(FAILURE_KEY)}catch{}
