@@ -1,10 +1,8 @@
 export const SUPABASE_URL = "https://hwvtuybkozojypifxjto.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_zXBazZFr";
 
-// 可选中转地址。部署 Cloudflare Worker 后把地址填在这里，例：
-// export const SUPABASE_PROXY_URL = "https://paimini-supabase-proxy.example.workers.dev";
-// 留空时完全保持原来的 Supabase 直连逻辑。
-export const SUPABASE_PROXY_URL = "";
+// Supabase 中转地址：默认仍优先直连，只有网络级失败才自动走 Cloudflare Worker。
+export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
 
