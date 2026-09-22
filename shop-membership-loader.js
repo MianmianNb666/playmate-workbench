@@ -3,7 +3,7 @@
 
 const LOAD_DELAY_MS=900;
 const INIT_TIMEOUT_MS=6000;
-const FAILURE_KEY='paimini-membership-failed-phase2';
+const FAILURE_KEY='paimini-membership-failed-phase3';
 let started=false;
 let finished=false;
 
@@ -49,14 +49,14 @@ async function start(){
 
   try{
     const mod=await Promise.race([
-      import('./shop-membership-shell.js?v=20260923-phase2'),
+      import('./shop-membership-shell.js?v=20260923-phase3'),
       timeoutPromise(INIT_TIMEOUT_MS,'membership import timeout')
     ]);
     await Promise.race([
       mod.initShopMembershipShell(),
       timeoutPromise(INIT_TIMEOUT_MS,'membership init timeout')
     ]);
-    window.__paiMiniMembershipStatus='ready-phase2';
+    window.__paiMiniMembershipStatus='ready-phase3';
     finished=true;
     try{sessionStorage.removeItem(FAILURE_KEY)}catch{}
   }catch(error){
@@ -74,4 +74,7 @@ export function scheduleShopMembershipShell(){
   },300);
 }
 
-scheduleShopMembershipShell();
+if(typeof window!=="undefined" && !window.__paiMiniMembershipPhase3LoaderScheduled){
+  window.__paiMiniMembershipPhase3LoaderScheduled=true;
+  scheduleShopMembershipShell();
+}
