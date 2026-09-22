@@ -1880,10 +1880,97 @@ function renderInlineReceipt(){
   $("receiptPreviewInline").innerHTML=receiptHtml(data,currentReceiptSettingsFromControls());
 }
 
+function multiOrderReceiptData(){
+  const staged=window.paiMiniMultiOrder?.lines;
+  if(!Array.isArray(staged)||!staged.length) return null;
+
+  const customer=($("customerName")?.value||"").trim();
+  if(!customer){
+    toast("先填写老板 / 顾客");
+    return null;
+  }
+
+  const shop=currentShop()||{};
+  const total=staged.reduce((sum,line)=>sum+Number(line.total||0),0);
+  const previous=state.records
+    .filter(r=>r.shop_id===state.shopId && String(r.customer_name_snapshot||"")===customer)
+    .reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+  return {
+    shop,
+    customer,
+    note:($("calcNote")?.value||"").trim(),
+    lines:staged.map(line=>({...line})),
+    total,
+    history:previous,
+    newTotal:previous+total,
+    ...dateParts()
+  };
+}
+
+function multiReceiptHtml(data,settings){
+  const shop=data.shop||currentShop()||{};
+  const logo=settings.show_logo && shop.logo_url
+    ? `<img class="receipt-logo" src="${safe(shop.logo_url)}" alt="">`
+    : "";
+
+  const groups=[];
+  for(const line of data.lines){
+    let group=groups.find(g=>g.companion===line.companion);
+    if(!group){
+      group={companion:line.companion,lines:[]};
+      groups.push(group);
+    }
+    group.lines.push(line);
+  }
+
+  const common=[];
+  if(settings.show_customer) common.push(["老板",data.customer]);
+  if(settings.show_total_spent) common.push(["累计消费",money(data.newTotal,shop)]);
+  if(settings.show_note && data.note) common.push(["备注",data.note]);
+  if(settings.show_time) common.push(["时间",`${data.date} ${data.time}`]);
+
+  const groupedHtml=groups.map((group,groupIndex)=>`
+    <div class="receipt-multi-group" style="padding:10px 0;${groupIndex?"border-top:1px dashed #ead9d5;":""}">
+      ${settings.show_companion?`<div class="receipt-line"><span>陪陪</span><b>${safe(group.companion||"")}</b></div>`:""}
+      ${group.lines.map((line,index)=>`
+        <div class="receipt-line"><span>项目${group.lines.length>1?" "+(index+1):""}</span><b>${safe(line.item||"")}</b></div>
+        ${settings.show_unit_price?`<div class="receipt-line"><span>单价</span><b>${safe(money(line.price,shop)+" / "+(line.unit||"次"))}</b></div>`:""}
+        ${settings.show_quantity?`<div class="receipt-line"><span>时长 / 数量</span><b>${safe(line.measure||plainNumber(line.quantity))}</b></div>`:""}
+        ${Number(line.discountRate??100)<100?`
+          <div class="receipt-line"><span>折扣</span><b>${safe(discountLabel(line.discountRate))}</b></div>
+        `:""}
+        <div class="receipt-line"><span>小计</span><b>${safe(money(line.total,shop))}</b></div>
+      `).join("")}
+    </div>
+  `).join("");
+
+  return `
+    <div class="receipt-head">
+      ${logo}
+      <h3>${safe(shop.name||"我的小店")}</h3>
+      <p>多人 / 多项目小票 · THANK YOU ♡</p>
+    </div>
+    <div class="receipt-lines">
+      ${common.map(([k,v])=>`<div class="receipt-line"><span>${safe(k)}</span><b>${safe(v)}</b></div>`).join("")}
+      ${groupedHtml}
+    </div>
+    <div class="receipt-total"><span>本单金额</span><strong>${money(data.total,shop)}</strong></div>
+    ${settings.boss_message?`<div class="receipt-message">${safe(settings.boss_message)}</div>`:""}
+    ${settings.show_footer?`<div class="receipt-footer">${safe(shop.footer_text||"谢谢喜欢，祝你今天也开心 ♡")}</div>`:""}
+  `;
+}
+
 function renderReceiptForCurrentCalc(targetId){
+  const settings=state.receiptSettings||defaultReceipt();
+  const multiData=multiOrderReceiptData();
+  if(multiData){
+    $(targetId).innerHTML=multiReceiptHtml(multiData,settings);
+    return true;
+  }
+
   const data=reportData();
   if(!data) return false;
-  const settings=state.receiptSettings||defaultReceipt();
   $(targetId).innerHTML=receiptHtml(data,settings);
   return true;
 }
