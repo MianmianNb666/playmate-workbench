@@ -25,10 +25,16 @@ function applyBadges(){
   list.querySelectorAll('.customer-profile-card').forEach(card=>{
     const id=card.querySelector('[data-edit-customer]')?.dataset.editCustomer||card.querySelector('[data-use-customer]')?.dataset.useCustomer;
     if(!id)return;
-    let badge=card.querySelector('.customer-prepaid-badge');
-    if(!badge){badge=document.createElement('div');badge.className='customer-prepaid-badge';const head=card.querySelector('.customer-profile-head > div')||card.querySelector('.customer-profile-head')||card;head.appendChild(badge)}
     const balance=balances.has(id)?balances.get(id):Number((ctx()?.state?.customers||[]).find(x=>x.id===id)?.prepaid_balance||0);
-    badge.innerHTML=`<span>预存余额</span><b>${safeMoney(balance,id)}</b>`;
+    const text=safeMoney(balance,id);
+    let badge=card.querySelector('.customer-prepaid-badge');
+    if(!badge){
+      badge=document.createElement('div');badge.className='customer-prepaid-badge';badge.innerHTML='<span>预存余额</span><b></b>';
+      const head=card.querySelector('.customer-profile-head > div')||card.querySelector('.customer-profile-head')||card;head.appendChild(badge);
+    }
+    if(badge.dataset.balanceText===text)return;
+    badge.dataset.balanceText=text;
+    const value=badge.querySelector('b');if(value)value.textContent=text;
   });
 }
 
