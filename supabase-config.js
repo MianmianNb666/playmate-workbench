@@ -67,6 +67,15 @@ if(typeof window!=="undefined" && !window.__paiMiniWalletFeaturesLoading){
   });
 }
 
+// 老板档案：预存余额、权益库存、流水、手动调整、充值撤销、CSV 导出。
+if(typeof window!=="undefined" && !window.__paiMiniBossWalletLoading){
+  window.__paiMiniBossWalletLoading=true;
+  import("./boss-wallet.js?v=20260923-1").catch(error=>{
+    console.warn("boss wallet load failed",error);
+    window.__paiMiniBossWalletLoading=false;
+  });
+}
+
 // 店铺成员制：普通用户只能看到自己创建或已加入的店铺；邀请 / 加入统一放在「小店」。
 if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
   window.__paiMiniShopMembershipLoading=true;
