@@ -35,7 +35,6 @@ with check (
           select 1 from public.shop_members m
           where m.shop_id = s.id
             and m.user_id = auth.uid()
-            and coalesce(m.status, 'active') = 'active'
         )
       )
   )
