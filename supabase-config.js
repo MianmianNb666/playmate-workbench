@@ -1,23 +1,17 @@
 export const SUPABASE_URL = "https://hwvtuybkozojypifxjto.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_zXBazZFr";
 
-// Supabase 中转地址：默认优先直连，网络失败或超时后再尝试 Cloudflare Worker。
+// Supabase 中转地址：默认仍优先直连，只有网络级失败才自动走 Cloudflare Worker。
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
 
 function isNetworkFailure(error){
-  const name=String(error?.name||"").toLowerCase();
   const message=String(error?.message||error||"").toLowerCase();
   return error instanceof TypeError ||
-    name.includes("abort") ||
-    name.includes("timeout") ||
     message.includes("load failed") ||
     message.includes("failed to fetch") ||
-    message.includes("network") ||
-    message.includes("timeout") ||
-    message.includes("timed out") ||
-    message.includes("aborted");
+    message.includes("network");
 }
 
 function toProxyUrl(input){
@@ -34,86 +28,86 @@ function toProxyUrl(input){
   return SUPABASE_PROXY_URL.replace(/\/$/,"") + url.pathname + url.search;
 }
 
-async function fetchWithTimeout(fetcher,input,init,timeoutMs=5000){
-  const controller=new AbortController();
-  const externalSignal=init?.signal || (input instanceof Request ? input.signal : null);
-  let onAbort=null;
-
-  if(externalSignal){
-    if(externalSignal.aborted){
-      controller.abort();
-    }else{
-      onAbort=()=>controller.abort();
-      externalSignal.addEventListener("abort",onAbort,{once:true});
-    }
-  }
-
-  const timer=setTimeout(()=>controller.abort(),timeoutMs);
-  try{
-    return await fetcher(input,{...(init||{}),signal:controller.signal});
-  }finally{
-    clearTimeout(timer);
-    if(externalSignal&&onAbort){
-      try{externalSignal.removeEventListener("abort",onAbort)}catch{}
-    }
-  }
-}
-
-// 只给 Supabase 请求加超时和代理兜底，其他网络请求保持浏览器原行为。
+// Supabase 仍然优先直连。只有真正的网络级失败才尝试代理；
+// HTTP 401/403/500 等正常服务端响应不会被代理重试，避免掩盖真实错误。
 if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.__paiMiniSupabaseProxyFetchInstalled=true;
   globalThis.fetch=async function paiMiniFetch(input,init){
-    const proxyUrl=toProxyUrl(input);
-    if(!proxyUrl){
-      return nativeFetch(input,init);
-    }
-
     try{
-      return await fetchWithTimeout(nativeFetch,input,init,5000);
+      return await nativeFetch(input,init);
     }catch(error){
-      if(!isNetworkFailure(error)) throw error;
+      const proxyUrl=toProxyUrl(input);
+      if(!proxyUrl || !isNetworkFailure(error)) throw error;
 
       const request=input instanceof Request ? input : null;
       const retryInit={
         method:init?.method || request?.method || "GET",
         headers:init?.headers || request?.headers,
         body:init?.body,
+        signal:init?.signal || request?.signal,
         cache:"no-store",
         redirect:init?.redirect || request?.redirect,
         credentials:"omit"
       };
 
+      // GET / HEAD 不能带 body。
       if(retryInit.method==="GET" || retryInit.method==="HEAD") delete retryInit.body;
-      return fetchWithTimeout(nativeFetch,proxyUrl,retryInit,5000);
+
+      return nativeFetch(proxyUrl,retryInit);
     }
   };
 }
 
-// 启动兜底：即使 Supabase / 扩展脚本异常，也不能让整个页面永远卡在 booting 空白层。
-if(typeof window!=="undefined" && !window.__paiMiniBootFailsafeInstalled){
-  window.__paiMiniBootFailsafeInstalled=true;
-  setTimeout(()=>{
-    const body=document.body;
-    if(!body)return;
-    body.classList.remove("booting");
-
-    const auth=document.getElementById("authGate");
-    const access=document.getElementById("accessGate");
-    const app=document.getElementById("appRoot");
-    const allHidden=[auth,access,app].every(el=>!el || el.classList.contains("hidden"));
-
-    if(allHidden && auth){
-      auth.classList.remove("hidden");
-      const hint=document.getElementById("authHint");
-      const status=document.getElementById("connectionStatus");
-      const text=document.getElementById("connectionText");
-      if(hint) hint.textContent="连接初始化超时，页面已恢复响应。可以点「连接诊断」检查网络。";
-      if(status){status.classList.remove("hidden","good");status.classList.add("bad")}
-      if(text) text.textContent="Supabase 连接超时";
-    }
-  },8000);
+// 派Mini 扩展功能：预存套餐与附赠权益。
+if(typeof window!=="undefined" && !window.__paiMiniWalletFeaturesLoading){
+  window.__paiMiniWalletFeaturesLoading=true;
+  import("./wallet-features.js?v=20260923-2").catch(error=>{
+    console.warn("wallet features load failed",error);
+    window.__paiMiniWalletFeaturesLoading=false;
+  });
 }
 
-// 2026-09-23 紧急稳定模式：
-// 暂停所有可选扩展的自动加载，先保证主站登录和基础功能可打开。
-// 数据库 migration 与扩展文件全部保留，确认主站恢复后再逐个重新启用。
+// 老板档案：预存余额、权益库存、流水、手动调整、充值撤销、CSV 导出。
+if(typeof window!=="undefined" && !window.__paiMiniBossWalletLoading){
+  window.__paiMiniBossWalletLoading=true;
+  import("./boss-wallet.js?v=20260923-2").catch(error=>{
+    console.warn("boss wallet load failed",error);
+    window.__paiMiniBossWalletLoading=false;
+  });
+}
+
+// 店铺成员制：普通用户只能看到自己创建或已加入的店铺；邀请 / 加入统一放在「小店」。
+if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
+  window.__paiMiniShopMembershipLoading=true;
+  import("./shop-membership.js?v=20260923-2").catch(error=>{
+    console.warn("shop membership load failed",error);
+    window.__paiMiniShopMembershipLoading=false;
+  });
+}
+
+// 将预存套餐独立成与价格表并列的一级分区。
+if(typeof window!=="undefined" && !window.__paiMiniPrepaidPageLoading){
+  window.__paiMiniPrepaidPageLoading=true;
+  import("./prepaid-page.js?v=20260923-1").catch(error=>{
+    console.warn("prepaid page load failed",error);
+    window.__paiMiniPrepaidPageLoading=false;
+  });
+}
+
+// 邀请码到期后进入只读模式：仍可查看历史数据，续费后恢复编辑。
+if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
+  window.__paiMiniReadonlyAccessLoading=true;
+  import("./readonly-access.js?v=20260923-4").catch(error=>{
+    console.warn("readonly access load failed",error);
+    window.__paiMiniReadonlyAccessLoading=false;
+  });
+}
+
+// 删除模式：默认隐藏危险删除按钮，只在设置中显式开启后显示。
+if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
+  window.__paiMiniDeleteModeLoading=true;
+  import("./delete-mode.js?v=20260923-1").catch(error=>{
+    console.warn("delete mode load failed",error);
+    window.__paiMiniDeleteModeLoading=false;
+  });
+}
