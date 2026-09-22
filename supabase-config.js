@@ -76,6 +76,15 @@ if(typeof window!=="undefined" && !window.__paiMiniBossWalletLoading){
   });
 }
 
+// 派单联动老板钱包：保存订单时可直接使用预存余额与权益。
+if(typeof window!=="undefined" && !window.__paiMiniOrderWalletLoading){
+  window.__paiMiniOrderWalletLoading=true;
+  import("./order-wallet.js?v=20260923-1").catch(error=>{
+    console.warn("order wallet load failed",error);
+    window.__paiMiniOrderWalletLoading=false;
+  });
+}
+
 // 店铺成员制：普通用户只能看到自己创建或已加入的店铺；邀请 / 加入统一放在「小店」。
 if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
   window.__paiMiniShopMembershipLoading=true;
