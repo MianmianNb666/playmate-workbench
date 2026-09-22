@@ -3,7 +3,7 @@ import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js";
 
 const supabase=createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
-const state={session:null,shops:[],invite:null};
+const state={session:null,shops:[],invite:null,members:[],handledJoinLink:false};
 
 function safe(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
 function toast(message,bad=false){
@@ -30,7 +30,8 @@ function injectStyle(){
     .shop-invite-line code,.shop-invite-line input{min-width:0;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .shop-member-list{display:grid;gap:8px;margin-top:10px}.shop-member-item{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid var(--line);border-radius:13px;padding:10px 12px}
     .shop-member-item small{display:block;color:var(--muted);margin-top:3px}.shop-membership-status{display:inline-flex;padding:5px 9px;border-radius:999px;background:var(--pink-soft);font-size:12px;margin-left:6px}
-    @media(max-width:720px){.shop-membership-grid{grid-template-columns:1fr}.shop-invite-line{grid-template-columns:1fr}.shop-invite-line>span{font-size:12px;color:var(--muted)}.shop-membership-row .btn{width:100%}}
+    .shop-members-title{margin-top:8px;padding-top:10px;border-top:1px dashed var(--line);font-size:13px;font-weight:700}
+    @media(max-width:720px){.shop-membership-grid{grid-template-columns:1fr}.shop-invite-line{grid-template-columns:1fr}.shop-invite-line>span{font-size:12px;color:var(--muted)}.shop-membership-row .btn{width:100%}.shop-member-item{align-items:flex-start;flex-direction:column}.shop-member-item .tiny-btn{width:100%}}
   `;
   document.head.appendChild(s);
 }
@@ -51,17 +52,18 @@ function injectCard(){
     <div class="shop-membership-grid">
       <div class="shop-membership-box">
         <h3>加入店铺</h3>
-        <p>输入店主发给你的加入码，或通过邀请链接打开后在这里确认加入。</p>
+        <p>输入店主发给你的店铺邀请码。通过邀请链接打开时，会先显示店名让你确认后再加入。</p>
         <div class="shop-membership-row">
           <label>店铺邀请码<input id="shopJoinCode" autocomplete="off" placeholder="例如 PM-AB12CD34EF56..."></label>
           <button id="joinShopBtn" class="btn primary" type="button">加入店铺</button>
         </div>
+        <div class="shop-members-title">我加入的店铺</div>
         <div id="joinedShopList" class="shop-member-list"></div>
       </div>
 
       <div class="shop-membership-box">
         <h3>邀请成员</h3>
-        <p>只有你创建的店铺可以生成邀请。加入成员只能读取共享价格表，不能看到你的老板、消费、预存和权益数据。</p>
+        <p>只有你创建的店铺可以邀请。成员只共享店铺和价格表，看不到你的老板、消费、预存和权益。</p>
         <label>我创建的店铺<select id="inviteShopSelect"></select></label>
         <div id="shopInviteArea" class="shop-invite-readout"></div>
       </div>
@@ -69,7 +71,7 @@ function injectCard(){
 
   page.querySelector(".page-head")?.insertAdjacentElement("afterend",card);
   bind();
-  applyJoinCodeFromUrl();
+  fillJoinCodeFromUrl();
   return true;
 }
 
@@ -85,10 +87,17 @@ function joinedShops(){
 
 function inviteLink(code){
   if(!code)return "";
-  const url=new URL("./",location.href);
+  const url=new URL(location.href);
+  url.search="";
+  url.hash="";
   url.searchParams.set("join",code);
-  url.hash="shops";
   return url.toString();
+}
+
+function clearJoinParam(){
+  const url=new URL(location.href);
+  url.searchParams.delete("join");
+  history.replaceState(null,"",url.pathname+url.search+url.hash);
 }
 
 async function copyText(text,label){
@@ -118,37 +127,73 @@ function renderOwnerSelect(){
   if(old&&owned.some(s=>s.id===old))sel.value=old;
 }
 
+function memberLabel(member){
+  const name=(member.display_name||"").trim();
+  const email=(member.email||"").trim();
+  return name||email||"未命名账号";
+}
+
+function renderMembers(){
+  const members=state.members||[];
+  if(!members.length)return '<div class="empty-state">暂时没有成员信息。</div>';
+  return members.map(member=>`
+    <div class="shop-member-item">
+      <div>
+        <b>${safe(memberLabel(member))}${member.role==="owner"?'<span class="shop-membership-status">店主</span>':''}</b>
+        <small>${safe(member.email||"")}${member.role==="member"?" · 已加入":""}</small>
+      </div>
+      ${member.role==="member"?`<button class="tiny-btn danger" type="button" data-remove-shop-member="${safe(member.user_id)}">移出店铺</button>`:""}
+    </div>`).join("");
+}
+
 async function loadInvite(){
   const area=$("shopInviteArea"),shopId=$("inviteShopSelect")?.value;
   state.invite=null;
+  state.members=[];
   if(!area)return;
   if(!shopId){area.innerHTML='<div class="empty-state">先创建一家店铺，就可以邀请成员啦。</div>';return}
   area.innerHTML='<div class="empty-state">正在读取邀请…</div>';
 
-  const {data,error}=await supabase.rpc("get_my_shop_invite",{p_shop_id:shopId});
-  if(error){area.innerHTML=`<div class="empty-state">邀请读取失败：${safe(error.message)}</div>`;return}
-  state.invite=data||null;
+  const [inviteResult,membersResult]=await Promise.all([
+    supabase.rpc("get_my_shop_invite",{p_shop_id:shopId}),
+    supabase.rpc("list_my_shop_members",{p_shop_id:shopId})
+  ]);
 
-  if(!data?.exists){
-    area.innerHTML='<div class="empty-state">账号当前为只读状态，续费后可以生成店铺邀请。</div>';
+  if(inviteResult.error){
+    const missing=/function|does not exist|schema cache/i.test(String(inviteResult.error.message||""));
+    area.innerHTML=`<div class="empty-state">${missing?"店铺成员功能还需要运行最新 SQL。":"邀请读取失败："+safe(inviteResult.error.message)}</div>`;
+    return;
+  }
+  if(!membersResult.error)state.members=membersResult.data||[];
+  state.invite=inviteResult.data||null;
+
+  if(!state.invite?.exists){
+    area.innerHTML=`<div class="empty-state">账号当前为只读状态，续费后可以生成店铺邀请。</div><div class="shop-members-title">店铺成员</div>${renderMembers()}`;
     return;
   }
 
-  const code=data.code||"",link=inviteLink(code),enabled=data.is_enabled!==false;
+  const code=state.invite.code||"",link=inviteLink(code),enabled=state.invite.is_enabled!==false;
+  const joinedCount=(state.members||[]).filter(m=>m.role==="member").length;
   area.innerHTML=`
-    <div><b>当前邀请 <span class="shop-membership-status">${enabled?"已开启":"已关闭"}</span></b><div class="wallet-inline-note">已加入成员 ${Number(data.member_count||0)} 人</div></div>
+    <div><b>当前邀请 <span class="shop-membership-status">${enabled?"已开启":"已关闭"}</span></b><div class="wallet-inline-note">已加入成员 ${joinedCount} 人</div></div>
     <div class="shop-invite-line"><span>邀请码</span><input id="shopInviteCodeView" readonly value="${safe(code)}"><button id="copyShopInviteCodeBtn" class="tiny-btn" type="button">复制邀请码</button></div>
     <div class="shop-invite-line"><span>邀请链接</span><input id="shopInviteLinkView" readonly value="${safe(link)}"><button id="copyShopInviteLinkBtn" class="tiny-btn" type="button">复制链接</button></div>
     <div class="shop-membership-row">
       <button id="toggleShopInviteBtn" class="btn ghost" type="button">${enabled?"关闭邀请":"重新开启邀请"}</button>
       <button id="regenerateShopInviteBtn" class="btn ghost" type="button">重新生成</button>
     </div>
-    <div class="wallet-inline-note">重新生成后，旧邀请码和旧链接会立即失效。关闭邀请不会踢出已经加入的成员。</div>`;
+    <div class="wallet-inline-note">重新生成后，旧邀请码和旧链接会立即失效。关闭邀请不会踢出已经加入的成员。</div>
+    <div class="shop-members-title">店铺成员</div>
+    <div id="ownerShopMemberList" class="shop-member-list">${renderMembers()}</div>`;
 
   $("copyShopInviteCodeBtn")?.addEventListener("click",()=>copyText(code,"邀请码"));
   $("copyShopInviteLinkBtn")?.addEventListener("click",()=>copyText(link,"邀请链接"));
   $("toggleShopInviteBtn")?.addEventListener("click",toggleInvite);
   $("regenerateShopInviteBtn")?.addEventListener("click",regenerateInvite);
+  $("ownerShopMemberList")?.addEventListener("click",e=>{
+    const btn=e.target.closest("[data-remove-shop-member]");
+    if(btn)removeMember(btn.dataset.removeShopMember);
+  });
 }
 
 async function load(){
@@ -161,9 +206,9 @@ async function load(){
   await loadInvite();
 }
 
-async function joinShop(){
+async function joinShop(codeOverride=""){
   if(isReadonly()){toast("账号已到期，当前为只读模式",true);return}
-  const code=$("shopJoinCode")?.value.trim();
+  const code=(codeOverride||$("shopJoinCode")?.value||"").trim();
   if(!code){toast("先输入店铺邀请码",true);return}
   const btn=$("joinShopBtn");if(btn){btn.disabled=true;btn.textContent="加入中…"}
   const {data,error}=await supabase.rpc("join_shop_by_code",{p_code:code});
@@ -175,7 +220,7 @@ async function joinShop(){
   else if(data.reason==="ALREADY_JOINED")toast(`你已经加入「${data.shop_name||"这家店"}」啦`);
   else toast(`已加入「${data.shop_name||"店铺"}」♡`);
 
-  const url=new URL(location.href);url.searchParams.delete("join");history.replaceState(null,"",url.pathname+url.search+url.hash);
+  clearJoinParam();
   setTimeout(()=>location.reload(),550);
 }
 
@@ -188,6 +233,18 @@ async function leaveShop(shopId){
   if(!data?.success){toast("退出失败",true);return}
   toast("已退出店铺");
   setTimeout(()=>location.reload(),450);
+}
+
+async function removeMember(userId){
+  if(isReadonly()){toast("账号已到期，当前为只读模式",true);return}
+  const shopId=$("inviteShopSelect")?.value;if(!shopId)return;
+  const member=state.members.find(m=>m.user_id===userId);
+  if(!confirm(`确定把「${memberLabel(member||{})}」移出这个店铺吗？对方自己的历史消费记录仍会保留。`))return;
+  const {data,error}=await supabase.rpc("remove_my_shop_member",{p_shop_id:shopId,p_user_id:userId});
+  if(error){toast("移出失败："+error.message,true);return}
+  if(!data?.success){toast("成员不存在或不能移出",true);return}
+  toast("已移出店铺成员");
+  await loadInvite();
 }
 
 async function toggleInvite(){
@@ -211,7 +268,7 @@ async function regenerateInvite(){
   await loadInvite();
 }
 
-function applyJoinCodeFromUrl(){
+function fillJoinCodeFromUrl(){
   const code=new URLSearchParams(location.search).get("join");
   if(!code)return;
   const input=$("shopJoinCode");if(input)input.value=code;
@@ -219,8 +276,27 @@ function applyJoinCodeFromUrl(){
   if(nav)nav.click();
 }
 
+async function offerJoinFromUrl(){
+  if(state.handledJoinLink||!state.session)return;
+  const code=new URLSearchParams(location.search).get("join");
+  if(!code)return;
+  state.handledJoinLink=true;
+  fillJoinCodeFromUrl();
+
+  const {data,error}=await supabase.rpc("preview_shop_invite",{p_code:code});
+  if(error){toast("邀请链接读取失败："+error.message,true);return}
+  if(!data?.success){toast("这个邀请链接已失效或已关闭",true);clearJoinParam();return}
+
+  if(data.is_owner){toast(`「${data.shop_name||"这家店"}」就是你创建的店铺 ♡`);clearJoinParam();return}
+  if(data.already_joined){toast(`你已经加入「${data.shop_name||"这家店"}」啦`);clearJoinParam();return}
+
+  const ok=confirm(`是否加入「${data.shop_name||"这家店"}」？加入后可以查看并使用该店铺的共享价格表。`);
+  if(!ok){clearJoinParam();return}
+  await joinShop(code);
+}
+
 function bind(){
-  $("joinShopBtn")?.addEventListener("click",joinShop);
+  $("joinShopBtn")?.addEventListener("click",()=>joinShop());
   $("shopJoinCode")?.addEventListener("keydown",e=>{if(e.key==="Enter")joinShop()});
   $("inviteShopSelect")?.addEventListener("change",loadInvite);
   $("joinedShopList")?.addEventListener("click",e=>{const b=e.target.closest("[data-leave-shop]");if(b)leaveShop(b.dataset.leaveShop)});
@@ -228,7 +304,7 @@ function bind(){
 
 injectStyle();
 if(!injectCard()){
-  const observer=new MutationObserver(()=>{removeOldVisibility();if(injectCard()){observer.disconnect();load()}});
+  const observer=new MutationObserver(()=>{removeOldVisibility();if(injectCard()){observer.disconnect();load();offerJoinFromUrl()}});
   observer.observe(document.documentElement,{childList:true,subtree:true});
   setTimeout(()=>observer.disconnect(),12000);
 }
@@ -238,5 +314,9 @@ oldObserver.observe(document.documentElement,{childList:true,subtree:true});
 
 const {data}=await supabase.auth.getSession();
 state.session=data.session;
-if(state.session)await load();
-supabase.auth.onAuthStateChange(async(_event,session)=>{state.session=session;if(session)await load()});
+if(state.session){await load();await offerJoinFromUrl()}
+supabase.auth.onAuthStateChange(async(_event,session)=>{
+  state.session=session;
+  state.handledJoinLink=false;
+  if(session){await load();await offerJoinFromUrl()}
+});
