@@ -17,21 +17,24 @@
       <p>移动网络分层诊断。请保持当前 4G/5G 网络，点一次测试，然后把整页截图发回来。</p>
       <button id="runBtn" class="btn" type="button">开始网络诊断</button>
       <div id="web" class="row"><div class="label">① 网页本身</div><div class="value">等待测试</div></div>
-      <div id="base" class="row"><div class="label">② Supabase 基础连通</div><div class="value">等待测试</div></div>
-      <div id="auth" class="row"><div class="label">③ Auth 服务</div><div class="value">等待测试</div></div>
-      <div id="rest" class="row"><div class="label">④ REST 数据库入口</div><div class="value">等待测试</div></div>
-      <div id="sw" class="row"><div class="label">⑤ Service Worker</div><div class="value">等待测试</div></div>
-      <div id="env" class="row"><div class="label">⑥ 当前环境</div><div class="value">等待测试</div></div>
+      <div id="base" class="row"><div class="label">② Supabase 直连</div><div class="value">等待测试</div></div>
+      <div id="auth" class="row"><div class="label">③ Auth 直连</div><div class="value">等待测试</div></div>
+      <div id="rest" class="row"><div class="label">④ REST 直连</div><div class="value">等待测试</div></div>
+      <div id="proxyBase" class="row"><div class="label">⑤ Cloudflare 代理可达</div><div class="value">等待测试</div></div>
+      <div id="proxyAuth" class="row"><div class="label">⑥ Auth 代理</div><div class="value">等待测试</div></div>
+      <div id="proxyRest" class="row"><div class="label">⑦ REST 代理</div><div class="value">等待测试</div></div>
+      <div id="sw" class="row"><div class="label">⑧ Service Worker</div><div class="value">等待测试</div></div>
+      <div id="env" class="row"><div class="label">⑨ 当前环境</div><div class="value">等待测试</div></div>
       <button id="copyBtn" class="btn copy" type="button">复制诊断结果</button>
-      <p class="small">Version 20260923-netdiag-1</p>
+      <p class="small">Version 20260923-netdiag-2</p>
     </section>
   </main>
 
   <script type="module">
-    import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260923-netdiag-1";
+    import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_PROXY_URL } from "./supabase-config.js?v=20260923-proxy-2";
 
     const $=id=>document.getElementById(id);
-    const rows=["web","base","auth","rest","sw","env"];
+    const rows=["web","base","auth","rest","proxyBase","proxyAuth","proxyRest","sw","env"];
 
     function setRow(id,status,text){
       const el=$(id); if(!el) return;
@@ -66,6 +69,9 @@
       setRow("web","ok","✓ GitHub Pages 已加载 · "+location.host);
 
       const baseUrl=String(SUPABASE_URL||"").replace(/\/$/,"");
+      const proxyUrl=String(SUPABASE_PROXY_URL||"").replace(/\/$/,"");
+      const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+SUPABASE_PUBLISHABLE_KEY};
+
       if(!baseUrl){
         setRow("base","bad","✕ 未读取到 Supabase URL");
         setRow("auth","bad","✕ 跳过");
@@ -73,10 +79,9 @@
       }else{
         const base=await timedFetch(baseUrl+"/",{method:"GET",mode:"cors"});
         setRow("base",base.ok?"ok":"bad",base.ok
-          ? `✓ 可连接 · HTTP ${base.response.status} · ${base.ms}ms`
+          ? `✓ 收到响应 · HTTP ${base.response.status} · ${base.ms}ms`
           : `✕ ${reason(base.error)} · ${base.ms}ms`);
 
-        const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+SUPABASE_PUBLISHABLE_KEY};
         const auth=await timedFetch(baseUrl+"/auth/v1/settings",{method:"GET",headers});
         setRow("auth",auth.ok&&auth.response.ok?"ok":"bad",auth.ok
           ? `${auth.response.ok?"✓":"✕"} HTTP ${auth.response.status} · ${auth.ms}ms`
@@ -86,6 +91,27 @@
         setRow("rest",rest.ok?"ok":"bad",rest.ok
           ? `✓ 收到响应 · HTTP ${rest.response.status} · ${rest.ms}ms`
           : `✕ ${reason(rest.error)} · ${rest.ms}ms`);
+      }
+
+      if(!proxyUrl){
+        setRow("proxyBase","bad","✕ 未配置代理地址");
+        setRow("proxyAuth","bad","✕ 跳过");
+        setRow("proxyRest","bad","✕ 跳过");
+      }else{
+        const probe=await timedFetch(proxyUrl+"/auth/v1/settings",{method:"GET",headers});
+        setRow("proxyBase",probe.ok?"ok":"bad",probe.ok
+          ? `✓ Worker 可达 · HTTP ${probe.response.status} · ${probe.ms}ms`
+          : `✕ ${reason(probe.error)} · ${probe.ms}ms`);
+
+        const pAuth=probe.ok?probe:await timedFetch(proxyUrl+"/auth/v1/settings",{method:"GET",headers});
+        setRow("proxyAuth",pAuth.ok&&pAuth.response.ok?"ok":"bad",pAuth.ok
+          ? `${pAuth.response.ok?"✓":"✕"} HTTP ${pAuth.response.status} · ${pAuth.ms}ms`
+          : `✕ ${reason(pAuth.error)} · ${pAuth.ms}ms`);
+
+        const pRest=await timedFetch(proxyUrl+"/rest/v1/",{method:"GET",headers});
+        setRow("proxyRest",pRest.ok?"ok":"bad",pRest.ok
+          ? `✓ 收到响应 · HTTP ${pRest.response.status} · ${pRest.ms}ms`
+          : `✕ ${reason(pRest.error)} · ${pRest.ms}ms`);
       }
 
       try{
