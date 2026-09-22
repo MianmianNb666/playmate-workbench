@@ -12,8 +12,11 @@ const state={
   objectUrl:null,
   rows:[],
   session:null,
-  currentShop:null
+  currentShop:null,
+  rawTextEdited:false
 };
+
+let ownershipRequest=0;
 
 let paddleOcrPromise=null;
 
@@ -100,36 +103,40 @@ function currentShopId(){
 }
 
 async function refreshOwnership(){
+  const request=++ownershipRequest;
   const shopId=currentShopId();
-  const btn=$("importRecognizedPricesBtn");
+  const userId=state.session?.user?.id;
   const recognizeBtn=$("recognizePriceImageBtn");
-  if(!shopId||!state.session){
+  if(!shopId||!userId){
     state.currentShop=null;
-    if(btn) btn.disabled=true;
+    updateImportButton();
     return false;
   }
   const {data,error}=await supabase.from("shops").select("*").eq("id",shopId).maybeSingle();
-  if(error||!data){
-    state.currentShop=null;
-    if(btn) btn.disabled=true;
+  // 店铺切换或登录状态变化时，旧请求不能覆盖当前按钮状态。
+  if(request!==ownershipRequest || shopId!==currentShopId() || userId!==state.session?.user?.id){
     return false;
   }
-  state.currentShop=data;
-  const owns=data.user_id===state.session.user.id;
+  state.currentShop=error?null:data;
+  const owns=!!data && !error && data.user_id===userId;
   if(recognizeBtn){
     recognizeBtn.title=owns?"":"共享店铺的价格表只能由创建者修改";
   }
   updateImportButton();
+  if(error) notify("读取店铺权限失败："+error.message);
   return owns;
 }
 
 function updateImportButton(){
   const btn=$("importRecognizedPricesBtn");
   if(!btn) return;
-  const owns=!!state.currentShop && !!state.session && state.currentShop.user_id===state.session.user.id;
-  btn.disabled=!owns || state.rows.length===0;
+  const owns=!!state.currentShop && !!state.session &&
+    state.currentShop.id===currentShopId() &&
+    state.currentShop.user_id===state.session.user.id;
+  const hasEditedText=state.rawTextEdited && !!$("ocrRawText")?.value.trim();
+  btn.disabled=!owns || (state.rows.length===0 && !hasEditedText);
   btn.textContent=owns
-    ? "确认导入当前店铺"
+    ? (hasEditedText?"整理修改文字并导入当前店铺":"确认导入当前店铺")
     : "共享价格表仅店铺创建者可导入";
 }
 
@@ -661,6 +668,7 @@ function clearImport(){
   state.rows=[];
   $("priceImageInput").value="";
   $("ocrRawText").value="";
+  state.rawTextEdited=false;
   $("priceImagePreviewWrap").classList.add("hidden");
   $("ocrProgressWrap").classList.add("hidden");
   $("ocrProgressBar").style.width="0";
@@ -703,6 +711,7 @@ async function recognize(){
     }
 
     $("ocrRawText").value=text;
+    state.rawTextEdited=false;
     state.rows=parseOcrText(text);
     renderRows();
     setProgress(1,state.rows.length
@@ -726,11 +735,16 @@ function reparse(){
     return;
   }
   state.rows=parseOcrText(text);
+  state.rawTextEdited=false;
   renderRows();
   notify(state.rows.length?"已经重新整理 ♡":"暂时没找到可识别的价格行");
 }
 
 async function importRows(){
+  if(state.rawTextEdited){
+    reparse();
+    if(!state.rows.length) return;
+  }
   const owns=await refreshOwnership();
   if(!owns){
     notify("这家店的共享价格表只能由创建者修改");
@@ -863,6 +877,7 @@ function bind(){
     state.file=file;
     state.rows=[];
     $("ocrRawText").value="";
+    state.rawTextEdited=false;
     renderRows();
 
     if(state.objectUrl){
@@ -882,6 +897,10 @@ function bind(){
   $("recognizePriceImageBtn")?.addEventListener("click",recognize);
   $("clearPriceImageBtn")?.addEventListener("click",clearImport);
   $("reparseOcrBtn")?.addEventListener("click",reparse);
+  $("ocrRawText")?.addEventListener("input",()=>{
+    state.rawTextEdited=true;
+    updateImportButton();
+  });
   $("importRecognizedPricesBtn")?.addEventListener("click",importRows);
 
   $("ocrRows")?.addEventListener("input",e=>{
@@ -922,7 +941,13 @@ if(shopSelect){
   observer.observe(shopSelect,{childList:true,subtree:true});
 }
 
-supabase.auth.onAuthStateChange(async(_event,session)=>{
+supabase.auth.onAuthStateChange((_event,session)=>{
   state.session=session;
-  if(session) await refreshOwnership();
+  if(session){
+    setTimeout(refreshOwnership,0);
+  }else{
+    ownershipRequest++;
+    state.currentShop=null;
+    updateImportButton();
+  }
 });
