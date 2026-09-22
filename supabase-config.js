@@ -58,7 +58,7 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 启动故障二分排查：删除模式已通过，继续恢复只读模式测试。
+// 分阶段恢复：删除模式已通过。
 if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
   window.__paiMiniDeleteModeLoading=true;
   import("./delete-mode.js?v=20260923-1").catch(error=>{
@@ -67,12 +67,21 @@ if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
   });
 }
 
-// 只读模式：未到期账号应保持正常可编辑；到期账号才进入只读。
+// 分阶段恢复：只读模式已通过。
 if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
   window.__paiMiniReadonlyAccessLoading=true;
   import("./readonly-access.js?v=20260923-4").catch(error=>{
     console.warn("readonly access load failed",error);
     window.__paiMiniReadonlyAccessLoading=false;
+  });
+}
+
+// 第三个测试模块：店铺成员制。只恢复这一项，其他扩展仍保持关闭。
+if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
+  window.__paiMiniShopMembershipLoading=true;
+  import("./shop-membership.js?v=20260923-2").catch(error=>{
+    console.warn("shop membership load failed",error);
+    window.__paiMiniShopMembershipLoading=false;
   });
 }
 
