@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>派mini 启动检查</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#fbf8f2;color:#514945;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}.wrap{max-width:760px;margin:0 auto;padding:24px 16px 56px}h1{font-size:24px;margin:0 0 8px}p{color:#7d736d;line-height:1.7}.card{background:#fff;border:1px solid #eee6dc;border-radius:18px;padding:16px;margin-top:12px}.row{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;border-top:1px solid #f3ede6;padding:12px 0}.row:first-child{border-top:0;padding-top:0}.name{font-weight:700}.detail{font-size:12px;color:#8a817b;margin-top:4px;word-break:break-all}.status{font-weight:800;white-space:nowrap}.wait{color:#9a8f88}.ok{color:#4d8b68}.bad{color:#b84f5f}.warn{color:#b28435}.summary{font-size:15px;font-weight:700;line-height:1.7}.btn{margin-top:14px;border:0;border-radius:12px;padding:10px 14px;background:#e58aa7;color:#fff;font-weight:800}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #eee6dc;border-radius:14px;padding:12px;margin-top:12px}.small{font-size:12px;color:#8a817b}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>派mini 启动检查</h1>
+  <p>这个页面不会加载派mini主程序，也不会修改数据库。它只检查启动链路。</p>
+  <div id="checks" class="card"></div>
+  <button class="btn" id="rerun">重新检查</button>
+  <div id="summary" class="card summary">准备检查…</div>
+  <div id="raw" class="mono"></div>
+  <p class="small">检查项：GitHub Pages 本地文件、jsDelivr、备用 CDN、supabase-config.js、Supabase Auth、主程序源码是否可获取并含有预期入口。</p>
+</div>
+<script>
+const BASE='./';
+const SUPABASE_URL='https://hwvtuybkozojypifxjto.supabase.co';
+const SUPABASE_KEY='sb_publishable___YrsbZwmyv_3KbYDhZSmw_zXBazZFr';
+const checks=[
+  ['index','index.html'],
+  ['app','app-v20260921-8.js'],
+  ['css','styles.css'],
+  ['config','supabase-config.js'],
+  ['jsdelivr','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'],
+  ['esmsh','https://esm.sh/@supabase/supabase-js@2?bundle'],
+  ['auth',SUPABASE_URL+'/auth/v1/settings']
+];
+const state={};
+function row(id,label){return `<div class="row" id="row-${id}"><div><div class="name">${label}</div><div class="detail" id="detail-${id}">等待中</div></div><div class="status wait" id="status-${id}">…</div></div>`}
+function paint(id,status,detail){const s=document.getElementById('status-'+id);const d=document.getElementById('detail-'+id);s.textContent=status==='ok'?'正常 ✓':status==='bad'?'失败 ✕':'警告 !';s.className='status '+status;d.textContent=detail;state[id]={status,detail};renderSummary()}
+async function timedFetch(url,opts={},ms=7000){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);try{return await fetch(url,{...opts,signal:c.signal,cache:'no-store'})}finally{clearTimeout(t)}}
+async function run(){state.__done=false;document.getElementById('checks').innerHTML=[row('index','1. index.html'),row('app','2. 主程序 JS'),row('css','3. styles.css'),row('config','4. supabase-config.js'),row('jsdelivr','5. jsDelivr · Supabase SDK'),row('esmsh','6. 备用 CDN esm.sh'),row('auth','7. Supabase Auth 接口'),row('parse','8. 主程序关键入口检查')].join('');document.getElementById('summary').textContent='检查中…';document.getElementById('raw').textContent='';
+  const local=async(id,path)=>{try{const r=await timedFetch(BASE+path+'?check='+Date.now());const text=await r.text();if(!r.ok) return paint(id,'bad','HTTP '+r.status);paint(id,'ok','HTTP '+r.status+' · '+text.length+' bytes');return text}catch(e){paint(id,'bad',String(e?.name==='AbortError'?'超时':e?.message||e));return null}};
+  const [indexText,appText]=await Promise.all([local('index','index.html'),local('app','app-v20260921-8.js'),local('css','styles.css'),local('config','supabase-config.js')]);
+  try{const r=await timedFetch(checks[4][1],{},7000);paint('jsdelivr',r.ok?'ok':'bad','HTTP '+r.status)}catch(e){paint('jsdelivr','bad',String(e?.name==='AbortError'?'超时':e?.message||e))}
+  try{const r=await timedFetch(checks[5][1],{},7000);paint('esmsh',r.ok?'ok':'bad','HTTP '+r.status)}catch(e){paint('esmsh','bad',String(e?.name==='AbortError'?'超时':e?.message||e))}
+  try{const r=await timedFetch(checks[6][1],{headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+SUPABASE_KEY}},7000);paint('auth',r.ok?'ok':'bad','HTTP '+r.status)}catch(e){paint('auth','bad',String(e?.name==='AbortError'?'超时':e?.message||e))}
+  if(appText){const hasCreate=/createClient/.test(appText);const hasConfig=/supabase-config\.js/.test(appText);const hasBoot=/booting|classList\.remove\(["']booting/.test(appText);const detail=`createClient=${hasCreate} · config=${hasConfig} · boot相关=${hasBoot}`;paint('parse',hasCreate&&hasConfig?'ok':'bad',detail)}else paint('parse','bad','主程序源码无法获取');
+  state.__done=true;renderSummary();
+}
+function renderSummary(){const vals=Object.entries(state).filter(([k])=>!k.startsWith('__'));const bad=vals.filter(([,v])=>v.status==='bad').map(([k])=>k);const ok=vals.filter(([,v])=>v.status==='ok').length;let text='';if(!state.__done){text=`已完成 ${vals.length} 项，正在继续…`;}else if(!bad.length){text='全部检查通过。静态文件、CDN 与 Supabase Auth 都能访问，问题更可能出在主程序执行阶段。';}else{text='失败项：'+bad.join(', ')+'。把这个页面截图给我即可继续定位。';}document.getElementById('summary').textContent=text;document.getElementById('raw').textContent=JSON.stringify(state,null,2)}
+document.getElementById('rerun').addEventListener('click',run);run();
+</script>
+</body>
+</html>
