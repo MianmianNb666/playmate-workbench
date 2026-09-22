@@ -58,12 +58,21 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 派Mini 扩展功能：店铺公开/私密、预存套餐与附赠权益。
+// 派Mini 扩展功能：预存套餐与附赠权益。
 if(typeof window!=="undefined" && !window.__paiMiniWalletFeaturesLoading){
   window.__paiMiniWalletFeaturesLoading=true;
   import("./wallet-features.js?v=20260923-2").catch(error=>{
     console.warn("wallet features load failed",error);
     window.__paiMiniWalletFeaturesLoading=false;
+  });
+}
+
+// 店铺成员制：普通用户只能看到自己创建或已加入的店铺；邀请 / 加入统一放在「小店」。
+if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
+  window.__paiMiniShopMembershipLoading=true;
+  import("./shop-membership.js?v=20260923-1").catch(error=>{
+    console.warn("shop membership load failed",error);
+    window.__paiMiniShopMembershipLoading=false;
   });
 }
 
@@ -79,7 +88,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidPageLoading){
 // 邀请码到期后进入只读模式：仍可查看历史数据，续费后恢复编辑。
 if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
   window.__paiMiniReadonlyAccessLoading=true;
-  import("./readonly-access.js?v=20260923-2").catch(error=>{
+  import("./readonly-access.js?v=20260923-3").catch(error=>{
     console.warn("readonly access load failed",error);
     window.__paiMiniReadonlyAccessLoading=false;
   });
