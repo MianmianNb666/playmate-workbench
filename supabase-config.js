@@ -104,7 +104,7 @@ if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
 // 只有核心工作台已经显示后才启动。加载/初始化有独立超时，失败只关闭本模块。
 if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
   window.__paiMiniMembershipShellScheduled=true;
-  import("./shop-membership-loader.js?v=20260923-shell1")
+  import("./shop-membership-loader.js?v=20260923-shell2")
     .catch(error=>console.warn("membership shell loader failed",error));
 }
 
