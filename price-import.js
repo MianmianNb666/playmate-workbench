@@ -13,7 +13,8 @@ const state={
   rows:[],
   session:null,
   currentShop:null,
-  rawTextEdited:false
+  rawTextEdited:false,
+  lastParsedText:""
 };
 
 let ownershipRequest=0;
@@ -133,10 +134,12 @@ function updateImportButton(){
   const owns=!!state.currentShop && !!state.session &&
     state.currentShop.id===currentShopId() &&
     state.currentShop.user_id===state.session.user.id;
-  const hasEditedText=state.rawTextEdited && !!$("ocrRawText")?.value.trim();
-  btn.disabled=!owns || (state.rows.length===0 && !hasEditedText);
+  const rawText=$("ocrRawText")?.value||"";
+  const hasRawText=!!rawText.trim();
+  const hasEditedText=rawText!==state.lastParsedText;
+  btn.disabled=!owns || (!hasRawText && state.rows.length===0);
   btn.textContent=owns
-    ? (hasEditedText?"整理修改文字并导入当前店铺":"确认导入当前店铺")
+    ? (hasEditedText&&hasRawText?"整理修改文字并导入当前店铺":"确认导入当前店铺")
     : "共享价格表仅店铺创建者可导入";
 }
 
@@ -669,6 +672,7 @@ function clearImport(){
   $("priceImageInput").value="";
   $("ocrRawText").value="";
   state.rawTextEdited=false;
+  state.lastParsedText="";
   $("priceImagePreviewWrap").classList.add("hidden");
   $("ocrProgressWrap").classList.add("hidden");
   $("ocrProgressBar").style.width="0";
@@ -712,6 +716,7 @@ async function recognize(){
 
     $("ocrRawText").value=text;
     state.rawTextEdited=false;
+    state.lastParsedText=text;
     state.rows=parseOcrText(text);
     renderRows();
     setProgress(1,state.rows.length
@@ -733,18 +738,23 @@ function reparse(){
   if(!text.trim()){
     state.rows=[];
     state.rawTextEdited=false;
+    state.lastParsedText="";
     renderRows();
     notify("识别文字还是空的");
     return;
   }
   state.rows=parseOcrText(text);
   state.rawTextEdited=false;
+  state.lastParsedText=text;
   renderRows();
   notify(state.rows.length?"已经重新整理 ♡":"暂时没找到可识别的价格行");
 }
 
 async function importRows(){
-  if(state.rawTextEdited){
+  // 桌面端某些输入场景可能漏掉 input 状态；提交时直接核对当前文字，
+  // 只要和上一次已匹配文字不同，就强制重新整理，避免继续使用旧结果。
+  const currentRawText=$("ocrRawText")?.value||"";
+  if(currentRawText!==state.lastParsedText){
     reparse();
     if(!state.rows.length) return;
   }
@@ -881,6 +891,7 @@ function bind(){
     state.rows=[];
     $("ocrRawText").value="";
     state.rawTextEdited=false;
+    state.lastParsedText="";
     renderRows();
 
     if(state.objectUrl){
@@ -900,10 +911,13 @@ function bind(){
   $("recognizePriceImageBtn")?.addEventListener("click",recognize);
   $("clearPriceImageBtn")?.addEventListener("click",clearImport);
   $("reparseOcrBtn")?.addEventListener("click",reparse);
-  $("ocrRawText")?.addEventListener("input",()=>{
+  const markRawTextEdited=()=>{
     state.rawTextEdited=true;
     updateImportButton();
-  });
+  };
+  $("ocrRawText")?.addEventListener("input",markRawTextEdited);
+  $("ocrRawText")?.addEventListener("change",markRawTextEdited);
+  $("ocrRawText")?.addEventListener("paste",()=>setTimeout(markRawTextEdited,0));
   $("importRecognizedPricesBtn")?.addEventListener("click",importRows);
 
   $("ocrRows")?.addEventListener("input",e=>{
