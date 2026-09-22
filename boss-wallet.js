@@ -47,11 +47,11 @@ function injectCard(){
     <div id="bossWalletSummary" class="boss-wallet-summary"></div>
     <div class="boss-wallet-columns">
       <div class="boss-wallet-box">
-        <h3>预存余额</h3><p class="boss-wallet-note">手动调整必须填写原因；充错的充值可以从流水里直接撤销。</p>
+        <h3>预存余额</h3><p class="boss-wallet-note">手动增减都会自动留流水，备注可以不填；充错的充值可以从流水里直接撤销。</p>
         <div class="boss-wallet-form">
           <label>调整金额<input id="bossPrepaidAmount" type="number" min="0" step="0.01" placeholder="例如 100"></label>
           <label>操作<select id="bossPrepaidDirection"><option value="add">增加余额</option><option value="subtract">扣减余额</option></select></label>
-          <label class="wide">原因<input id="bossPrepaidNote" maxlength="160" placeholder="必填，例如 手动补录 / 更正金额"></label>
+          <label class="wide">备注（选填）<input id="bossPrepaidNote" maxlength="160" placeholder="例如 手动补录 / 更正金额"></label>
         </div>
         <div class="boss-wallet-actions"><button id="bossPrepaidAdjustBtn" class="btn primary" type="button">确认调整</button></div>
         <div id="bossPrepaidLedger" class="boss-ledger-list"></div>
@@ -65,7 +65,7 @@ function injectCard(){
           <label>单位<input id="bossBenefitUnit" placeholder="个 / 次 / 张 / 分钟" value="个"></label>
           <label>操作<select id="bossBenefitDirection"><option value="add">增加权益</option><option value="subtract">扣减权益</option></select></label>
           <label>有效期<input id="bossBenefitExpiry" type="date"></label>
-          <label>原因<input id="bossBenefitNote" maxlength="160" placeholder="必填，例如 补送 / 更正"></label>
+          <label>备注（选填）<input id="bossBenefitNote" maxlength="160" placeholder="例如 补送 / 更正"></label>
         </div>
         <div class="boss-wallet-actions"><button id="bossBenefitAdjustBtn" class="btn primary" type="button">确认权益调整</button></div>
         <div id="bossBenefitLedger" class="boss-ledger-list"></div>
@@ -161,9 +161,9 @@ async function loadWallet(){
 async function adjustPrepaid(){
   if(isReadonly()){toast("账号已到期，当前为只读模式",true);return}
   const c=currentCustomer(),amount=Number($("bossPrepaidAmount")?.value||0),note=$("bossPrepaidNote")?.value.trim(),dir=$("bossPrepaidDirection")?.value;
-  if(!c){toast("先选择老板",true);return}if(!(amount>0)){toast("调整金额要大于 0",true);return}if(!note){toast("手动调整必须填写原因",true);return}
+  if(!c){toast("先选择老板",true);return}if(!(amount>0)){toast("调整金额要大于 0",true);return}
   const delta=dir==="subtract"?-amount:amount;
-  const {error}=await supabase.rpc("adjust_customer_prepaid",{p_customer_id:c.id,p_delta:delta,p_kind:"adjust",p_note:note,p_related_record_id:null});
+  const {error}=await supabase.rpc("adjust_customer_prepaid",{p_customer_id:c.id,p_delta:delta,p_kind:"adjust",p_note:note||null,p_related_record_id:null});
   if(error){toast("调整失败："+friendlyError(error.message),true);return}
   $("bossPrepaidAmount").value="";$("bossPrepaidNote").value="";toast("余额已调整并记录流水 ♡");await loadWallet();
 }
@@ -171,10 +171,10 @@ async function adjustPrepaid(){
 async function adjustBenefit(){
   if(isReadonly()){toast("账号已到期，当前为只读模式",true);return}
   const c=currentCustomer(),name=$("bossBenefitName")?.value.trim(),amount=Number($("bossBenefitAmount")?.value||0),unit=$("bossBenefitUnit")?.value.trim()||"个",dir=$("bossBenefitDirection")?.value,note=$("bossBenefitNote")?.value.trim(),expiry=$("bossBenefitExpiry")?.value;
-  if(!c){toast("先选择老板",true);return}if(!name){toast("先填写权益名称",true);return}if(!(amount>0)){toast("权益数量要大于 0",true);return}if(!note){toast("手动调整必须填写原因",true);return}
+  if(!c){toast("先选择老板",true);return}if(!name){toast("先填写权益名称",true);return}if(!(amount>0)){toast("权益数量要大于 0",true);return}
   const delta=dir==="subtract"?-amount:amount;
   const expiresAt=expiry?new Date(expiry+"T23:59:59").toISOString():null;
-  const {error}=await supabase.rpc("adjust_customer_benefit",{p_customer_id:c.id,p_name:name,p_delta:delta,p_kind:"adjust",p_unit_label:unit,p_expires_at:expiresAt,p_note:note,p_related_record_id:null});
+  const {error}=await supabase.rpc("adjust_customer_benefit",{p_customer_id:c.id,p_name:name,p_delta:delta,p_kind:"adjust",p_unit_label:unit,p_expires_at:expiresAt,p_note:note||null,p_related_record_id:null});
   if(error){toast("权益调整失败："+friendlyError(error.message),true);return}
   $("bossBenefitName").value="";$("bossBenefitAmount").value="1";$("bossBenefitUnit").value="个";$("bossBenefitExpiry").value="";$("bossBenefitNote").value="";toast("权益已调整并记录流水 ♡");await loadWallet();
 }
