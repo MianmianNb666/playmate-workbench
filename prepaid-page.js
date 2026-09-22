@@ -1,5 +1,5 @@
 // PaiMini 独立「预存」分区。
-// 只负责导航与承载现有余额/权益/套餐卡片，不改账务 RPC 逻辑。
+// 只创建一级导航和空白承载页，不搬 DOM、不轮询、不监听全页面。
 
 function showPage(name){
   document.querySelectorAll('.page').forEach(el=>{
@@ -11,7 +11,7 @@ function showPage(name){
   document.body.classList.remove('mobile-drawer-open');
 }
 
-function ensurePrepaidPage(){
+export function ensurePrepaidPage(){
   const app=document.getElementById('appRoot');
   const nav=document.querySelector('.section-nav');
   if(!app||!nav)return false;
@@ -23,11 +23,9 @@ function ensurePrepaidPage(){
     navBtn.type='button';
     navBtn.dataset.page='prepaid';
     navBtn.textContent='预存';
-    const before=document.querySelector('.nav-tab[data-page="customers"]');
-    nav.insertBefore(navBtn,before||document.querySelector('.nav-tab[data-page="records"]')||null);
+    const before=document.querySelector('.nav-tab[data-page="customers"]') || document.querySelector('.nav-tab[data-page="records"]');
+    nav.insertBefore(navBtn,before||null);
     navBtn.addEventListener('click',()=>showPage('prepaid'));
-  }else if(navBtn.textContent!=='预存'){
-    navBtn.textContent='预存';
   }
 
   let page=document.getElementById('page-prepaid');
@@ -46,43 +44,11 @@ function ensurePrepaidPage(){
       </div>
       <div id="prepaidPageMount"></div>
     `;
-    const before=document.getElementById('page-customers')||document.getElementById('page-records');
+    const before=document.getElementById('page-customers') || document.getElementById('page-records');
     app.insertBefore(page,before||null);
   }
 
   return true;
 }
 
-function moveCards(){
-  if(!ensurePrepaidPage())return false;
-  const mount=document.getElementById('prepaidPageMount');
-  if(!mount)return false;
-
-  let changed=false;
-  const wallet=document.getElementById('bossWalletCard');
-  if(wallet){
-    const title=wallet.querySelector('.card-title b');
-    const sub=wallet.querySelector('.card-title small');
-    if(title&&title.textContent!=='老板预存余额 ♡'){title.textContent='老板预存余额 ♡';changed=true;}
-    if(sub&&sub.textContent!=='设置预存、调整权益、查看流水与撤销记录'){sub.textContent='设置预存、调整权益、查看流水与撤销记录';changed=true;}
-    if(wallet.parentElement!==mount){mount.appendChild(wallet);changed=true;}
-  }
-
-  const presets=document.getElementById('walletPresetCard');
-  if(presets&&presets.parentElement!==mount){mount.appendChild(presets);changed=true;}
-  return changed;
-}
-
 ensurePrepaidPage();
-moveCards();
-
-// 不再使用全页面 MutationObserver，避免 DOM 自己触发自己形成死循环。
-// 用有限轮询等异步卡片出现，最多 15 秒，之后自动停止。
-let attempts=0;
-const timer=setInterval(()=>{
-  attempts+=1;
-  moveCards();
-  if(attempts>=50 || (document.getElementById('bossWalletCard') && document.getElementById('bossWalletCard')?.parentElement===document.getElementById('prepaidPageMount'))){
-    clearInterval(timer);
-  }
-},300);
