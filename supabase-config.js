@@ -112,6 +112,8 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       await mod.initPrepaidManagerSafe?.();
       const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets1");
       await presets.initPrepaidPresetsSafe?.();
+      const polish=await import("./prepaid-layout-polish.js?v=20260923-prepaid-layout1");
+      polish.applyPrepaidLayoutPolish?.();
     }catch(error){
       managerStarted=false;
       console.warn("prepaid manager lazy load failed",error);
