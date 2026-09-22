@@ -26,7 +26,7 @@ function ensurePrepaidPage(){
     const before=document.querySelector('.nav-tab[data-page="customers"]');
     nav.insertBefore(navBtn,before||document.querySelector('.nav-tab[data-page="records"]')||null);
     navBtn.addEventListener('click',()=>showPage('prepaid'));
-  }else{
+  }else if(navBtn.textContent!=='预存'){
     navBtn.textContent='预存';
   }
 
@@ -58,28 +58,31 @@ function moveCards(){
   const mount=document.getElementById('prepaidPageMount');
   if(!mount)return false;
 
-  let moved=false;
+  let changed=false;
   const wallet=document.getElementById('bossWalletCard');
-  if(wallet&&wallet.parentElement!==mount){
+  if(wallet){
     const title=wallet.querySelector('.card-title b');
     const sub=wallet.querySelector('.card-title small');
-    if(title)title.textContent='老板预存余额 ♡';
-    if(sub)sub.textContent='设置预存、调整权益、查看流水与撤销记录';
-    mount.appendChild(wallet);
-    moved=true;
+    if(title&&title.textContent!=='老板预存余额 ♡'){title.textContent='老板预存余额 ♡';changed=true;}
+    if(sub&&sub.textContent!=='设置预存、调整权益、查看流水与撤销记录'){sub.textContent='设置预存、调整权益、查看流水与撤销记录';changed=true;}
+    if(wallet.parentElement!==mount){mount.appendChild(wallet);changed=true;}
   }
 
   const presets=document.getElementById('walletPresetCard');
-  if(presets&&presets.parentElement!==mount){
-    mount.appendChild(presets);
-    moved=true;
-  }
-  return moved;
+  if(presets&&presets.parentElement!==mount){mount.appendChild(presets);changed=true;}
+  return changed;
 }
 
 ensurePrepaidPage();
 moveCards();
 
-const observer=new MutationObserver(()=>moveCards());
-observer.observe(document.documentElement,{childList:true,subtree:true});
-setTimeout(()=>observer.disconnect(),30000);
+// 不再使用全页面 MutationObserver，避免 DOM 自己触发自己形成死循环。
+// 用有限轮询等异步卡片出现，最多 15 秒，之后自动停止。
+let attempts=0;
+const timer=setInterval(()=>{
+  attempts+=1;
+  moveCards();
+  if(attempts>=50 || (document.getElementById('bossWalletCard') && document.getElementById('bossWalletCard')?.parentElement===document.getElementById('prepaidPageMount'))){
+    clearInterval(timer);
+  }
+},300);
