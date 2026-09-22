@@ -97,11 +97,45 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
     .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
-// 预存模块临时总开关：OFF
-// 原因：当前版本出现页面卡死 / 点击失效。先保证派Mini主程序稳定可点击，
-// 等主站恢复后再从干净状态重新接入预存，不让实验模块拖死核心。
-if(typeof window!=="undefined"){
+// 预存恢复版：只先创建轻量页面，不立即读取账务数据。
+// 用户真正点进「预存」时才加载管理模块，避免它影响主站点击和启动。
+if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
   window.__paiMiniPrepaidSectionScheduled=true;
+  let shellReady=false;
+  let managerStarted=false;
+
+  const loadManager=async()=>{
+    if(managerStarted)return;
+    managerStarted=true;
+    try{
+      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy1");
+      await mod.initPrepaidManagerSafe?.();
+    }catch(error){
+      managerStarted=false;
+      console.warn("prepaid manager lazy load failed",error);
+      window.paiMiniOrderBridge?.toast?.("预存模块读取失败，请稍后重试");
+    }
+  };
+
+  const startPrepaidShell=async()=>{
+    const app=document.getElementById("appRoot");
+    if(shellReady || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
+    shellReady=true;
+    try{
+      await import("./prepaid-page.js?v=20260923-prepaid-shell-clean1");
+      const btn=document.querySelector('.nav-tab[data-page="prepaid"]');
+      btn?.addEventListener("click",()=>void loadManager(),{passive:true});
+    }catch(error){
+      shellReady=false;
+      console.warn("prepaid shell load failed",error);
+    }
+  };
+
+  const prepaidTimer=setInterval(()=>{
+    if(shellReady){clearInterval(prepaidTimer);return;}
+    void startPrepaidShell();
+  },300);
+  setTimeout(()=>clearInterval(prepaidTimer),30000);
 }
 
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
