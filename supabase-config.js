@@ -79,8 +79,17 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidPageLoading){
 // 邀请码到期后进入只读模式：仍可查看历史数据，续费后恢复编辑。
 if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
   window.__paiMiniReadonlyAccessLoading=true;
-  import("./readonly-access.js?v=20260923-1").catch(error=>{
+  import("./readonly-access.js?v=20260923-2").catch(error=>{
     console.warn("readonly access load failed",error);
     window.__paiMiniReadonlyAccessLoading=false;
+  });
+}
+
+// 删除模式：默认隐藏危险删除按钮，只在设置中显式开启后显示。
+if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
+  window.__paiMiniDeleteModeLoading=true;
+  import("./delete-mode.js?v=20260923-1").catch(error=>{
+    console.warn("delete mode load failed",error);
+    window.__paiMiniDeleteModeLoading=false;
   });
 }
