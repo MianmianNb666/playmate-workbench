@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#fbf8f2">
+  <title>派mini · 网络诊断</title>
+  <style>
+    :root{--bg:#fbf8f2;--paper:#fff;--ink:#4d413d;--muted:#8f8580;--pink:#e58aa7;--line:#efd9e1;--good:#5f8f72;--bad:#c35f78}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px 16px 48px}.shell{max-width:720px;margin:0 auto}.card{background:var(--paper);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:0 12px 40px rgba(120,90,90,.06)}h1{margin:0 0 6px;font-size:32px}h1 span{color:var(--pink)}p{color:var(--muted);line-height:1.55}.btn{width:100%;border:0;border-radius:16px;padding:15px 18px;font-size:17px;font-weight:700;background:var(--pink);color:#fff;margin:10px 0 16px}.row{padding:14px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}.label{font-weight:700}.value{margin-top:6px;font-size:14px;word-break:break-word;color:var(--muted)}.ok .value{color:var(--good)}.bad .value{color:var(--bad)}.pending .value{color:var(--muted)}.small{font-size:12px}.copy{background:#fff;color:var(--ink);border:1px solid var(--line)}code{white-space:pre-wrap;word-break:break-all}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <h1>派<span>mini</span> ♡</h1>
+      <p>移动网络分层诊断。请保持当前 4G/5G 网络，点一次测试，然后把整页截图发回来。</p>
+      <button id="runBtn" class="btn" type="button">开始网络诊断</button>
+      <div id="web" class="row"><div class="label">① 网页本身</div><div class="value">等待测试</div></div>
+      <div id="base" class="row"><div class="label">② Supabase 基础连通</div><div class="value">等待测试</div></div>
+      <div id="auth" class="row"><div class="label">③ Auth 服务</div><div class="value">等待测试</div></div>
+      <div id="rest" class="row"><div class="label">④ REST 数据库入口</div><div class="value">等待测试</div></div>
+      <div id="sw" class="row"><div class="label">⑤ Service Worker</div><div class="value">等待测试</div></div>
+      <div id="env" class="row"><div class="label">⑥ 当前环境</div><div class="value">等待测试</div></div>
+      <button id="copyBtn" class="btn copy" type="button">复制诊断结果</button>
+      <p class="small">Version 20260923-netdiag-1</p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260923-netdiag-1";
+
+    const $=id=>document.getElementById(id);
+    const rows=["web","base","auth","rest","sw","env"];
+
+    function setRow(id,status,text){
+      const el=$(id); if(!el) return;
+      el.classList.remove("ok","bad","pending");
+      el.classList.add(status);
+      el.querySelector(".value").textContent=text;
+    }
+
+    function reason(error){
+      return String(error?.message||error||"Unknown error");
+    }
+
+    async function timedFetch(url,options={},timeout=8000){
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort("timeout"),timeout);
+      const started=performance.now();
+      try{
+        const response=await fetch(url,{...options,signal:controller.signal,cache:"no-store"});
+        return {ok:true,response,ms:Math.round(performance.now()-started)};
+      }catch(error){
+        return {ok:false,error,ms:Math.round(performance.now()-started)};
+      }finally{
+        clearTimeout(timer);
+      }
+    }
+
+    async function run(){
+      $("runBtn").disabled=true;
+      $("runBtn").textContent="诊断中…";
+      rows.forEach(id=>setRow(id,"pending","测试中…"));
+
+      setRow("web","ok","✓ GitHub Pages 已加载 · "+location.host);
+
+      const baseUrl=String(SUPABASE_URL||"").replace(/\/$/,"");
+      if(!baseUrl){
+        setRow("base","bad","✕ 未读取到 Supabase URL");
+        setRow("auth","bad","✕ 跳过");
+        setRow("rest","bad","✕ 跳过");
+      }else{
+        const base=await timedFetch(baseUrl+"/",{method:"GET",mode:"cors"});
+        setRow("base",base.ok?"ok":"bad",base.ok
+          ? `✓ 可连接 · HTTP ${base.response.status} · ${base.ms}ms`
+          : `✕ ${reason(base.error)} · ${base.ms}ms`);
+
+        const headers={apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:"Bearer "+SUPABASE_PUBLISHABLE_KEY};
+        const auth=await timedFetch(baseUrl+"/auth/v1/settings",{method:"GET",headers});
+        setRow("auth",auth.ok&&auth.response.ok?"ok":"bad",auth.ok
+          ? `${auth.response.ok?"✓":"✕"} HTTP ${auth.response.status} · ${auth.ms}ms`
+          : `✕ ${reason(auth.error)} · ${auth.ms}ms`);
+
+        const rest=await timedFetch(baseUrl+"/rest/v1/",{method:"GET",headers});
+        setRow("rest",rest.ok?"ok":"bad",rest.ok
+          ? `✓ 收到响应 · HTTP ${rest.response.status} · ${rest.ms}ms`
+          : `✕ ${reason(rest.error)} · ${rest.ms}ms`);
+      }
+
+      try{
+        if(!("serviceWorker" in navigator)){
+          setRow("sw","ok","✓ 当前浏览器不使用 Service Worker");
+        }else{
+          const regs=await navigator.serviceWorker.getRegistrations();
+          const controller=!!navigator.serviceWorker.controller;
+          setRow("sw",regs.length===0&&!controller?"ok":"bad",
+            regs.length===0&&!controller
+              ? "✓ 无已注册 Service Worker，未接管当前页面"
+              : `⚠ 注册数 ${regs.length} · 当前页面被接管 ${controller?"是":"否"}`);
+        }
+      }catch(error){
+        setRow("sw","bad","✕ 无法读取："+reason(error));
+      }
+
+      const connection=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+      const env=[
+        `online=${navigator.onLine}`,
+        connection?.effectiveType?`effectiveType=${connection.effectiveType}`:null,
+        connection?.downlink?`downlink=${connection.downlink}Mbps`:null,
+        `standalone=${window.navigator.standalone===true || window.matchMedia?.("(display-mode: standalone)")?.matches===true}`,
+        `UA=${navigator.userAgent}`
+      ].filter(Boolean).join(" · ");
+      setRow("env","ok",env);
+
+      $("runBtn").disabled=false;
+      $("runBtn").textContent="重新网络诊断";
+    }
+
+    $("runBtn").addEventListener("click",run);
+    $("copyBtn").addEventListener("click",async()=>{
+      const text=rows.map(id=>{
+        const el=$(id);
+        return el.querySelector(".label").textContent+"："+el.querySelector(".value").textContent;
+      }).join("\n");
+      try{await navigator.clipboard.writeText(text);$("copyBtn").textContent="已复制 ✓";setTimeout(()=>$("copyBtn").textContent="复制诊断结果",1500)}catch{alert(text)}
+    });
+
+    run();
+  </script>
+</body>
+</html>
