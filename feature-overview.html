@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fbf8f2">
+  <title>派mini 功能总览</title>
+  <style>
+    :root{--bg:#fbf8f2;--paper:#fff;--ink:#514945;--muted:#8f8580;--accent:#e8a0b5;--accent-deep:#d9839e;--soft:#fbf0f3;--line:#eee6dc}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}a{color:inherit;text-decoration:none}
+    .wrap{width:min(980px,calc(100% - 28px));margin:0 auto;padding:28px 0 60px}.hero,.section{border:1px solid var(--line);border-radius:24px;background:var(--paper);box-shadow:0 12px 34px rgba(110,89,83,.06);padding:24px}.section{margin-top:14px}.brand{font-size:36px;font-weight:900}.brand span{color:var(--accent)}.hero p,p,li{color:var(--muted);line-height:1.75;font-size:13px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}.btn{padding:11px 15px;border-radius:13px;border:1px solid var(--line);font-weight:800;font-size:12px}.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    h2{margin:0 0 12px;font-size:20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.item{border:1px solid var(--line);border-radius:15px;padding:14px;background:#fff}.item b{display:block;margin-bottom:5px}.tag{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:var(--accent-deep);font-size:10px;font-weight:800;margin:3px 4px 0 0}.footer{text-align:center;color:var(--muted);font-size:11px;padding-top:24px}@media(max-width:680px){.wrap{width:min(100% - 18px,980px);padding-top:12px}.hero,.section{padding:17px;border-radius:18px}.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div class="brand">派<span>mini</span> ♡</div>
+    <p>最新版功能总览。派单、老板档案、预存、报备、小票和店铺成员都在这里。</p>
+    <div class="actions"><a class="btn primary" href="./index.html">打开派mini</a><a class="btn" href="./guide.html">查看使用教程</a></div>
+  </section>
+
+  <section class="section"><h2>核心派单</h2><div class="grid">
+    <div class="item"><b>派单计算</b><p>选择店铺和老板，选择价格项目或手填，支持时长 / 数量计算、老板折扣、多个陪玩和多个项目。</p><span class="tag">多项目</span><span class="tag">自动算价</span></div>
+    <div class="item"><b>本单预存结算</b><p>选中真实老板档案后，直接显示当前预存、本单扣除和扣后余额。保存订单与扣预存一次完成，避免半单。</p><span class="tag">原子扣款</span><span class="tag">余额保护</span></div>
+  </div></section>
+
+  <section class="section"><h2>老板与预存</h2><div class="grid">
+    <div class="item"><b>顾客档案</b><p>记录老板昵称、联系方式、折扣、备注，并直接显示当前预存余额。</p></div>
+    <div class="item"><b>预存套餐</b><p>可建立常用预存套餐，包含预存金额和多项附赠权益。发放时可临时调整金额、权益数量、单位和有效期，不改变原预设。</p></div>
+    <div class="item"><b>预存 / 权益流水</b><p>预存和权益变动都保留流水，方便后续核对来源、消费和余额。</p></div>
+    <div class="item"><b>老板全部流水</b><p>消费记录里可进入老板全部历史流水，并导出完整 PNG。超长流水会自动分图，避免手机导出失败。</p></div>
+  </div></section>
+
+  <section class="section"><h2>报备与小票</h2><div class="grid">
+    <div class="item"><b>复制报备</b><p>继续使用原来的报备模板和变量，不新增重复的报备规则页面。可使用老板、项目、陪陪、总价、累计、备注、团抽、派抽、到手、来源等变量。</p></div>
+    <div class="item"><b>小票导出</b><p>支持本次小票、老板完整流水预览与 PNG 导出，可配置老板昵称、陪陪、单价、数量、累计、备注、时间、Logo、留言和页脚。</p></div>
+  </div></section>
+
+  <section class="section"><h2>店铺与价格表</h2><div class="grid">
+    <div class="item"><b>店铺成员 / 店友</b><p>支持通过邀请码加入店铺、查看店铺成员、退出 / 移除成员、管理邀请。老板档案和个人账务仍归各自账号。</p></div>
+    <div class="item"><b>价格表</b><p>支持分类、搜索、项目卡片、手动改价、停用项目和图片识别导入。</p></div>
+  </div></section>
+
+  <section class="section"><h2>账号与个性化</h2><div class="grid">
+    <div class="item"><b>登录与续费</b><p>Supabase 登录注册、邀请码试用和续费、到期只读保护。</p></div>
+    <div class="item"><b>手机 / 电脑适配</b><p>支持桌面和手机布局、添加到主屏幕、主题颜色、头像、显示名字和桌面名称 / 图标。</p></div>
+  </div></section>
+
+  <div class="footer">派mini 功能总览 · 2026-09-23 ♡</div>
+</main>
+</body>
+</html>
