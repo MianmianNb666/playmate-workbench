@@ -3,8 +3,9 @@
 
 const LOAD_DELAY_MS=900;
 const INIT_TIMEOUT_MS=6000;
-const FAILURE_KEY='paimini-membership-failed-this-session';
+const FAILURE_KEY='paimini-membership-failed-shell2';
 let started=false;
+let finished=false;
 
 function timeoutPromise(ms,label){
   return new Promise((_,reject)=>setTimeout(()=>reject(new Error(label||'membership timeout')),ms));
@@ -24,20 +25,32 @@ function removeMembershipUi(){
 function markFailure(error){
   try{sessionStorage.setItem(FAILURE_KEY,'1')}catch{}
   removeMembershipUi();
+  window.__paiMiniMembershipStatus='disabled';
   console.warn('shop membership isolated module disabled for this session',error);
 }
 
 async function start(){
-  if(started) return;
+  if(started || finished) return;
   if(!coreReady()) return;
-  if(sessionStorage.getItem(FAILURE_KEY)==='1') return;
-  started=true;
+  try{
+    if(sessionStorage.getItem(FAILURE_KEY)==='1'){
+      window.__paiMiniMembershipStatus='disabled-session';
+      return;
+    }
+  }catch{}
 
+  started=true;
   await new Promise(resolve=>setTimeout(resolve,LOAD_DELAY_MS));
+
+  // Core may have changed state during the delay. Never mount into a hidden app.
+  if(!coreReady()){
+    started=false;
+    return;
+  }
 
   try{
     const mod=await Promise.race([
-      import('./shop-membership-shell.js?v=20260923-shell1'),
+      import('./shop-membership-shell.js?v=20260923-shell2'),
       timeoutPromise(INIT_TIMEOUT_MS,'membership import timeout')
     ]);
     await Promise.race([
@@ -45,21 +58,21 @@ async function start(){
       timeoutPromise(INIT_TIMEOUT_MS,'membership init timeout')
     ]);
     window.__paiMiniMembershipStatus='ready-shell';
+    finished=true;
+    try{sessionStorage.removeItem(FAILURE_KEY)}catch{}
   }catch(error){
-    window.__paiMiniMembershipStatus='disabled';
     markFailure(error);
+    finished=true;
   }
 }
 
 export function scheduleShopMembershipShell(){
+  const startedAt=Date.now();
   const timer=setInterval(()=>{
-    if(started){clearInterval(timer);return;}
-    if(coreReady()){
-      clearInterval(timer);
-      start();
-    }
+    if(finished){clearInterval(timer);return;}
+    if(coreReady()) start();
+    if(Date.now()-startedAt>30000) clearInterval(timer);
   },300);
-  setTimeout(()=>clearInterval(timer),30000);
 }
 
 scheduleShopMembershipShell();
