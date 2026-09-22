@@ -1,8 +1,11 @@
 # CHANGELOG_DEV.md
 
 ## 2026-09-23
+- 将「预存 / 权益库」调整为「预存套餐库」：预存为主体，权益作为该笔预存的附赠内容，不再作为同层级独立模板创建。
+- 预存套餐可一次附赠多项权益，例如冠、折扣券、赠送时长等；保存后选老板可一键同时增加预存余额和全部赠送权益。
+- 新增 `20260923023500_prepaid_packages_with_benefits.sql`：`wallet_presets` 增加 `bundled_benefits`，预存/权益流水增加套餐来源 `preset_id`，并新增原子 RPC `apply_prepaid_package`，确保余额和附赠权益一起发放并留痕。
 - 新增老板资金/权益底层 migration：店铺公开/私密、老板预存余额与流水、老板权益与权益流水、预存/权益快捷模板、团抽/派抽/到手结算字段、小票相关显示字段。
-- 新增 `wallet-features.js`：在「我的店铺」加入公开/私密设置；在「价格表」加入「预存 / 权益库」，可保存常用预存/权益模板，选老板后一键发放，并自动写入余额/权益流水。
+- 新增 `wallet-features.js`：在「我的店铺」加入公开/私密设置；在「价格表」加入预存相关快捷管理。
 - `supabase-config.js` 以独立动态模块方式加载上述扩展，避免重构主应用、OCR、多项目、保存整单等现有正常逻辑。
 - 修复 iPhone / Safari 登录诊断出现 `FetchEvent.respondWith ... Returned response is null`：Service Worker 不再接管 Supabase、CDN 等跨域请求；同源请求网络失败且无缓存时返回明确 503 Response，避免向 `respondWith()` 返回空值。
 - Service Worker 缓存版本从 `paimini-v3` 更新为 `paimini-v4`，安装后继续使用 `skipWaiting()` + `clients.claim()` 尽快接管新版。
