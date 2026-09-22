@@ -1,12 +1,14 @@
 // PaiMini shop membership isolated shell.
-// Phase 3: keep phase-2 joined-shop display, plus ONE real read-only RPC.
+// Phase 3b: keep phase-2 joined-shop display, plus ONE real read-only RPC.
 // The only RPC enabled here is list_my_shop_members for a shop owned by the current user.
 // No invite reads, no writes, no auth reads, no reloads.
 
 let mounted=false;
 let destroyed=false;
 let rpcBusy=false;
-const RPC_TIMEOUT_MS=5000;
+// Global Supabase fetch guard allows up to 7s direct + 7s proxy fallback.
+// Keep this wrapper longer than that, otherwise mobile gives up before proxy fallback can finish.
+const RPC_TIMEOUT_MS=16000;
 
 function safe(value){
   return String(value??'')
@@ -22,7 +24,11 @@ function coreContext(){
 }
 
 function timeoutPromise(ms,label){
-  return new Promise((_,reject)=>setTimeout(()=>reject(new Error(label||'membership rpc timeout')),ms));
+  return new Promise((_,reject)=>setTimeout(()=>{
+    const error=new Error(label||'membership rpc timeout');
+    error.name='MembershipTimeoutError';
+    reject(error);
+  },ms));
 }
 
 function ensureStyle(){
@@ -122,8 +128,9 @@ async function loadRealMembers(){
   }catch(error){
     if(destroyed) return;
     window.__paiMiniMembershipRpcStatus='list-members-degraded';
-    console.warn('membership phase3 read-only RPC degraded',error);
-    renderMemberState('<div class="member-state">成员名单暂时读取失败或超时。店铺、价格表、顾客档案和派单功能不受影响。</div>');
+    console.warn('membership phase3b read-only RPC degraded',error);
+    const timeout=error?.name==='MembershipTimeoutError';
+    renderMemberState(`<div class="member-state">${timeout?'成员读取等待超时，直连和中转都没有及时返回。':'成员读取返回错误。'} 只降级本卡片，其他功能不受影响。</div>`);
   }finally{
     rpcBusy=false;
   }
@@ -141,7 +148,6 @@ function mountShell(){
     page.querySelector('.page-head')?.insertAdjacentElement('afterend',card);
   }
 
-  // Always replace membership-owned content so a cached phase-2 shell can be safely upgraded.
   card.innerHTML=`
     <div class="card-title">
       <div><b>店铺成员制 ♡</b><small>隔离加载 · 第3阶段（只读）</small></div>
@@ -153,7 +159,7 @@ function mountShell(){
     </div>
     <div class="shell-note">
       <b>真实成员数据</b>
-      <small>本阶段只启用一个只读 RPC：读取你自己当前店铺的成员名单。5 秒超时，失败只降级本卡片。</small>
+      <small>只启用一个只读 RPC。会先尝试直连，必要时允许核心网络保护切到中转；失败仍只降级本卡片。</small>
       <div id="shopMembershipRealMembers" class="member-list"></div>
       <div class="phase3-actions"><button id="shopMembershipRetryRead" class="tiny-btn" type="button">重新读取成员</button></div>
     </div>`;
@@ -168,9 +174,8 @@ export async function initShopMembershipShell(){
   destroyed=false;
   const ok=mountShell();
   if(!ok) throw new Error('shop page not ready');
-  // Do not block module init on the RPC. Core and shell stay usable even if RPC stalls.
   queueMicrotask(()=>loadRealMembers());
-  return {status:'ready',phase:'real-members-readonly'};
+  return {status:'ready',phase:'real-members-readonly-phase3b'};
 }
 
 export function refreshShopMembershipShell(){
