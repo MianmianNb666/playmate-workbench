@@ -31,9 +31,14 @@
 - `boss-features.js`：老板/顾客相关增强功能
 - `price-import.js`：图片价格表 OCR 识别、修改、整理、导入
 - `multi-order.js`：一单多陪玩 / 多项目
+- `wallet-features.js`：预存套餐与附赠权益
+- `shop-membership.js`：店铺成员制、邀请码/邀请链接、加入/退出店铺
+- `prepaid-page.js`：预存套餐独立一级分区
+- `readonly-access.js`：账号到期后的只读模式
+- `delete-mode.js`：设置中的删除模式
 - `admin.html` / `admin.js`：管理端
 - `styles.css`：主样式
-- `supabase-config.js`：Supabase 前端公开配置
+- `supabase-config.js`：Supabase 前端公开配置与扩展模块加载
 - `supabase/migrations/`：数据库 migration
 - `sw.js`：PWA 缓存
 
@@ -52,9 +57,27 @@
 - 消费记录
 - 小票预览 / 导出
 - 报备复制
-- 店铺与店铺权限
+- 店铺成员制与邀请加入
+- 预存套餐与附赠权益
+- 邀请码到期只读模式
+- 删除模式
 - 管理端
 - 手机端 / 电脑端适配
+
+## 店铺成员制（2026-09-23）
+
+- 已废弃「所有登录用户都能看到公开店铺」的产品逻辑。
+- 普通账号只能看到：
+  1. 自己创建的店铺；
+  2. 已通过该店铺加入码 / 邀请链接加入的店铺。
+- 店主在「小店」页面管理邀请：复制邀请码、复制链接、关闭邀请、重新开启、重新生成。
+- 重新生成后旧邀请码 / 旧链接立即失效；关闭邀请不会踢出已有成员。
+- 已加入成员可以退出店铺。
+- 成员只能共享读取店铺与价格表，不能修改店铺或共享价格表。
+- 老板档案、消费记录、预存余额、权益、报备等个人业务数据继续按 `user_id` 隔离，不会因为加入同一个店而互相可见。
+- 关键 migration：`20260923033000_shop_membership_invites.sql`。
+- `shops.visibility` 仅保留兼容，不再作为普通用户可见性依据。
+- 管理端通过 `SECURITY DEFINER` 管理 RPC 继续可查看全部店铺，不受成员 RLS 限制。
 
 ## 图片识别价格表当前逻辑
 
@@ -92,6 +115,7 @@
 
 - 图片价格表导入只允许店铺创建者修改共享价格表。
 - `refreshOwnership()` 会读取当前店铺并判断 `shops.user_id === session.user.id`。
+- 加入成员可读取店铺/价格表，但 ownership 仍为 false，因此不能修改共享价格。
 - 如果按钮在某端被禁用，先检查 session、当前 shop、ownership 状态，不要直接删权限判断。
 
 ## 当前已知待排查问题
