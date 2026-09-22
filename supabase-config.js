@@ -58,12 +58,21 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   };
 }
 
-// 启动故障二分排查：先只恢复删除模式，其余可选扩展继续停用。
+// 启动故障二分排查：删除模式已通过，继续恢复只读模式测试。
 if(typeof window!=="undefined" && !window.__paiMiniDeleteModeLoading){
   window.__paiMiniDeleteModeLoading=true;
   import("./delete-mode.js?v=20260923-1").catch(error=>{
     console.warn("delete mode load failed",error);
     window.__paiMiniDeleteModeLoading=false;
+  });
+}
+
+// 只读模式：未到期账号应保持正常可编辑；到期账号才进入只读。
+if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
+  window.__paiMiniReadonlyAccessLoading=true;
+  import("./readonly-access.js?v=20260923-4").catch(error=>{
+    console.warn("readonly access load failed",error);
+    window.__paiMiniReadonlyAccessLoading=false;
   });
 }
 
