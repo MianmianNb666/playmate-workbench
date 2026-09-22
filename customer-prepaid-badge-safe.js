@@ -61,4 +61,10 @@ export async function initCustomerPrepaidBadgesSafe(){
   $('customerProfileSearch')?.addEventListener('input',()=>setTimeout(applyBadges,20));
   window.addEventListener('paimini:prepaid-updated',e=>{const id=e.detail?.customerId;if(id)balances.set(id,Number(e.detail?.balance||0));applyBadges()});
   await refresh();
+  try{
+    const detail=await import('./customer-detail-safe.js?v=20260923-customer-detail1');
+    await detail.initCustomerDetailSafe?.();
+  }catch(error){
+    console.warn('customer detail safe load failed',error);
+  }
 }
