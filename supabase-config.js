@@ -107,8 +107,8 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(prepaidStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     prepaidStarted=true;
     try{
-      await import("./prepaid-page.js?v=20260923-prepaid3");
-      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid3");
+      await import("./prepaid-page.js?v=20260923-prepaid4");
+      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid4");
       await mod.initPrepaidManagerSafe?.();
     }catch(error){
       console.warn("prepaid section load failed",error);
