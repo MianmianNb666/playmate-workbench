@@ -76,14 +76,7 @@ if(typeof window!=="undefined" && !window.__paiMiniReadonlyAccessLoading){
   });
 }
 
-// 第三个测试模块：店铺成员制。只恢复这一项，其他扩展仍保持关闭。
-if(typeof window!=="undefined" && !window.__paiMiniShopMembershipLoading){
-  window.__paiMiniShopMembershipLoading=true;
-  import("./shop-membership.js?v=20260923-2").catch(error=>{
-    console.warn("shop membership load failed",error);
-    window.__paiMiniShopMembershipLoading=false;
-  });
-}
+// 店铺成员制模块暂时停用：恢复后会导致启动异常，待单独排查 shop-membership.js。
 
 // 启动保险：核心程序如果卡在 Supabase 会话/初始化请求，最多等待 8 秒。
 // 只解除启动遮罩并显示登录区，不修改任何业务数据，也不触碰数据库。
