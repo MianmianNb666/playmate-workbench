@@ -70,7 +70,7 @@ if(typeof window!=="undefined" && !window.__paiMiniWalletFeaturesLoading){
 // 老板档案：预存余额、权益库存、流水、手动调整、充值撤销、CSV 导出。
 if(typeof window!=="undefined" && !window.__paiMiniBossWalletLoading){
   window.__paiMiniBossWalletLoading=true;
-  import("./boss-wallet.js?v=20260923-1").catch(error=>{
+  import("./boss-wallet.js?v=20260923-2").catch(error=>{
     console.warn("boss wallet load failed",error);
     window.__paiMiniBossWalletLoading=false;
   });
