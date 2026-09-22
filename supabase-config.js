@@ -167,7 +167,7 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
   setTimeout(()=>clearInterval(settlementTimer),30000);
 }
 
-// 报备规则：核心页面显示后独立加载，只增强“我的店铺 / 派单计算 / 复制报备”。
+// 报备规则：核心页面显示后独立加载，只增强“我的店铺 / 复制报备”。
 if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
   window.__paiMiniReportRulesScheduled=true;
   let reportRulesStarted=false;
@@ -178,6 +178,8 @@ if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
     try{
       const mod=await import("./report-rules-safe.js?v=20260923-report-rules1");
       await mod.initReportRulesSafe?.();
+      const copyOnly=await import("./report-rules-copyonly.js?v=20260923-copyonly1");
+      copyOnly.applyReportRulesCopyOnly?.();
     }catch(error){
       reportRulesStarted=false;
       console.warn("report rules safe load failed",error);
