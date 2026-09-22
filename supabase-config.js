@@ -97,32 +97,12 @@ if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
     .catch(error=>console.warn("membership phase4 loader failed",error));
 }
 
-// 独立“预存”分区：只在核心主程序已经显示后加载。
-// 账务管理复用核心 Supabase，模块失败不会阻塞登录和派单主流程。
-if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
+// 预存模块临时总开关：OFF
+// 原因：当前版本出现页面卡死 / 点击失效。先保证派Mini主程序稳定可点击，
+// 等主站恢复后再从干净状态重新接入预存，不让实验模块拖死核心。
+if(typeof window!=="undefined"){
   window.__paiMiniPrepaidSectionScheduled=true;
-  let prepaidStarted=false;
-  const startPrepaid=async()=>{
-    const app=document.getElementById("appRoot");
-    if(prepaidStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
-    prepaidStarted=true;
-    try{
-      await import("./prepaid-page.js?v=20260923-prepaid4");
-      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid4");
-      await mod.initPrepaidManagerSafe?.();
-    }catch(error){
-      console.warn("prepaid section load failed",error);
-      prepaidStarted=false;
-    }
-  };
-  const prepaidTimer=setInterval(()=>{
-    if(prepaidStarted){clearInterval(prepaidTimer);return;}
-    void startPrepaid();
-  },300);
-  setTimeout(()=>clearInterval(prepaidTimer),30000);
 }
-
-// 派单页“⑤预存/权益”安全预览暂时关闭，统一放入独立“预存”栏目。
 
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
