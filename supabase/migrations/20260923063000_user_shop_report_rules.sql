@@ -26,17 +26,9 @@ for insert
 to authenticated
 with check (
   user_id = auth.uid()
-  and exists (
-    select 1 from public.shops s
-    where s.id = shop_id
-      and (
-        s.user_id = auth.uid()
-        or exists (
-          select 1 from public.shop_members m
-          where m.shop_id = s.id
-            and m.user_id = auth.uid()
-        )
-      )
+  and (
+    public.is_shop_owner(shop_id)
+    or public.is_shop_member(shop_id)
   )
 );
 
