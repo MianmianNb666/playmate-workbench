@@ -22,7 +22,7 @@ function injectStyle(){
 
 function disableKnownWrites(){
   const ids=[
-    'saveRecordBtn','saveWholeOrderBtn','saveItemBtn','saveCategoryBtn','saveShopBtn','saveCustomerBtn',
+    'saveRecordBtn','saveWholeOrderBtn','savePriceItemBtn','saveItemBtn','saveCategoryBtn','saveShopBtn','saveCustomerBtn',
     'saveTemplateBtn','saveReceiptBtn','saveProfileBtn','saveWalletPresetBtn','addDraftBenefitBtn',
     'settingsRenewBtn','expiredRenewBtn'
   ];
@@ -34,7 +34,7 @@ function disableKnownWrites(){
       el.title='账号已到期，当前为只读模式';
     }
   });
-  document.querySelectorAll('[data-delete-wallet],[data-apply-wallet],[data-visibility]').forEach(el=>{
+  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],#toggleDeleteModeBtn').forEach(el=>{
     el.disabled=true;
     el.classList.add('readonly-disabled');
     el.title='账号已到期，当前为只读模式';
@@ -49,6 +49,8 @@ function removeBanner(){
 async function renderReadonly(status){
   injectStyle();
   document.body.classList.add('paimini-readonly');
+  document.body.classList.remove('paimini-delete-mode');
+  try{sessionStorage.setItem('paimini-delete-mode-enabled','0')}catch{}
   const app=document.getElementById('appRoot');
   if(!app)return;
 
@@ -101,7 +103,7 @@ async function refreshAccess(){
 await refreshAccess();
 supabase.auth.onAuthStateChange(()=>setTimeout(refreshAccess,80));
 
-// 动态模块（预存套餐）可能稍后才生成按钮，过期模式下再补一次禁用。
+// 动态模块（预存套餐 / 删除模式）可能稍后才生成按钮，过期模式下再补一次禁用。
 const observer=new MutationObserver(()=>{
   if(document.body.classList.contains('paimini-readonly'))disableKnownWrites();
 });
