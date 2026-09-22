@@ -100,12 +100,12 @@ if(typeof window!=="undefined" && !window.__paiMiniReadonlyScheduled){
   setTimeout(()=>clearInterval(timer),20000);
 }
 
-// 店铺成员制第一阶段：只加载隔离空壳，不调用任何成员 RPC。
-// 只有核心工作台已经显示后才启动。加载/初始化有独立超时，失败只关闭本模块。
+// 店铺成员制第2阶段：只读取核心已经加载好的“我加入的店铺”状态。
+// 不调用任何成员 RPC，不额外读取 Auth，不开放邀请/加入/退出/成员管理。
 if(typeof window!=="undefined" && !window.__paiMiniMembershipShellScheduled){
   window.__paiMiniMembershipShellScheduled=true;
-  import("./shop-membership-loader.js?v=20260923-shell2")
-    .catch(error=>console.warn("membership shell loader failed",error));
+  import("./shop-membership-loader.js?v=20260923-phase2")
+    .catch(error=>console.warn("membership phase2 loader failed",error));
 }
 
 // 其他扩展继续关闭，后续逐个恢复。
