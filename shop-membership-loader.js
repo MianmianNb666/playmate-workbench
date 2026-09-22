@@ -3,7 +3,7 @@
 
 const LOAD_DELAY_MS=900;
 const INIT_TIMEOUT_MS=6000;
-const FAILURE_KEY='paimini-membership-failed-shell2';
+const FAILURE_KEY='paimini-membership-failed-phase2';
 let started=false;
 let finished=false;
 
@@ -42,7 +42,6 @@ async function start(){
   started=true;
   await new Promise(resolve=>setTimeout(resolve,LOAD_DELAY_MS));
 
-  // Core may have changed state during the delay. Never mount into a hidden app.
   if(!coreReady()){
     started=false;
     return;
@@ -50,14 +49,14 @@ async function start(){
 
   try{
     const mod=await Promise.race([
-      import('./shop-membership-shell.js?v=20260923-shell2'),
+      import('./shop-membership-shell.js?v=20260923-phase2'),
       timeoutPromise(INIT_TIMEOUT_MS,'membership import timeout')
     ]);
     await Promise.race([
       mod.initShopMembershipShell(),
       timeoutPromise(INIT_TIMEOUT_MS,'membership init timeout')
     ]);
-    window.__paiMiniMembershipStatus='ready-shell';
+    window.__paiMiniMembershipStatus='ready-phase2';
     finished=true;
     try{sessionStorage.removeItem(FAILURE_KEY)}catch{}
   }catch(error){
