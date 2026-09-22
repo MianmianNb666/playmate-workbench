@@ -35,7 +35,7 @@ function disableKnownWrites(){
       el.title='账号已到期，当前为只读模式';
     }
   });
-  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],[data-leave-shop],#toggleDeleteModeBtn').forEach(el=>{
+  document.querySelectorAll('[data-delete-shop],[data-delete-category],[data-delete-item],[data-delete-customer],[data-delete-record],[data-delete-wallet],[data-apply-wallet],[data-visibility],[data-leave-shop],[data-remove-shop-member],#toggleDeleteModeBtn').forEach(el=>{
     el.disabled=true;
     el.classList.add('readonly-disabled');
     el.title='账号已到期，当前为只读模式';
