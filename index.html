@@ -58,7 +58,7 @@
       <p id="authHint" class="hint"></p>
       <button id="authDiagBtn" class="btn ghost full-btn" type="button">连接诊断</button>
       <p id="authDiagResult" class="auth-mini-note hidden"></p>
-      <p class="auth-mini-note">Version 20260924-5</p>
+      <p class="auth-mini-note">Version 20260924-6</p>
       <div id="connectionStatus" class="connection-pill">
         <span class="dot"></span><span id="connectionText">正在连接 Supabase…</span>
       </div>
@@ -224,6 +224,40 @@
         <div class="multi-order-total">
           <span>本单合计</span>
           <strong id="orderGrandTotal">¥0.00</strong>
+        </div>
+      </div>
+
+      <div id="orderSettlementSafeCard" class="settlement-safe-card">
+        <div class="settlement-safe-head">
+          <div><b>老板预存 · 本单扣除【固定版】</b><small>固定结算区已加载 · 选择老板后直接读取余额</small></div>
+          <button id="settlementRefresh" class="tiny-btn" type="button">刷新</button>
+        </div>
+        <div class="settlement-safe-controls" style="margin-top:10px">
+          <label>选择老板档案
+            <select id="settlementCustomerSelect">
+              <option value="">请选择老板</option>
+            </select>
+          </label>
+          <div class="settlement-safe-note" style="align-self:end">选择后会自动读取预存余额，并同步到本单老板。</div>
+        </div>
+        <div id="settlementEmpty" class="empty-state">选择已有老板档案后显示预存余额。</div>
+        <div id="settlementBody" class="hidden">
+          <div class="settlement-safe-summary">
+            <div class="settlement-safe-stat"><span>剩余预存</span><b id="settlementBalance">¥0.00</b></div>
+            <div class="settlement-safe-stat"><span>本单合计</span><b id="settlementOrderTotal">¥0.00</b></div>
+            <div class="settlement-safe-stat"><span>本单扣除</span><b id="settlementDeduct">¥0.00</b></div>
+            <div class="settlement-safe-stat"><span>扣后余额</span><b id="settlementAfter">¥0.00</b></div>
+          </div>
+          <div class="settlement-safe-controls">
+            <label class="check-label"><input id="settlementUsePrepaid" type="checkbox"> 本单使用预存</label>
+            <label>本单扣除金额<input id="settlementPrepaidAmount" type="number" min="0" step="0.01" placeholder="0.00" disabled></label>
+          </div>
+          <div id="settlementBenefits" class="settlement-safe-benefits"></div>
+          <div class="mini-actions" style="margin-top:10px">
+            <button id="settlementAtomicSave" class="btn primary hidden" type="button">扣款并保存本单</button>
+            <small style="align-self:center;color:var(--muted)">勾选预存或权益后，用这个按钮保存并自动扣减。</small>
+          </div>
+          <p class="settlement-safe-note">这里仅处理本单结算；过往消费继续在「消费记录 / 老板档案」查看。</p>
         </div>
       </div>
 
