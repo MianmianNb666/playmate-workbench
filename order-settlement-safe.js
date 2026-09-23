@@ -47,7 +47,8 @@ function syncCustomerSelector(){
   const sel=$('settlementCustomerSelect');if(!sel)return;
   const rows=shopCustomers();
   const old=state.selectedCustomerId||sel.value;
-  sel.innerHTML='<option value="">请选择老板</option>'+rows.map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+'</option>').join('');
+  const html='<option value="">请选择老板</option>'+rows.map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+'</option>').join('');
+  if(sel.innerHTML!==html) sel.innerHTML=html;
   if(old&&rows.some(x=>String(x.id)===String(old))){
     sel.value=old;
     state.selectedCustomerId=old;
@@ -283,29 +284,9 @@ function bind(){
 
 
 function installSettlementWatchdog(){
-  if(window.__paiMiniSettlementWatchdog)return;
-  window.__paiMiniSettlementWatchdog=true;
-
-  let timer=null;
-  const heal=()=>{
-    clearTimeout(timer);
-    timer=setTimeout(async()=>{
-      const page=$('page-calculator');
-      if(!page)return;
-      if($('orderSettlementSafeCard')){
-        syncCustomerSelector();
-        const chosen=state.selectedCustomerId||$('settlementCustomerSelect')?.value||'';
-        if(chosen && (!state.customer || String(state.customer.id)!==String(chosen))) void refresh();
-      }
-    },80);
-  };
-
-  const page=$('page-calculator');
-  if(page&&typeof MutationObserver!=='undefined'){
-    new MutationObserver(heal).observe(page,{childList:true,subtree:true});
-  }
-  window.addEventListener('paimini:prepaid-updated',heal);
-  window.addEventListener('resize',heal);
+  // 固定结算区已经写入 index.html，不再监听整个派单页 DOM。
+  // 旧版 MutationObserver 会因为余额渲染 -> DOM变化 -> 重写下拉框而形成循环闪烁。
+  return;
 }
 
 export async function initOrderSettlementSafe(){
