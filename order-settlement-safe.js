@@ -111,7 +111,7 @@ function mount(){
   card.className='settlement-safe-card';
   card.innerHTML=`
     <div class="settlement-safe-head">
-      <div><b>老板预存 · 本单扣除</b><small>跟本单合计一起看，直接处理这一单</small></div>
+      <div><b>老板预存 · 本单扣除【新版】</b><small>新版结算区已加载 · 跟本单合计一起看，直接处理这一单</small></div>
       <button id="settlementRefresh" class="tiny-btn" type="button">刷新</button>
     </div>
     <div class="settlement-safe-controls" style="margin-top:10px">
