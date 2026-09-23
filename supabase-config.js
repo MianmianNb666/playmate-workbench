@@ -109,6 +109,10 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.fetch=async function paiMiniFetch(input,init){
     if(!isSupabaseUrl(input)) return nativeFetch(input,init);
 
+    // 先复制一份请求体，避免直连尝试已经消费 Request body 后，
+    // 登录 / 注册 POST 在代理重试时丢失 payload。
+    const forwarded=await requestInit(input,init);
+
     let directError=null;
     try{
       const direct=await withDeadline(nativeFetch(input,init),DIRECT_TIMEOUT_MS,"Supabase direct");
@@ -121,8 +125,6 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
       if(!isNetworkFailure(error)) throw error;
       directError=error;
     }
-
-    const forwarded=await requestInit(input,init);
 
     const vercelUrl=toVercelProxyUrl(input);
     if(vercelUrl){
