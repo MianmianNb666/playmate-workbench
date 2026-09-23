@@ -259,9 +259,9 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     settlementStarted=true;
     try{
-      const mod=await import("./order-settlement-safe.js?v=20260923-settlement1");
+      const mod=await import("./order-settlement-safe.js?v=20260923-settlement2");
       await mod.initOrderSettlementSafe?.();
-      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic2");
+      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic3");
       await atomic.initOrderWalletAtomicSafe?.();
     }catch(error){
       settlementStarted=false;
@@ -284,7 +284,7 @@ if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
     if(reportRulesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     reportRulesStarted=true;
     try{
-      const mod=await import("./report-rules-safe.js?v=20260923-report-rules6");
+      const mod=await import("./report-rules-safe.js?v=20260923-report-rules7");
       await mod.initReportRulesSafe?.();
       const copyOnly=await import("./report-rules-copyonly.js?v=20260923-copyonly1");
       copyOnly.applyReportRulesCopyOnly?.();
