@@ -34,8 +34,13 @@ function selectedCustomer(){
 
 function shopCustomers(){
   const c=ctx();
-  const shopId=c?.shop?.id;
+  const shopId=c?.state?.shopId||c?.shop?.id;
   return (c?.state?.customers||[]).filter(x=>x.shop_id===shopId);
+}
+
+function customerById(id){
+  if(!id)return null;
+  return (ctx()?.state?.customers||[]).find(x=>String(x.id)===String(id))||null;
 }
 
 function syncCustomerSelector(){
@@ -160,7 +165,7 @@ function render(){
   const empty=$('settlementEmpty'),body=$('settlementBody');
   if(!empty||!body)return;
   if(!state.customer){
-    empty.classList.remove('hidden');body.classList.add('hidden');
+    empty.textContent=$('settlementCustomerSelect')?.value?'正在读取该老板的预存余额…':'选择已有老板档案后显示预存余额。';empty.classList.remove('hidden');body.classList.add('hidden');
     window.paiMiniSettlementSelection={customer_id:null,use_prepaid:false,prepaid_amount:0,available_prepaid:0,benefits:[],benefits_used:[]};
     return;
   }
@@ -185,7 +190,7 @@ function render(){
 async function refresh(){
   const seq=++loadSeq;
   const explicitId=$('settlementCustomerSelect')?.value||'';
-  const c=explicitId ? shopCustomers().find(x=>x.id===explicitId)||null : selectedCustomer();
+  const c=explicitId ? customerById(explicitId) : selectedCustomer();
   state.customer=c;state.benefits=[];state.balance=num(c?.prepaid_balance);
   render();
   if(!c)return;
@@ -207,17 +212,18 @@ function bind(){
   const card=$('orderSettlementSafeCard');
   if(!card||card.dataset.bound==='1')return;
   card.dataset.bound='1';
-  $('settlementRefresh')?.addEventListener('click',refresh);
-  $('settlementCustomerSelect')?.addEventListener('change',()=>{
+  $('settlementRefresh')?.addEventListener('click',()=>void refresh());
+  const handleSettlementCustomer=()=>{
     const id=$('settlementCustomerSelect')?.value||'';
-    const customer=shopCustomers().find(x=>x.id===id)||null;
+    const customer=customerById(id);
     if(customer&&$('customerName')){
       $('customerName').value=customer.name||'';
       $('customerName').dispatchEvent(new Event('input',{bubbles:true}));
-      $('customerName').dispatchEvent(new Event('change',{bubbles:true}));
     }
     void refresh();
-  });
+  };
+  $('settlementCustomerSelect')?.addEventListener('change',handleSettlementCustomer);
+  $('settlementCustomerSelect')?.addEventListener('input',handleSettlementCustomer);
   $('settlementUsePrepaid')?.addEventListener('change',()=>{
     const on=$('settlementUsePrepaid').checked;
     const amount=$('settlementPrepaidAmount');
@@ -273,6 +279,8 @@ function installSettlementWatchdog(){
       if(!page)return;
       if($('orderSettlementSafeCard')){
         syncCustomerSelector();
+        const chosen=$('settlementCustomerSelect')?.value||'';
+        if(chosen && (!state.customer || String(state.customer.id)!==String(chosen))) void refresh();
       }
     },80);
   };
