@@ -102,6 +102,7 @@ function addVariableChips(){
   });
 
   [
+    ['派单金额','{派单金额}','本单最终总价'],
     ['团抽金额','{团抽金额}','按当前团抽比例自动算金额'],
     ['团抽比例','{团抽比例}','例如 20%'],
     ['派抽金额','{派抽金额}','按当前派抽比例自动算金额'],
@@ -209,7 +210,7 @@ function reportVars(){
   const date=new Date();const dateText=date.toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'}),timeText=date.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
   const itemName=$('calcItemName')?.value.trim()||item.name||'';const unit=$('calcUnitLabel')?.value.trim()||item.unit_label||'次';const unitPrice=num($('calcUnitPrice')?.value)||num(calc.unitPrice);const measure=$('durationInput')?.value.trim()||calc.measure||'';const quantity=calc.quantity??'';const original=num(calc.originalTotal)||total;const discount=num(calc.discountRate)||100;
   return {
-    '{老板}':$('customerName')?.value.trim()||'', '{项目}':itemName, '{陪陪}':$('companionName')?.value.trim()||'', '{单价}':plain(unitPrice), '{单位}':unit, '{时长}':measure, '{数量}':plain(quantity), '{原价}':plain(original), '{折扣}':pctText(discount), '{总价}':plain(total), '{历史累计}':plain(history), '{累计消费}':plain(newTotal), '{备注}':$('calcNote')?.value.trim()||'', '{日期}':dateText, '{时间}':timeText,
+    '{老板}':$('customerName')?.value.trim()||'', '{项目}':itemName, '{陪陪}':$('companionName')?.value.trim()||'', '{单价}':plain(unitPrice), '{单位}':unit, '{时长}':measure, '{数量}':plain(quantity), '{原价}':plain(original), '{折扣}':pctText(discount), '{总价}':plain(total), '{派单金额}':plain(total), '{历史累计}':plain(history), '{累计消费}':plain(newTotal), '{备注}':$('calcNote')?.value.trim()||'', '{日期}':dateText, '{时间}':timeText,
     '{团抽}':plain(a.team), '{团抽比例}':pctText(state.order.teamPct), '{团抽金额}':plain(a.team), '{派抽}':plain(a.dispatch), '{派抽比例}':pctText(state.order.dispatchPct), '{派抽金额}':plain(a.dispatch), '{到手}':plain(a.take), '{到手比例}':pctText(state.order.takehomePct), '{到手金额}':plain(a.take), '{来源}':state.order.source||''
   };
 }
