@@ -175,7 +175,7 @@ function updateAutoOrder(){
   try{localStorage.setItem(orderSourceKey(),state.order.source)}catch{}
   renderAmounts();
 }
-function currentTotal(){return num(ctx()?.state?.calc?.total)||moneyNumberFromText($('calcTotal')?.textContent)||moneyNumberFromText($('orderGrandTotal')?.textContent)}
+function currentTotal(){const lines=window.paiMiniMultiOrder?.lines;if(Array.isArray(lines)&&lines.length)return lines.reduce((sum,x)=>sum+num(x.total),0);const calcEl=$('calcTotal');if(calcEl)return moneyNumberFromText(calcEl.textContent);return num(ctx()?.state?.calc?.total)||moneyNumberFromText($('orderGrandTotal')?.textContent)}
 function currency(){return currentShop()?.currency_symbol||'¥'}
 function amounts(){const total=currentTotal(),team=total*state.order.teamPct/100,dispatch=total*state.order.dispatchPct/100,take=total*state.order.takehomePct/100;return {total,team,dispatch,take}}
 function renderAmounts(){const a=amounts();if($('orderTeamAmount'))$('orderTeamAmount').textContent=currency()+a.team.toFixed(2);if($('orderDispatchAmount'))$('orderDispatchAmount').textContent=currency()+a.dispatch.toFixed(2);if($('orderTakehomeAmount'))$('orderTakehomeAmount').textContent=currency()+a.take.toFixed(2)}
@@ -220,7 +220,7 @@ function replaceAllVars(template,vars){
 }
 function reportVars(){
   const c=ctx(),calc=c?.state?.calc||{},item=c?.state?.selectedItem||{};const a=amounts();
-  const total=num(calc.total)||a.total,history=num(c?.state?.historyTotal),newTotal=history+total;
+  const total=a.total,history=num(c?.state?.historyTotal),newTotal=history+total;
   const date=new Date();const dateText=date.toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'}),timeText=date.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
   const itemName=$('calcItemName')?.value.trim()||item.name||'';const unit=$('calcUnitLabel')?.value.trim()||item.unit_label||'次';const unitPrice=num($('calcUnitPrice')?.value)||num(calc.unitPrice);const measure=$('durationInput')?.value.trim()||calc.measure||'';const quantity=calc.quantity??'';const original=num(calc.originalTotal)||total;const discount=num(calc.discountRate)||100;
   return {
