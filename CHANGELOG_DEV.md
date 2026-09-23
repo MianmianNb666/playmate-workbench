@@ -1,6 +1,11 @@
 # CHANGELOG_DEV.md
 
 ## 2026-09-23
+- 保存链路集中修复：新增 `20260923083000_prepaid_report_save_hotfix.sql`，恢复预存统一发放、报备规则云端保存和顾客档案/整单保存兼容权限。
+- 修复 `apply_custom_prepaid_package()` 与余额安全加固冲突：改为带显式身份/到期/归属校验的安全 RPC，并补 `package_issue_id`，自定义预存发放后可正确关联撤销。
+- 修复新 Supabase 项目下 `user_shop_report_rules` 缺少显式 Data API grant 导致报备规则无法保存；同时补齐到期只读写保护和店铺归属校验。
+- 原子预存扣款成功后立即同步前端老板余额并广播 `paimini:prepaid-updated`，避免扣款成功但顾客档案仍显示旧余额。
+- 强制刷新保存链路资源版本：主应用加载 `supabase-config.js?v=20260923-savefix1`，原子预存模块升级为 `atomic2`。
 - 新增老板「余额与权益」完整档案模块 `boss-wallet.js`：在顾客档案页查看当前预存余额、累计增加/扣减、当前权益库存、预存流水、权益流水；支持手动增减余额/权益（原因必填）和 CSV 导出。
 - 老板卡片会补充「余额 / 权益」入口，可直接打开对应老板的资金权益档案；账号到期时仍可查看，但调整和撤销操作不可用。
 - 新增 `20260923041000_boss_wallet_profile_hardening.sql`：资金/权益流水改为客户端只读，余额与权益只能通过安全 RPC 修改；`customers.prepaid_balance` 不再允许前端直接静默更新。
