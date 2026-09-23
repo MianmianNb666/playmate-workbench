@@ -4,9 +4,22 @@
 // 不使用 service_role，不绕过 Supabase RLS。
 
 const SUPABASE_ORIGIN = "https://hwvtuybkozojypifxjto.supabase.co";
-const ALLOWED_ORIGINS = new Set([
-  "https://mianmiannb666.github.io"
+
+const EXACT_ORIGINS = new Set([
+  "https://mianmiannb666.github.io",
+  "https://playmate-workbench.vercel.app"
 ]);
+
+function isAllowedOrigin(origin){
+  if(EXACT_ORIGINS.has(origin)) return true;
+  try{
+    const url=new URL(origin);
+    const host=url.hostname.toLowerCase();
+    return host.endsWith(".vercel.app") || host.endsWith(".edgeone.cool");
+  }catch{
+    return false;
+  }
+}
 
 const ALLOWED_PREFIXES = [
   "/auth/v1/",
@@ -40,7 +53,7 @@ export default {
   async fetch(request){
     const origin=request.headers.get("Origin")||"";
 
-    if(!ALLOWED_ORIGINS.has(origin)){
+    if(!isAllowedOrigin(origin)){
       return json({error:"origin_not_allowed"},403,origin||"null");
     }
 
@@ -91,7 +104,6 @@ export default {
         responseHeaders.set(key,value);
       }
 
-      // 避免中转层自己的缓存造成登录/数据陈旧。
       responseHeaders.set("Cache-Control","no-store");
 
       return new Response(upstream.body,{
