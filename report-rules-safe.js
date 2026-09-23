@@ -28,7 +28,7 @@ function saveLocal(shopId,rule){try{localStorage.setItem(shopStorageKey(shopId),
 function ensureStyle(){
   if($('reportRulesSafeStyle'))return;
   const s=document.createElement('style');s.id='reportRulesSafeStyle';s.textContent=`
-  .report-rule-card{margin-top:14px}.report-rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.report-rule-grid .wide{grid-column:1/-1}.report-rule-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.report-rule-inline label{margin:0}.report-rule-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.report-rule-stat{border:1px solid var(--line);border-radius:13px;padding:10px;background:var(--paper)}.report-rule-stat span{display:block;color:var(--muted);font-size:10px}.report-rule-stat b{display:block;margin-top:4px;font-size:16px}.report-rule-note{color:var(--muted);font-size:11px;line-height:1.55;margin-top:8px}.variable-box span[data-report-insert]{cursor:pointer;user-select:none}.variable-box span[data-report-insert]:active{transform:scale(.97)}.report-quick-label{width:100%;margin-top:7px;color:var(--muted);font-size:10px}
+  .report-rule-card{margin-top:14px}.report-rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.report-rule-grid .wide{grid-column:1/-1}.report-rule-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.report-rule-inline label{margin:0}.report-rule-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.report-rule-stat{border:1px solid var(--line);border-radius:13px;padding:10px;background:var(--paper)}.report-rule-stat span{display:block;color:var(--muted);font-size:10px}.report-rule-stat b{display:block;margin-top:4px;font-size:16px}.report-rule-note{color:var(--muted);font-size:11px;line-height:1.55;margin-top:8px}.variable-box span[data-report-insert]{cursor:pointer;user-select:none}.variable-box span[data-report-insert]:active{transform:scale(.97)}.report-quick-label{width:100%;margin-top:7px;color:var(--muted);font-size:10px}.report-parse-help{width:100%;margin-top:9px;padding:9px 10px;border:1px dashed var(--line);border-radius:12px;background:var(--bg,#fff);color:var(--muted);font-size:10px;line-height:1.65}.report-token-name{font-weight:800}.report-custom-pct{display:flex;gap:6px;align-items:center;width:100%;margin-top:7px}.report-custom-pct input{max-width:110px}
   @media(max-width:720px){.report-rule-grid{grid-template-columns:1fr 1fr}.report-rule-summary{grid-template-columns:1fr 1fr}}@media(max-width:520px){.report-rule-grid,.report-rule-summary{grid-template-columns:1fr}}
   `;document.head.appendChild(s);
 }
@@ -91,6 +91,7 @@ function makeInsertChip(text,token=text,title='点击插入模板'){
 function addVariableChips(){
   const box=document.querySelector('#page-shops .variable-box');if(!box||box.dataset.reportRulesAdded==='1')return;
   box.dataset.reportRulesAdded='1';
+
   box.querySelectorAll('span').forEach(span=>{
     const token=(span.textContent||'').trim();
     if(!token||span.dataset.reportInsert)return;
@@ -99,10 +100,34 @@ function addVariableChips(){
     span.addEventListener('click',insert);
     span.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();insert()}});
   });
-  ['{团抽}','{团抽比例}','{团抽金额}','{派抽}','{派抽比例}','{派抽金额}','{到手}','{到手比例}','{到手金额}','{来源}'].forEach(v=>box.appendChild(makeInsertChip(v)));
-  const label=document.createElement('div');label.className='report-quick-label';label.textContent='快捷百分比计算 · 点击后按本单总价自动算金额';
+
+  [
+    ['团抽金额','{团抽金额}','按当前团抽比例自动算金额'],
+    ['团抽比例','{团抽比例}','例如 20%'],
+    ['派抽金额','{派抽金额}','按当前派抽比例自动算金额'],
+    ['派抽比例','{派抽比例}','例如 10%'],
+    ['到手金额','{到手金额}','按当前到手比例自动算金额'],
+    ['到手比例','{到手比例}','例如 70%'],
+    ['来源','{来源}','插入本单来源']
+  ].forEach(([label,token,title])=>box.appendChild(makeInsertChip(label,token,title+' · 插入 '+token)));
+
+  const label=document.createElement('div');label.className='report-quick-label';
+  label.textContent='快捷百分比计算 · 直接算“本单总价 × 百分比”';
   box.appendChild(label);
-  [5,10,15,20,25,30].forEach(p=>box.appendChild(makeInsertChip(p+'%','{'+p+'%}','点击插入：本单总价 × '+p+'%')));
+  [5,10,15,20,25,30].forEach(p=>box.appendChild(makeInsertChip('× '+p+'%','{'+p+'%}','插入 '+p+'% 自动计算金额')));
+
+  const custom=document.createElement('div');custom.className='report-custom-pct';
+  custom.innerHTML='<input id="reportCustomPct" type="number" min="0" max="100" step="0.01" placeholder="自定义 %"><button id="insertCustomPctBtn" class="tiny-btn" type="button">插入计算</button>';
+  box.appendChild(custom);
+  custom.querySelector('#insertCustomPctBtn')?.addEventListener('click',()=>{
+    const value=clampPct(custom.querySelector('#reportCustomPct')?.value);
+    if(value<=0)return toast('先填一个百分比');
+    insertTemplateToken('{'+plain(value)+'%}');
+  });
+
+  const help=document.createElement('div');help.className='report-parse-help';
+  help.innerHTML='<b>解析说明</b><br>团抽金额 = 本单总价 × 团抽比例；团抽比例只显示百分比。<br>例如模板写「团抽：{20%}」，本单总价 157.5 时复制出来就是「团抽：31.5」。<br>旧模板里的 {团抽} / {派抽} / {到手} 继续兼容，都会按金额解析。';
+  box.appendChild(help);
 }
 
 async function loadRule(shopId){
@@ -170,7 +195,11 @@ async function syncCurrentShop(){
 function replaceAllVars(template,vars){
   let out=String(template||'');
   const total=num(ctx()?.state?.calc?.total)||currentTotal();
-  out=out.replace(/\{\s*(\d+(?:\.\d+)?)%\s*\}/g,(_,pct)=>plain(total*clampPct(pct)/100));
+
+  // 快捷百分比：{20%}、{团抽20%}、{派抽10%}、{到手70%}
+  // 都按“本单总价 × 百分比”解析成金额。
+  out=out.replace(/\{\s*(?:团抽|派抽|到手)?\s*(\d+(?:\.\d+)?)%\s*\}/g,(_,pct)=>plain(total*clampPct(pct)/100));
+
   Object.entries(vars).forEach(([k,v])=>{out=out.split(k).join(String(v??''))});
   return out;
 }
