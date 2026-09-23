@@ -60,7 +60,7 @@ function recordsForRpc(){
 function currentPrepaid(){const sel=window.paiMiniSettlementSelection||{};if(!sel.use_prepaid)return 0;return Math.max(0,Math.min(num(sel.prepaid_amount),num(sel.available_prepaid),orderTotal()))}
 function currentBenefits(){const rows=window.paiMiniSettlementSelection?.benefits_used;return Array.isArray(rows)?rows.map(x=>({benefit_id:x.benefit_id,quantity:Math.max(0,num(x.quantity))})).filter(x=>x.benefit_id&&x.quantity>0):[]}
 function usesSettlement(){return currentPrepaid()>0||currentBenefits().length>0}
-function syncButtons(){const use=usesSettlement();const atomic=$('settlementAtomicSave');if(atomic){atomic.disabled=!use||saving||!selectedCustomer()||orderTotal()<=0;atomic.classList.toggle('hidden',!use)}const coreSingle=$('saveRecordBtn'),coreMulti=$('saveWholeOrderBtn');if(coreSingle)coreSingle.disabled=use||saving;if(coreMulti)coreMulti.disabled=use||saving}
+function syncButtons(){const use=usesSettlement();const atomic=$('settlementAtomicSave');if(atomic){atomic.disabled=!use||saving||!selectedCustomer()||orderTotal()<=0;atomic.classList.toggle('hidden',!use);atomic.textContent=saving?'扣款保存中…':'扣款并保存本单'}const coreSingle=$('saveRecordBtn'),coreMulti=$('saveWholeOrderBtn');if(coreSingle)coreSingle.disabled=use||saving;if(coreMulti)coreMulti.disabled=use||saving}
 function friendly(err){const m=String(err?.message||err||'');if(m.includes('prepaid_exceeds_order_total'))return '预存抵扣不能超过本单金额';if(m.includes('insufficient_prepaid_balance'))return '老板预存余额不足';if(m.includes('benefit_expired'))return '选择的权益已过期，请刷新后重试';if(m.includes('insufficient_benefit_quantity'))return '选择的权益数量不足，请刷新后重试';if(m.includes('benefit_not_found'))return '选择的权益已变化，请刷新后重试';if(m.includes('customer_not_found'))return '请先从老板档案中选择老板';if(m.includes('account_read_only_expired'))return '账号已到期，当前不能结算';if(m.includes('does not exist')||m.includes('save_order_with_wallet'))return '预存结算数据库还没升级';return m||'保存失败'}
 
 async function saveAtomic(){
@@ -83,13 +83,13 @@ async function saveAtomic(){
     document.getElementById('settlementRefresh')?.click();
     const parts=[];if(prepaid>0)parts.push('预存 '+plain(prepaid));if(benefits.length)parts.push('权益 '+benefits.length+' 项');
     toast('已保存并结算'+(parts.length?'：'+parts.join(' · '):'')+' ♡');
-  }catch(e){console.warn('atomic settlement save failed',e);toast('保存失败：'+friendly(e))}finally{saving=false;if(btn)btn.textContent=old||'保存并结算';setTimeout(syncButtons,50)}
+  }catch(e){console.warn('atomic settlement save failed',e);const msg=friendly(e);toast('扣款失败：'+msg);window.alert('这单没有扣款成功。\n\n原因：'+msg)}finally{saving=false;if(btn)btn.textContent=old||'保存并结算';setTimeout(syncButtons,50)}
 }
 
 function mount(){
   const body=$('settlementBody');if(!body)return false;
   if(!$('settlementAtomicSave')){
-    const row=document.createElement('div');row.className='mini-actions';row.style.marginTop='10px';row.innerHTML='<button id="settlementAtomicSave" class="btn primary hidden" type="button">保存并结算</button><small style="align-self:center;color:var(--muted)">选择预存或权益后请用这个按钮保存，订单与扣减会一起完成。</small>';body.appendChild(row);
+    const row=document.createElement('div');row.className='mini-actions';row.style.marginTop='10px';row.innerHTML='<button id="settlementAtomicSave" class="btn primary hidden" type="button">扣款并保存本单</button><small style="align-self:center;color:var(--muted)">选择预存或权益后请用这个按钮保存，订单与扣减会一起完成。</small>';body.appendChild(row);
   }
   $('settlementAtomicSave')?.addEventListener('click',saveAtomic);
   $('settlementUsePrepaid')?.addEventListener('change',()=>setTimeout(syncButtons,0));
@@ -99,6 +99,8 @@ function mount(){
   $('#customerName')?.addEventListener('input',()=>setTimeout(syncButtons,250));
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(syncButtons,50)));
   $('#addOrderLineBtn')?.addEventListener('click',()=>setTimeout(syncButtons,100));
+  window.addEventListener('paimini:settlement-changed',()=>setTimeout(syncButtons,0));
+  window.addEventListener('paimini:prepaid-updated',()=>setTimeout(syncButtons,50));
   syncButtons();return true;
 }
 
