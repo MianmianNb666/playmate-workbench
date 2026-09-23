@@ -37,6 +37,16 @@ function currentDeduct(){
   return Math.min(Math.max(0,num($('settlementPrepaidAmount')?.value)),state.balance,orderTotal());
 }
 
+function selectedBenefits(){
+  return [...document.querySelectorAll('#settlementBenefits [data-benefit-use]:checked')].map(check=>{
+    const stock=state.benefits.find(x=>x.id===check.dataset.benefitUse);
+    if(!stock)return null;
+    const input=document.querySelector(`#settlementBenefits [data-benefit-qty="${stock.id}"]`);
+    const quantity=Math.min(Math.max(0,num(input?.value)||1),num(stock.quantity));
+    return quantity>0?{benefit_id:stock.id,quantity}:null;
+  }).filter(Boolean);
+}
+
 function writeSelection(){
   const enabled=!!$('settlementUsePrepaid')?.checked;
   const deduct=currentDeduct();
@@ -45,7 +55,8 @@ function writeSelection(){
     use_prepaid:enabled,
     prepaid_amount:enabled?deduct:0,
     available_prepaid:state.balance,
-    benefits:state.benefits.map(x=>({id:x.id,name:x.name,quantity:num(x.quantity),unit_label:x.unit_label||'个'}))
+    benefits:state.benefits.map(x=>({id:x.id,name:x.name,quantity:num(x.quantity),unit_label:x.unit_label||'个'})),
+    benefits_used:selectedBenefits()
   };
   renderEstimate();
 }
@@ -62,7 +73,7 @@ function ensureStyle(){
     .settlement-safe-stat{border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--paper)}
     .settlement-safe-stat span{display:block;color:var(--muted);font-size:10px}.settlement-safe-stat b{display:block;margin-top:3px;font-size:15px}
     .settlement-safe-controls{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:end}
-    .settlement-safe-benefits{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.settlement-safe-benefit{border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:10px}
+    .settlement-safe-benefits{display:grid;gap:7px;margin-top:9px}.settlement-safe-benefit{border:1px solid var(--line);border-radius:12px;padding:8px 10px;font-size:10px}.settlement-safe-benefit-use{display:grid;grid-template-columns:auto 1fr 90px;gap:8px;align-items:center}.settlement-safe-benefit-use input[type="number"]{margin:0}.settlement-safe-benefit-use small{color:var(--muted)}
     .settlement-safe-note{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.45}
     @media(max-width:720px){.settlement-safe-summary{grid-template-columns:1fr 1fr}}
     @media(max-width:520px){.settlement-safe-summary,.settlement-safe-controls{grid-template-columns:1fr}}
@@ -118,7 +129,7 @@ function render(){
   if(!empty||!body)return;
   if(!state.customer){
     empty.classList.remove('hidden');body.classList.add('hidden');
-    window.paiMiniSettlementSelection={customer_id:null,use_prepaid:false,prepaid_amount:0,available_prepaid:0,benefits:[]};
+    window.paiMiniSettlementSelection={customer_id:null,use_prepaid:false,prepaid_amount:0,available_prepaid:0,benefits:[],benefits_used:[]};
     return;
   }
   empty.classList.add('hidden');body.classList.remove('hidden');
@@ -133,7 +144,7 @@ function render(){
   }
   const b=$('settlementBenefits');
   if(b)b.innerHTML=state.benefits.length
-    ?'<span class="settlement-safe-benefit">可用权益：</span>'+state.benefits.map(x=>`<span class="settlement-safe-benefit">${safe(x.name)} · ${safe(x.quantity)} ${safe(x.unit_label||'个')}</span>`).join('')
+    ?'<div class="settlement-safe-benefit"><b>本单使用权益</b><small style="display:block;margin-top:3px;color:var(--muted)">勾选后与订单一起原子保存并自动扣减数量。</small></div>'+state.benefits.map(x=>`<label class="settlement-safe-benefit settlement-safe-benefit-use"><input type="checkbox" data-benefit-use="${safe(x.id)}"><span><b>${safe(x.name)}</b><small>可用 ${safe(x.quantity)} ${safe(x.unit_label||'个')}</small></span><input type="number" data-benefit-qty="${safe(x.id)}" min="0.01" max="${safe(x.quantity)}" step="0.01" value="1" disabled aria-label="${safe(x.name)}使用数量"></label>`).join('')
     :'<span class="settlement-safe-benefit">暂无可用权益</span>';
   if(check?.checked&&amount&&num(amount.value)===0)amount.value=Math.min(total,state.balance).toFixed(2);
   writeSelection();
@@ -172,6 +183,21 @@ function bind(){
     if(el){const capped=Math.min(Math.max(0,num(el.value)),state.balance,orderTotal());if(num(el.value)!==capped)el.value=capped.toFixed(2)}
     writeSelection();
   });
+  $('settlementBenefits')?.addEventListener('change',e=>{
+    const check=e.target.closest?.('[data-benefit-use]');
+    if(check){
+      const input=document.querySelector(`#settlementBenefits [data-benefit-qty="${check.dataset.benefitUse}"]`);
+      if(input){input.disabled=!check.checked;if(check.checked&&num(input.value)<=0)input.value='1'}
+    }
+    const qty=e.target.closest?.('[data-benefit-qty]');
+    if(qty){
+      const stock=state.benefits.find(x=>x.id===qty.dataset.benefitQty);
+      const capped=Math.min(Math.max(0.01,num(qty.value)||1),num(stock?.quantity));
+      qty.value=String(capped);
+    }
+    writeSelection();
+  });
+  $('settlementBenefits')?.addEventListener('input',e=>{if(e.target.closest?.('[data-benefit-qty]'))writeSelection()});
   $('customerName')?.addEventListener('input',()=>{clearTimeout(bind.customerTimer);bind.customerTimer=setTimeout(refresh,220)});
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(renderEstimate,30)));
   $('addOrderLineBtn')?.addEventListener('click',()=>setTimeout(renderEstimate,80));
