@@ -20,7 +20,9 @@ async function query(promise,label){const r=await Promise.race([promise,timeout(
 function orderTotal(){
   const lines=window.paiMiniMultiOrder?.lines;
   if(Array.isArray(lines)&&lines.length)return lines.reduce((sum,x)=>sum+num(x.total),0);
-  return num(ctx()?.state?.calc?.total)||num(($('#calcTotal')?.textContent||'').replace(/[^0-9.-]/g,''));
+  const totalEl=$('calcTotal');
+  if(totalEl)return num((totalEl.textContent||'').replace(/[^0-9.-]/g,''));
+  return num(ctx()?.state?.calc?.total);
 }
 
 function selectedCustomer(){
@@ -173,6 +175,10 @@ function bind(){
   $('customerName')?.addEventListener('input',()=>{clearTimeout(bind.customerTimer);bind.customerTimer=setTimeout(refresh,220)});
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(renderEstimate,30)));
   $('addOrderLineBtn')?.addEventListener('click',()=>setTimeout(renderEstimate,80));
+  const grand=$('orderGrandTotal');
+  if(grand&&typeof MutationObserver!=='undefined'){
+    new MutationObserver(()=>{renderEstimate();writeSelection()}).observe(grand,{childList:true,characterData:true,subtree:true});
+  }
 }
 
 export async function initOrderSettlementSafe(){
