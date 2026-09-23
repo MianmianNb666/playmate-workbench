@@ -201,7 +201,7 @@ if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
     if(reportRulesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     reportRulesStarted=true;
     try{
-      const mod=await import("./report-rules-safe.js?v=20260923-report-rules1");
+      const mod=await import("./report-rules-safe.js?v=20260923-report-rules6");
       await mod.initReportRulesSafe?.();
       const copyOnly=await import("./report-rules-copyonly.js?v=20260923-copyonly1");
       copyOnly.applyReportRulesCopyOnly?.();
