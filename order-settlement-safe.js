@@ -103,7 +103,7 @@ function ensureStyle(){
 function mount(){
   const page=$('page-calculator');
   if(!page)return false;
-  if($('orderSettlementSafeCard'))return true;
+  if($('orderSettlementSafeCard')){bind();return true;}
   const totalBox=page.querySelector('.multi-order-total');
   if(!totalBox)return false;
   const card=document.createElement('div');
@@ -271,11 +271,7 @@ function installSettlementWatchdog(){
     timer=setTimeout(async()=>{
       const page=$('page-calculator');
       if(!page)return;
-      if(!$('orderSettlementSafeCard')){
-        if(mount()){
-          try{await refresh()}catch(error){console.warn('settlement remount refresh failed',error)}
-        }
-      }else{
+      if($('orderSettlementSafeCard')){
         syncCustomerSelector();
       }
     },80);
