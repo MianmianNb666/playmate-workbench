@@ -72,7 +72,7 @@ function recordsForRpc(){return recordsForRpcWithCustomer(selectedCustomer())}
 function currentPrepaid(){const sel=window.paiMiniSettlementSelection||{};if(!sel.use_prepaid)return 0;return Math.max(0,Math.min(num(sel.prepaid_amount),num(sel.available_prepaid),orderTotal()))}
 function currentBenefits(){const rows=window.paiMiniSettlementSelection?.benefits_used;return Array.isArray(rows)?rows.map(x=>({benefit_id:x.benefit_id,quantity:Math.max(0,num(x.quantity))})).filter(x=>x.benefit_id&&x.quantity>0):[]}
 function usesSettlement(){return currentPrepaid()>0||currentBenefits().length>0}
-function syncButtons(){const use=usesSettlement();const atomic=$('settlementAtomicSave');const hasCustomer=!!(window.paiMiniSettlementSelection?.customer_id||$('settlementCustomerSelect')?.value||selectedCustomer());if(atomic){atomic.disabled=!use||saving||!hasCustomer||orderTotal()<=0;atomic.classList.toggle('hidden',!use);atomic.textContent=saving?'扣款保存中…':'扣款并保存本单'}const coreSingle=$('saveRecordBtn'),coreMulti=$('saveWholeOrderBtn');if(coreSingle)coreSingle.disabled=use||saving;if(coreMulti)coreMulti.disabled=use||saving}
+function syncButtons(){const use=usesSettlement();const coreSingle=$('saveRecordBtn');const coreMulti=$('saveWholeOrderBtn');if(coreSingle){coreSingle.disabled=saving;coreSingle.textContent=saving?'保存中…':'保存记录'}if(coreMulti)coreMulti.classList.add('hidden')}
 function friendly(err){const m=String(err?.message||err||'');if(m.includes('prepaid_exceeds_order_total'))return '预存抵扣不能超过本单金额';if(m.includes('insufficient_prepaid_balance'))return '老板预存余额不足';if(m.includes('benefit_expired'))return '选择的权益已过期，请刷新后重试';if(m.includes('insufficient_benefit_quantity'))return '选择的权益数量不足，请刷新后重试';if(m.includes('benefit_not_found'))return '选择的权益已变化，请刷新后重试';if(m.includes('customer_not_found'))return '请先从老板档案中选择老板';if(m.includes('account_read_only_expired'))return '账号已到期，当前不能结算';if(m.includes('does not exist')||m.includes('save_order_with_wallet'))return '预存结算数据库还没升级';return m||'保存失败'}
 
 async function saveAtomic(){
@@ -108,10 +108,7 @@ async function saveAtomic(){
 
 function mount(){
   const body=$('settlementBody');if(!body)return false;
-  if(!$('settlementAtomicSave')){
-    const row=document.createElement('div');row.className='mini-actions';row.style.marginTop='10px';row.innerHTML='<button id="settlementAtomicSave" class="btn primary hidden" type="button">扣款并保存本单</button><small style="align-self:center;color:var(--muted)">选择预存或权益后请用这个按钮保存，订单与扣减会一起完成。</small>';body.appendChild(row);
-  }
-  $('settlementAtomicSave')?.addEventListener('click',saveAtomic);
+  $('settlementAtomicSave')?.closest('.mini-actions')?.remove();
   $('settlementUsePrepaid')?.addEventListener('change',()=>setTimeout(syncButtons,0));
   $('settlementPrepaidAmount')?.addEventListener('input',()=>setTimeout(syncButtons,0));
   $('settlementBenefits')?.addEventListener('change',()=>setTimeout(syncButtons,0));
@@ -121,6 +118,7 @@ function mount(){
   $('#addOrderLineBtn')?.addEventListener('click',()=>setTimeout(syncButtons,100));
   window.addEventListener('paimini:settlement-changed',()=>setTimeout(syncButtons,0));
   window.addEventListener('paimini:prepaid-updated',()=>setTimeout(syncButtons,50));
+  window.paiMiniAtomicSettlement={save:saveAtomic,usesSettlement};
   syncButtons();return true;
 }
 
