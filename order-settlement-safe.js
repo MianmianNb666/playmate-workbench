@@ -192,23 +192,79 @@ function render(){
 
 async function refresh(){
   const seq=++loadSeq;
-  const explicitId=state.selectedCustomerId||$('settlementCustomerSelect')?.value||'';
-  const c=explicitId ? customerById(explicitId) : selectedCustomer();
-  state.customer=c;state.benefits=[];state.balance=num(c?.prepaid_balance);
+  const selectedId=String(state.selectedCustomerId||$('settlementCustomerSelect')?.value||'').trim();
+
+  let c=selectedId ? customerById(selectedId) : selectedCustomer();
+
+  // 已经选中过老板时，不因为主程序 state.customers 短暂重载而把结算区清空。
+  if(!c && selectedId && state.customer && String(state.customer.id)===selectedId){
+    c=state.customer;
+  }
+
+  const s=supabase();
+  if(!c && selectedId && s){
+    try{
+      const direct=await Promise.race([
+        s.from('customers').select('*').eq('id',selectedId).maybeSingle(),
+        timeout('selected customer')
+      ]);
+      if(seq!==loadSeq)return;
+      if(!direct?.error && direct?.data)c=direct.data;
+    }catch(error){
+      console.warn('selected customer direct read failed',error);
+    }
+  }
+
+  if(seq!==loadSeq)return;
+
+  // 只有用户真的没有选择老板时，才允许清空结算区。
+  if(!c){
+    if(!selectedId){
+      state.customer=null;state.benefits=[];state.balance=0;render();
+    }
+    return;
+  }
+
+  state.customer=c;
+  state.selectedCustomerId=String(c.id);
+  state.balance=num(c.prepaid_balance);
   render();
-  if(!c)return;
-  const s=supabase();if(!s)return;
+
+  if(!s)return;
   try{
     const [fresh,benefits]=await Promise.all([
-      Promise.race([s.from('customers').select('id,prepaid_balance').eq('id',c.id).maybeSingle(),timeout('customer balance')]),
-      query(s.from('customer_benefits').select('id,name,quantity,unit_label,expires_at').eq('customer_id',c.id).gt('quantity',0).order('updated_at',{ascending:false}),'customer benefits')
+      Promise.race([
+        s.from('customers').select('id,name,shop_id,prepaid_balance').eq('id',c.id).maybeSingle(),
+        timeout('customer balance')
+      ]),
+      query(
+        s.from('customer_benefits')
+          .select('id,name,quantity,unit_label,expires_at')
+          .eq('customer_id',c.id)
+          .gt('quantity',0)
+          .order('updated_at',{ascending:false}),
+        'customer benefits'
+      )
     ]);
+
     if(seq!==loadSeq)return;
     if(fresh?.error)throw fresh.error;
-    state.balance=num(fresh?.data?.prepaid_balance);
+
+    if(fresh?.data){
+      state.customer={...state.customer,...fresh.data};
+      state.balance=num(fresh.data.prepaid_balance);
+    }
     state.benefits=(benefits||[]).filter(x=>!x.expires_at||new Date(x.expires_at).getTime()>Date.now());
+
+    // 再确认用户没有在请求期间切换老板。
+    const activeId=String(state.selectedCustomerId||$('settlementCustomerSelect')?.value||'');
+    if(activeId && activeId!==String(c.id))return;
+
     render();
-  }catch(e){console.warn('settlement refresh failed',e);toast('预存余额读取失败，请点刷新重试')}
+  }catch(e){
+    console.warn('settlement refresh failed',e);
+    toast('预存余额读取失败，请点刷新重试');
+  }
 }
 
 function bind(){
@@ -228,7 +284,6 @@ function bind(){
     void refresh();
   };
   $('settlementCustomerSelect')?.addEventListener('change',handleSettlementCustomer);
-  $('settlementCustomerSelect')?.addEventListener('input',handleSettlementCustomer);
   $('settlementUsePrepaid')?.addEventListener('change',()=>{
     const on=$('settlementUsePrepaid').checked;
     const amount=$('settlementPrepaidAmount');
@@ -269,9 +324,14 @@ function bind(){
       }
 
       // 用户手动改成另一个已有老板时，切换锁定；改成新名字时才解除锁定。
-      state.selectedCustomerId=current?.id||null;
-      if($('settlementCustomerSelect')) $('settlementCustomerSelect').value=current?.id||'';
-      void refresh();
+      if(current){
+        state.selectedCustomerId=current.id;
+        if($('settlementCustomerSelect')) $('settlementCustomerSelect').value=current.id;
+        void refresh();
+      }else if(!state.selectedCustomerId){
+        if($('settlementCustomerSelect')) $('settlementCustomerSelect').value='';
+        void refresh();
+      }
     },220)
   });
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(renderEstimate,30)));
