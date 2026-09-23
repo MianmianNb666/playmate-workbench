@@ -6,7 +6,7 @@ let started=false;
 let loadSeq=0;
 const $=id=>document.getElementById(id);
 const TIMEOUT_MS=16000;
-const state={customer:null,benefits:[],balance:0};
+const state={customer:null,benefits:[],balance:0,selectedCustomerId:null};
 
 function ctx(){try{return window.paiMiniOrderBridge?.getContext?.()||null}catch{return null}}
 function supabase(){return ctx()?.supabase||null}
@@ -46,12 +46,14 @@ function customerById(id){
 function syncCustomerSelector(){
   const sel=$('settlementCustomerSelect');if(!sel)return;
   const rows=shopCustomers();
-  const old=sel.value;
+  const old=state.selectedCustomerId||sel.value;
   sel.innerHTML='<option value="">请选择老板</option>'+rows.map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+'</option>').join('');
-  if(old&&rows.some(x=>x.id===old)) sel.value=old;
-  if(!sel.value){
+  if(old&&rows.some(x=>String(x.id)===String(old))){
+    sel.value=old;
+    state.selectedCustomerId=old;
+  }else if(!sel.value){
     const current=selectedCustomer();
-    if(current) sel.value=current.id;
+    if(current){sel.value=current.id;state.selectedCustomerId=current.id}
   }
 }
 
@@ -189,7 +191,7 @@ function render(){
 
 async function refresh(){
   const seq=++loadSeq;
-  const explicitId=$('settlementCustomerSelect')?.value||'';
+  const explicitId=state.selectedCustomerId||$('settlementCustomerSelect')?.value||'';
   const c=explicitId ? customerById(explicitId) : selectedCustomer();
   state.customer=c;state.benefits=[];state.balance=num(c?.prepaid_balance);
   render();
@@ -215,9 +217,11 @@ function bind(){
   $('settlementRefresh')?.addEventListener('click',()=>void refresh());
   const handleSettlementCustomer=()=>{
     const id=$('settlementCustomerSelect')?.value||'';
+    state.selectedCustomerId=id||null;
     const customer=customerById(id);
     if(customer&&$('customerName')){
       $('customerName').value=customer.name||'';
+      // 直接刷新主页面老板统计，但不要再让结算模块自己被输入事件清空。
       $('customerName').dispatchEvent(new Event('input',{bubbles:true}));
     }
     void refresh();
@@ -254,8 +258,19 @@ function bind(){
     clearTimeout(bind.customerTimer);
     bind.customerTimer=setTimeout(()=>{
       const current=selectedCustomer();
+      const locked=state.selectedCustomerId?customerById(state.selectedCustomerId):null;
+      const typed=($('#customerName')?.value||'').trim();
+
+      // 如果输入框只是由下拉框同步出来的同一个老板，不清空锁定 ID。
+      if(locked && String(locked.name||'').trim()===typed){
+        if($('settlementCustomerSelect')) $('settlementCustomerSelect').value=locked.id;
+        return;
+      }
+
+      // 用户手动改成另一个已有老板时，切换锁定；改成新名字时才解除锁定。
+      state.selectedCustomerId=current?.id||null;
       if($('settlementCustomerSelect')) $('settlementCustomerSelect').value=current?.id||'';
-      refresh();
+      void refresh();
     },220)
   });
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(renderEstimate,30)));
@@ -279,7 +294,7 @@ function installSettlementWatchdog(){
       if(!page)return;
       if($('orderSettlementSafeCard')){
         syncCustomerSelector();
-        const chosen=$('settlementCustomerSelect')?.value||'';
+        const chosen=state.selectedCustomerId||$('settlementCustomerSelect')?.value||'';
         if(chosen && (!state.customer || String(state.customer.id)!==String(chosen))) void refresh();
       }
     },80);
