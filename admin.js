@@ -228,11 +228,12 @@ async function adminSetPassword(userId,email){
   if(!token){alert("管理端登录已失效，请重新登录。");return}
 
   try{
-    const response=await fetch("https://playmate-workbench.vercel.app/api/admin-reset-password",{
+    const response=await fetch(SUPABASE_URL+"/functions/v1/admin-reset-password",{
       method:"POST",
       headers:{
         "content-type":"application/json",
-        "authorization":"Bearer "+token
+        "authorization":"Bearer "+token,
+        "apikey":SUPABASE_PUBLISHABLE_KEY
       },
       body:JSON.stringify({user_id:userId,new_password:password})
     });
