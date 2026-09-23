@@ -42,7 +42,7 @@ function render(){
   box.innerHTML=lines.length?lines.map((x,i)=>'<div class="order-line"><div class="order-line-main"><b>'+escapeHtml(x.companion)+'</b><small>项目 '+(i+1)+'</small></div><div class="order-line-item"><b>'+escapeHtml(x.item)+'</b><small>'+money(x.price)+' / '+escapeHtml(x.unit)+' · '+escapeHtml(x.measure)+'</small></div><div class="order-line-price">'+money(x.total)+'</div><button class="order-line-remove" data-remove-line="'+x.id+'" type="button" aria-label="删除">×</button></div>').join(""):'<div class="empty-state">还没有添加项目。填好上面的陪陪、项目和数量后，点「添加当前项目」。</div>';
   const total=lines.reduce((a,x)=>a+x.total,0);
   if($("orderGrandTotal")) $("orderGrandTotal").textContent=money(total);
-  window.paiMiniMultiOrder={lines:[...lines],total,clear};
+  window.paiMiniMultiOrder={lines:[...lines],total,clear,save:saveWholeOrder};
 }
 function escapeHtml(v){const d=document.createElement("div");d.textContent=String(v??"");return d.innerHTML}
 function add(){
