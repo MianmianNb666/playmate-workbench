@@ -462,13 +462,6 @@ function bind(){
     renderUsers();
   });
 
-  $("passwordResetSendBtn")?.addEventListener("click",()=>{
-    sendPasswordReset($("passwordResetEmail")?.value||"");
-  });
-  $("passwordResetEmail")?.addEventListener("keydown",e=>{
-    if(e.key==="Enter") sendPasswordReset($("passwordResetEmail")?.value||"");
-  });
-
   $("userList").addEventListener("click",e=>{
     const reset=e.target.closest("[data-reset-email]");
     if(reset){sendPasswordReset(reset.dataset.resetEmail);return}
