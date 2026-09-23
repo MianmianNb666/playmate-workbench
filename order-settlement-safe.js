@@ -32,6 +32,24 @@ function selectedCustomer(){
   return (c?.state?.customers||[]).find(x=>x.shop_id===shopId&&String(x.name||'').trim()===name)||null;
 }
 
+function shopCustomers(){
+  const c=ctx();
+  const shopId=c?.shop?.id;
+  return (c?.state?.customers||[]).filter(x=>x.shop_id===shopId);
+}
+
+function syncCustomerSelector(){
+  const sel=$('settlementCustomerSelect');if(!sel)return;
+  const rows=shopCustomers();
+  const old=sel.value;
+  sel.innerHTML='<option value="">请选择老板</option>'+rows.map(x=>'<option value="'+safe(x.id)+'">'+safe(x.name)+'</option>').join('');
+  if(old&&rows.some(x=>x.id===old)) sel.value=old;
+  if(!sel.value){
+    const current=selectedCustomer();
+    if(current) sel.value=current.id;
+  }
+}
+
 function currentDeduct(){
   if(!$('settlementUsePrepaid')?.checked)return 0;
   return Math.min(Math.max(0,num($('settlementPrepaidAmount')?.value)),state.balance,orderTotal());
@@ -96,6 +114,14 @@ function mount(){
       <div><b>老板预存 · 本单扣除</b><small>跟本单合计一起看，直接处理这一单</small></div>
       <button id="settlementRefresh" class="tiny-btn" type="button">刷新</button>
     </div>
+    <div class="settlement-safe-controls" style="margin-top:10px">
+      <label>选择老板档案
+        <select id="settlementCustomerSelect">
+          <option value="">请选择老板</option>
+        </select>
+      </label>
+      <div class="settlement-safe-note" style="align-self:end">选择后会自动读取预存余额，并同步到本单老板。</div>
+    </div>
     <div id="settlementEmpty" class="empty-state">选择已有老板档案后显示预存余额。</div>
     <div id="settlementBody" class="hidden">
       <div class="settlement-safe-summary">
@@ -130,6 +156,7 @@ function renderEstimate(){
 }
 
 function render(){
+  syncCustomerSelector();
   const empty=$('settlementEmpty'),body=$('settlementBody');
   if(!empty||!body)return;
   if(!state.customer){
@@ -157,7 +184,8 @@ function render(){
 
 async function refresh(){
   const seq=++loadSeq;
-  const c=selectedCustomer();
+  const explicitId=$('settlementCustomerSelect')?.value||'';
+  const c=explicitId ? shopCustomers().find(x=>x.id===explicitId)||null : selectedCustomer();
   state.customer=c;state.benefits=[];state.balance=num(c?.prepaid_balance);
   render();
   if(!c)return;
@@ -177,6 +205,16 @@ async function refresh(){
 
 function bind(){
   $('settlementRefresh')?.addEventListener('click',refresh);
+  $('settlementCustomerSelect')?.addEventListener('change',()=>{
+    const id=$('settlementCustomerSelect')?.value||'';
+    const customer=shopCustomers().find(x=>x.id===id)||null;
+    if(customer&&$('customerName')){
+      $('customerName').value=customer.name||'';
+      $('customerName').dispatchEvent(new Event('input',{bubbles:true}));
+      $('customerName').dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    void refresh();
+  });
   $('settlementUsePrepaid')?.addEventListener('change',()=>{
     const on=$('settlementUsePrepaid').checked;
     const amount=$('settlementPrepaidAmount');
@@ -203,7 +241,14 @@ function bind(){
     writeSelection();
   });
   $('settlementBenefits')?.addEventListener('input',e=>{if(e.target.closest?.('[data-benefit-qty]'))writeSelection()});
-  $('customerName')?.addEventListener('input',()=>{clearTimeout(bind.customerTimer);bind.customerTimer=setTimeout(refresh,220)});
+  $('customerName')?.addEventListener('input',()=>{
+    clearTimeout(bind.customerTimer);
+    bind.customerTimer=setTimeout(()=>{
+      const current=selectedCustomer();
+      if($('settlementCustomerSelect')) $('settlementCustomerSelect').value=current?.id||'';
+      refresh();
+    },220)
+  });
   ['durationInput','calcUnitPrice','customerDiscount'].forEach(id=>$(id)?.addEventListener('input',()=>setTimeout(renderEstimate,30)));
   $('addOrderLineBtn')?.addEventListener('click',()=>setTimeout(renderEstimate,80));
   const grand=$('orderGrandTotal');
