@@ -259,7 +259,7 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     settlementStarted=true;
     try{
-      const mod=await import("./order-settlement-safe.js?v=20260924-settlement5");
+      const mod=await import("./order-settlement-safe.js?v=20260924-settlement6");
       await mod.initOrderSettlementSafe?.();
       const atomic=await import("./order-wallet-atomic-safe.js?v=20260924-atomic5");
       await atomic.initOrderWalletAtomicSafe?.();
