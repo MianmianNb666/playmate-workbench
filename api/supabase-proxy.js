@@ -1,5 +1,21 @@
 const SUPABASE_ORIGIN = "https://hwvtuybkozojypifxjto.supabase.co";
-const ALLOWED_ORIGIN = "https://mianmiannb666.github.io";
+
+const EXACT_ORIGINS = new Set([
+  "https://mianmiannb666.github.io",
+  "https://playmate-workbench.vercel.app"
+]);
+
+function isAllowedOrigin(origin){
+  if(EXACT_ORIGINS.has(origin)) return true;
+  try{
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+    return host.endsWith(".vercel.app") || host.endsWith(".edgeone.cool");
+  }catch{
+    return false;
+  }
+}
+
 const ALLOWED_PREFIXES = ["/auth/v1/", "/rest/v1/"];
 const ALLOWED_METHODS = new Set(["GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS"]);
 
@@ -16,7 +32,7 @@ function setCors(res, origin){
 module.exports = async function handler(req, res){
   const origin = req.headers.origin || "";
 
-  if(origin !== ALLOWED_ORIGIN){
+  if(!isAllowedOrigin(origin)){
     setCors(res, origin || "null");
     return res.status(403).json({error:"origin_not_allowed"});
   }
