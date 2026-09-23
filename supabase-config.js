@@ -261,7 +261,7 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     try{
       const mod=await import("./order-settlement-safe.js?v=20260924-settlement13");
       await mod.initOrderSettlementSafe?.();
-      const atomic=await import("./order-wallet-atomic-safe.js?v=20260924-atomic5");
+      const atomic=await import("./order-wallet-atomic-safe.js?v=20260924-atomic14");
       await atomic.initOrderWalletAtomicSafe?.();
     }catch(error){
       settlementStarted=false;
