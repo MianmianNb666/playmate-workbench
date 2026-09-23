@@ -1,14 +1,21 @@
 export const SUPABASE_URL = "https://hwvtuybkozojypifxjto.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_zXBazZFr";
 
-// Supabase 中转地址：默认仍优先直连，只有网络级失败才自动走 Cloudflare Worker。
+// 派Mini Supabase 多线路兜底：直连 → Vercel 中转 → Cloudflare Worker。
+// 业务层仍然使用同一个 Supabase client；这里只处理网络层，不绕过 Auth / RLS。
+export const SUPABASE_VERCEL_PROXY_URL = "https://playmate-workbench.vercel.app/api/supabase-proxy";
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
-const REQUEST_TIMEOUT_MS = 7000;
+const DIRECT_TIMEOUT_MS = 5500;
+const PROXY_TIMEOUT_MS = 7000;
+
+function rawUrl(input){
+  return typeof input==="string" ? input : input?.url;
+}
 
 function isSupabaseUrl(input){
-  const raw=typeof input==="string" ? input : input?.url;
+  const raw=rawUrl(input);
   if(!raw) return false;
   try{return new URL(raw).origin===new URL(SUPABASE_URL).origin}catch{return false}
 }
@@ -16,15 +23,20 @@ function isSupabaseUrl(input){
 function isNetworkFailure(error){
   const message=String(error?.message||error||"").toLowerCase();
   return error?.name==="AbortError" ||
+    error?.name==="TimeoutError" ||
     message.includes("load failed") ||
     message.includes("failed to fetch") ||
     message.includes("network") ||
     message.includes("timeout");
 }
 
-function toProxyUrl(input){
+function isRetryableStatus(status){
+  return [408,425,429,500,502,503,504,520,521,522,523,524].includes(Number(status));
+}
+
+function toWorkerUrl(input){
   if(!SUPABASE_PROXY_URL) return null;
-  const raw=typeof input==="string" ? input : input?.url;
+  const raw=rawUrl(input);
   if(!raw) return null;
   let url;
   try{url=new URL(raw)}catch{return null}
@@ -33,11 +45,26 @@ function toProxyUrl(input){
   return SUPABASE_PROXY_URL.replace(/\/$/,"")+url.pathname+url.search;
 }
 
-function withDeadline(promise,ms=REQUEST_TIMEOUT_MS){
+function toVercelProxyUrl(input){
+  if(!SUPABASE_VERCEL_PROXY_URL) return null;
+  const raw=rawUrl(input);
+  if(!raw) return null;
+  let url;
+  try{url=new URL(raw)}catch{return null}
+  const upstream=new URL(SUPABASE_URL);
+  if(url.origin!==upstream.origin) return null;
+
+  const proxy=new URL(SUPABASE_VERCEL_PROXY_URL);
+  proxy.searchParams.set("path",url.pathname);
+  for(const [key,value] of url.searchParams.entries()) proxy.searchParams.append(key,value);
+  return proxy.toString();
+}
+
+function withDeadline(promise,ms,label="Supabase request"){
   let timer;
   const timeout=new Promise((_,reject)=>{
     timer=setTimeout(()=>{
-      const error=new Error("Supabase request timeout");
+      const error=new Error(label+" timeout");
       error.name="TimeoutError";
       reject(error);
     },ms);
@@ -45,33 +72,87 @@ function withDeadline(promise,ms=REQUEST_TIMEOUT_MS){
   return Promise.race([promise,timeout]).finally(()=>clearTimeout(timer));
 }
 
-function requestInit(input,init){
-  const request=input instanceof Request ? input : null;
-  const method=init?.method || request?.method || "GET";
+async function requestInit(input,init){
+  const request=input instanceof Request ? input.clone() : null;
+  const method=(init?.method || request?.method || "GET").toUpperCase();
   const next={
     method,
     headers:init?.headers || request?.headers,
-    body:init?.body,
-    signal:init?.signal || request?.signal,
-    cache:init?.cache || "no-store",
-    redirect:init?.redirect || request?.redirect,
-    credentials:init?.credentials || "omit"
+    cache:init?.cache || request?.cache || "no-store",
+    redirect:init?.redirect || request?.redirect || "follow",
+    credentials:"omit"
   };
-  if(method==="GET" || method==="HEAD") delete next.body;
+
+  if(method!=="GET" && method!=="HEAD"){
+    if(init && Object.prototype.hasOwnProperty.call(init,"body")){
+      next.body=init.body;
+    }else if(request){
+      try{next.body=await request.arrayBuffer()}catch{}
+    }
+  }
   return next;
+}
+
+function rememberRoute(route,status=null){
+  try{
+    globalThis.__paiMiniLastSupabaseRoute={
+      route,
+      status,
+      at:Date.now()
+    };
+  }catch{}
 }
 
 if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
   globalThis.__paiMiniSupabaseProxyFetchInstalled=true;
+
   globalThis.fetch=async function paiMiniFetch(input,init){
     if(!isSupabaseUrl(input)) return nativeFetch(input,init);
+
+    let directError=null;
     try{
-      return await withDeadline(nativeFetch(input,init));
+      const direct=await withDeadline(nativeFetch(input,init),DIRECT_TIMEOUT_MS,"Supabase direct");
+      if(!isRetryableStatus(direct.status)){
+        rememberRoute("direct",direct.status);
+        return direct;
+      }
+      directError=new Error("Supabase direct HTTP "+direct.status);
     }catch(error){
-      const proxyUrl=toProxyUrl(input);
-      if(!proxyUrl || !isNetworkFailure(error)) throw error;
-      return withDeadline(nativeFetch(proxyUrl,requestInit(input,init)));
+      if(!isNetworkFailure(error)) throw error;
+      directError=error;
     }
+
+    const forwarded=await requestInit(input,init);
+
+    const vercelUrl=toVercelProxyUrl(input);
+    if(vercelUrl){
+      try{
+        const response=await withDeadline(nativeFetch(vercelUrl,{...forwarded}),PROXY_TIMEOUT_MS,"Vercel proxy");
+        if(!isRetryableStatus(response.status) && response.status!==403 && response.status!==404){
+          rememberRoute("vercel-proxy",response.status);
+          return response;
+        }
+      }catch(error){
+        if(!isNetworkFailure(error)) console.warn("Vercel Supabase proxy failed",error);
+      }
+    }
+
+    const workerUrl=toWorkerUrl(input);
+    if(workerUrl){
+      try{
+        const response=await withDeadline(nativeFetch(workerUrl,{...forwarded}),PROXY_TIMEOUT_MS,"Cloudflare proxy");
+        rememberRoute("cloudflare-proxy",response.status);
+        return response;
+      }catch(error){
+        const detail=String(error?.message||error||"proxy failed");
+        const first=String(directError?.message||directError||"direct failed");
+        const finalError=new Error("Supabase all routes failed · direct: "+first+" · proxy: "+detail);
+        finalError.name="SupabaseNetworkError";
+        throw finalError;
+      }
+    }
+
+    throw directError || new Error("Supabase request failed");
   };
 }
 
