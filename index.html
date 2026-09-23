@@ -58,7 +58,7 @@
       <p id="authHint" class="hint"></p>
       <button id="authDiagBtn" class="btn ghost full-btn" type="button">连接诊断</button>
       <p id="authDiagResult" class="auth-mini-note hidden"></p>
-      <p class="auth-mini-note">Version 20260924-14</p>
+      <p class="auth-mini-note">Version 20260924-15</p>
       <div id="connectionStatus" class="connection-pill">
         <span class="dot"></span><span id="connectionText">正在连接 Supabase…</span>
       </div>
@@ -216,7 +216,7 @@
       <div class="card multi-order-card">
         <div class="card-title">
           <div><b>④ 本单陪玩 / 项目</b><small>可以添加多个陪玩，每个陪玩也可以添加多个项目</small></div>
-          <div class="mini-actions"><button id="addOrderLineBtn" class="tiny-btn" type="button">＋ 添加当前项目</button><button id="saveWholeOrderBtn" class="btn primary" type="button">保存整单</button></div>
+          <div class="mini-actions"><button id="addOrderLineBtn" class="tiny-btn" type="button">＋ 添加当前项目</button><button id="saveWholeOrderBtn" class="btn primary hidden" type="button">保存整单</button></div>
         </div>
         <div id="orderLineList" class="order-line-list">
           <div class="empty-state">还没有添加项目。填好上面的陪陪、项目和数量后，点「添加当前项目」。</div>
@@ -229,7 +229,7 @@
 
       <div id="orderSettlementSafeCard" class="settlement-safe-card">
         <div class="settlement-safe-head">
-          <div><b>老板预存 · 本单扣除【0924-14】</b><small>固定结算区已加载 · 选择老板后直接读取余额</small></div>
+          <div><b>老板预存 · 本单扣除【0924-15】</b><small>固定结算区已加载 · 选择老板后直接读取余额</small></div>
           <button id="settlementRefresh" class="tiny-btn" type="button">刷新</button>
         </div>
         <div class="settlement-safe-controls" style="margin-top:10px">
@@ -253,10 +253,6 @@
             <label>本单扣除金额<input id="settlementPrepaidAmount" type="number" min="0" step="0.01" placeholder="0.00" disabled></label>
           </div>
           <div id="settlementBenefits" class="settlement-safe-benefits"></div>
-          <div class="mini-actions" style="margin-top:10px">
-            <button id="settlementAtomicSave" class="btn primary hidden" type="button">扣款并保存本单</button>
-            <small style="align-self:center;color:var(--muted)">勾选预存或权益后，用这个按钮保存并自动扣减。</small>
-          </div>
           <p class="settlement-safe-note">这里仅处理本单结算；过往消费继续在「消费记录 / 老板档案」查看。</p>
         </div>
       </div>
@@ -676,7 +672,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260924-prepaidchain14"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260924-unifiedsave15"></script>
   <script type="module" src="./boss-features.js?v=20260921-v16"></script>
   <script type="module" src="./price-import.js?v=20260922-v21"></script>
   <script type="module" src="./multi-order.js?v=20260923-multisave1"></script>
