@@ -189,6 +189,7 @@ function renderUsers(){
       +    '<button data-grant-user="'+safe(user.user_id)+'" data-days="30" type="button">+30天</button>'
       +    '<button data-grant-user="'+safe(user.user_id)+'" data-days="90" type="button">+90天</button>'
       +    '<button data-grant-user="'+safe(user.user_id)+'" data-days="365" type="button">+365天</button>'
+      +    '<button data-reset-email="'+safe(user.email||"")+'" type="button">重置密码</button>'
       +  '</div>'
       +'</div>';
   }).join("");
