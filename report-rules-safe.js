@@ -113,7 +113,7 @@ function addVariableChips(){
   ].forEach(([label,token,title])=>box.appendChild(makeInsertChip(label,token,title+' · 插入 '+token)));
 
   const label=document.createElement('div');label.className='report-quick-label';
-  label.textContent='快捷百分比计算 · 直接算“本单总价 × 百分比”';
+  label.textContent='快捷百分比变量 · 复制任意订单报备时，按该订单总价自动计算';
   box.appendChild(label);
   [5,10,15,20,25,30].forEach(p=>box.appendChild(makeInsertChip('× '+p+'%','{'+p+'%}','插入 '+p+'% 自动计算金额')));
 
@@ -127,7 +127,7 @@ function addVariableChips(){
   });
 
   const help=document.createElement('div');help.className='report-parse-help';
-  help.innerHTML='<b>解析说明</b><br>1. 团抽：{团抽金额}{25%} → 按本单总价 × 25% 算团抽金额<br>2. 团抽：{团抽比例}{25%} → 直接显示 25%<br>3. 派抽：{派抽金额}{10%} → 按本单总价 × 10% 算派抽金额<br>4. 到手：{到手比例}{70%} → 直接显示 70%<br>5. 派单金额：{派单金额}{25%} → 按本单总价 × 25% 计算<br><br>单独放 {25%} 也会按本单总价 × 25% 计算。旧模板里的 {团抽} / {派抽} / {到手} 继续兼容。';
+  help.innerHTML='<b>变量解析说明</b><br>这些都是报备模板变量，不绑定某一张单。每次复制哪一笔订单，就用那一笔订单的数据自动解析。<br>1. 团抽：{团抽金额}{25%} → 订单总价 × 25% 算团抽金额<br>2. 团抽：{团抽比例}{25%} → 直接显示 25%<br>3. 派抽：{派抽金额}{10%} → 订单总价 × 10% 算派抽金额<br>4. 到手：{到手比例}{70%} → 直接显示 70%<br>5. 派单金额：{派单金额}{25%} → 订单总价 × 25% 计算<br><br>单独放 {25%} 也会在复制报备时按对应订单总价 × 25% 自动计算。旧模板里的 {团抽} / {派抽} / {到手} 继续兼容。';
   box.appendChild(help);
 }
 
@@ -205,12 +205,12 @@ function replaceAllVars(template,vars){
     (_,kind,type,pct)=>type==='比例'?pctText(pct):plain(total*clampPct(pct)/100)
   );
 
-  // 派单金额后面跟百分比时，也按本单总价 × 百分比解析。
+  // 派单金额后面跟百分比时，也按被复制订单总价 × 百分比解析。
   out=out.replace(/\{\s*派单金额\s*\}\s*\{\s*(\d+(?:\.\d+)?)%\s*\}/g,
     (_,pct)=>plain(total*clampPct(pct)/100)
   );
 
-  // 单独使用 {20%} 时，仍然直接按“本单总价 × 百分比”计算金额。
+  // 单独使用 {20%} 时，仍然按被复制订单总价 × 百分比计算金额。
   out=out.replace(/\{\s*(?:团抽|派抽|到手)?\s*(\d+(?:\.\d+)?)%\s*\}/g,
     (_,pct)=>plain(total*clampPct(pct)/100)
   );
