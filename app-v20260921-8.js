@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260924-prepaidchain14";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260924-unifiedsave15";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
@@ -1814,6 +1814,35 @@ async function saveRecord(){
     }
   }
 }
+async function saveUnifiedRecord(){
+  const settlement=window.paiMiniSettlementSelection||{};
+  const useSettlement=!!settlement.use_prepaid && Number(settlement.prepaid_amount||0)>0
+    || (Array.isArray(settlement.benefits_used) && settlement.benefits_used.length>0);
+
+  if(useSettlement){
+    const saver=window.paiMiniAtomicSettlement?.save;
+    if(typeof saver!=="function"){
+      toast("结算模块还没准备好，请稍后再点一次");
+      return;
+    }
+    await saver();
+    return;
+  }
+
+  const staged=window.paiMiniMultiOrder?.lines;
+  if(Array.isArray(staged) && staged.length){
+    const saver=window.paiMiniMultiOrder?.save;
+    if(typeof saver!=="function"){
+      toast("整单保存模块还没准备好，请稍后再点一次");
+      return;
+    }
+    await saver();
+    return;
+  }
+
+  await saveRecord();
+}
+
 function currentReceiptSettingsFromControls(){
   return {
     show_customer:$("showCustomer").checked,
@@ -2479,7 +2508,7 @@ function bindEvents(){
   });
   $("previewReceiptBtn").addEventListener("click",openReceiptPreview);
   $("exportReceiptBtn").addEventListener("click",exportReceipt);
-  $("saveRecordBtn").addEventListener("click",saveRecord);
+  $("saveRecordBtn").addEventListener("click",saveUnifiedRecord);
 
   $("addCategoryBtn").addEventListener("click",addCategory);
   $("categoryManager").addEventListener("click",e=>{
