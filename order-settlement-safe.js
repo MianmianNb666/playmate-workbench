@@ -204,6 +204,9 @@ async function refresh(){
 }
 
 function bind(){
+  const card=$('orderSettlementSafeCard');
+  if(!card||card.dataset.bound==='1')return;
+  card.dataset.bound='1';
   $('settlementRefresh')?.addEventListener('click',refresh);
   $('settlementCustomerSelect')?.addEventListener('change',()=>{
     const id=$('settlementCustomerSelect')?.value||'';
@@ -257,9 +260,39 @@ function bind(){
   }
 }
 
+
+function installSettlementWatchdog(){
+  if(window.__paiMiniSettlementWatchdog)return;
+  window.__paiMiniSettlementWatchdog=true;
+
+  let timer=null;
+  const heal=()=>{
+    clearTimeout(timer);
+    timer=setTimeout(async()=>{
+      const page=$('page-calculator');
+      if(!page)return;
+      if(!$('orderSettlementSafeCard')){
+        if(mount()){
+          try{await refresh()}catch(error){console.warn('settlement remount refresh failed',error)}
+        }
+      }else{
+        syncCustomerSelector();
+      }
+    },80);
+  };
+
+  const page=$('page-calculator');
+  if(page&&typeof MutationObserver!=='undefined'){
+    new MutationObserver(heal).observe(page,{childList:true,subtree:true});
+  }
+  window.addEventListener('paimini:prepaid-updated',heal);
+  window.addEventListener('resize',heal);
+}
+
 export async function initOrderSettlementSafe(){
   if(started)return;
   started=true;ensureStyle();
   if(!mount()){started=false;throw new Error('order total section not ready')}
+  installSettlementWatchdog();
   await refresh();
 }
