@@ -100,7 +100,11 @@ function renderList(){
 
 async function loadPresets(){
   const s=supabase();if(!s)return;
-  try{state.presets=await query(s.from('wallet_presets').select('*').order('sort_order').order('created_at'),'wallet presets');renderList()}catch(e){console.warn('preset load failed',e);toast('预存套餐读取失败')}
+  try{
+    state.presets=await query(s.from('wallet_presets').select('*').order('sort_order').order('created_at'),'wallet presets');
+    renderList();
+    window.dispatchEvent(new CustomEvent('paimini:prepaid-presets-updated'));
+  }catch(e){console.warn('preset load failed',e);toast('预存套餐读取失败')}
 }
 
 function readBenefitDrafts(){
