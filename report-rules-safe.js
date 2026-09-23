@@ -127,7 +127,7 @@ function addVariableChips(){
   });
 
   const help=document.createElement('div');help.className='report-parse-help';
-  help.innerHTML='<b>解析说明</b><br>团抽金额 = 本单总价 × 团抽比例；团抽比例只显示百分比。<br>例如模板写「团抽：{20%}」，本单总价 157.5 时复制出来就是「团抽：31.5」。<br>旧模板里的 {团抽} / {派抽} / {到手} 继续兼容，都会按金额解析。';
+  help.innerHTML='<b>解析说明</b><br>现在可以把“变量 + 百分比”连着放：例如 {团抽金额}{25%} 会按本单总价 × 25% 算金额；{团抽比例}{25%} 则直接显示 25%。派抽、到手同理。<br>单独放 {25%} 也会按本单总价 × 25% 计算。旧模板里的 {团抽} / {派抽} / {到手} 继续兼容。';
   box.appendChild(help);
 }
 
@@ -197,9 +197,23 @@ function replaceAllVars(template,vars){
   let out=String(template||'');
   const total=num(ctx()?.state?.calc?.total)||currentTotal();
 
-  // 快捷百分比：{20%}、{团抽20%}、{派抽10%}、{到手70%}
-  // 都按“本单总价 × 百分比”解析成金额。
-  out=out.replace(/\{\s*(?:团抽|派抽|到手)?\s*(\d+(?:\.\d+)?)%\s*\}/g,(_,pct)=>plain(total*clampPct(pct)/100));
+  // “前一个变量 + 后一个百分比”联动解析：
+  // {团抽金额}{25%} => 本单总价 × 25%
+  // {团抽比例}{25%} => 25%
+  // 派抽 / 到手同理。
+  out=out.replace(/\{\s*(团抽|派抽|到手)(金额|比例)\s*\}\s*\{\s*(\d+(?:\.\d+)?)%\s*\}/g,
+    (_,kind,type,pct)=>type==='比例'?pctText(pct):plain(total*clampPct(pct)/100)
+  );
+
+  // 派单金额后面跟百分比时，也按本单总价 × 百分比解析。
+  out=out.replace(/\{\s*派单金额\s*\}\s*\{\s*(\d+(?:\.\d+)?)%\s*\}/g,
+    (_,pct)=>plain(total*clampPct(pct)/100)
+  );
+
+  // 单独使用 {20%} 时，仍然直接按“本单总价 × 百分比”计算金额。
+  out=out.replace(/\{\s*(?:团抽|派抽|到手)?\s*(\d+(?:\.\d+)?)%\s*\}/g,
+    (_,pct)=>plain(total*clampPct(pct)/100)
+  );
 
   Object.entries(vars).forEach(([k,v])=>{out=out.split(k).join(String(v??''))});
   return out;
