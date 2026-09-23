@@ -131,6 +131,8 @@ function bind(){
   $('prepaidUnifiedAddBenefit')?.addEventListener('click',()=>{state.benefits=readBenefits();state.benefits.push({name:'',quantity:1,unit:'个',expires_days:''});renderBenefits()});
   $('prepaidUnifiedBenefits')?.addEventListener('click',e=>{const b=e.target.closest('[data-u-remove]');if(!b)return;state.benefits=readBenefits();state.benefits.splice(Number(b.dataset.uRemove),1);renderBenefits()});
   $('prepaidUnifiedApply')?.addEventListener('click',apply);
+  window.addEventListener('paimini:prepaid-presets-updated',()=>void load());
+  document.querySelector('.nav-tab[data-page="prepaid"]')?.addEventListener('click',()=>setTimeout(()=>void load(),0));
 }
 
 export async function initPrepaidUnifiedSafe(){
