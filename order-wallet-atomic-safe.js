@@ -12,7 +12,7 @@ function num(v){const n=Number(v||0);return Number.isFinite(n)?n:0}
 function plain(v){const n=num(v);return Number.isInteger(n)?String(n):n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}
 function toast(message){window.paiMiniOrderBridge?.toast?.(message)}
 function timeout(label){return new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timeout')),TIMEOUT_MS))}
-function orderTotal(){const lines=window.paiMiniMultiOrder?.lines;if(Array.isArray(lines)&&lines.length)return lines.reduce((s,x)=>s+num(x.total),0);return num(ctx()?.state?.calc?.total)||num(($('#calcTotal')?.textContent||'').replace(/[^0-9.-]/g,''))}
+function orderTotal(){const lines=window.paiMiniMultiOrder?.lines;if(Array.isArray(lines)&&lines.length)return lines.reduce((s,x)=>s+num(x.total),0);const el=$('calcTotal');if(el)return num((el.textContent||'').replace(/[^0-9.-]/g,''));return num(ctx()?.state?.calc?.total)}
 function selectedCustomer(){const c=ctx();const name=($('#customerName')?.value||'').trim();const shopId=c?.shop?.id;return (c?.state?.customers||[]).find(x=>x.shop_id===shopId&&String(x.name||'').trim()===name)||null}
 function discountRate(){return num(ctx()?.discountRate)||100}
 function parseMeasure(raw,unitMinutes){const text=String(raw||'').trim();if(!text)return 1;const direct=Number(text);if(Number.isFinite(direct))return direct;const h=text.match(/([0-9.]+)\s*(?:h|小时)/i);if(h&&unitMinutes)return Number(h[1])*60/unitMinutes;const m=text.match(/([0-9.]+)\s*(?:m|分)/i);if(m&&unitMinutes)return Number(m[1])/unitMinutes;return 1}
