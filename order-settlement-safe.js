@@ -59,6 +59,7 @@ function writeSelection(){
     benefits_used:selectedBenefits()
   };
   renderEstimate();
+  window.dispatchEvent(new CustomEvent('paimini:settlement-changed',{detail:window.paiMiniSettlementSelection}));
 }
 
 function ensureStyle(){
@@ -108,6 +109,10 @@ function mount(){
         <label>本单扣除金额<input id="settlementPrepaidAmount" type="number" min="0" step="0.01" placeholder="0.00" disabled></label>
       </div>
       <div id="settlementBenefits" class="settlement-safe-benefits"></div>
+      <div class="mini-actions" style="margin-top:10px">
+        <button id="settlementAtomicSave" class="btn primary hidden" type="button">扣款并保存本单</button>
+        <small style="align-self:center;color:var(--muted)">勾选预存或权益后，用这个按钮保存并自动扣减。</small>
+      </div>
       <p class="settlement-safe-note">这里仅处理本单结算；过往消费继续在「消费记录 / 老板档案」查看。</p>
     </div>`;
   totalBox.insertAdjacentElement('afterend',card);
