@@ -69,6 +69,10 @@ async function saveAtomic(){
     const res=await Promise.race([s.rpc('save_order_with_wallet',{p_shop_id:c.shop.id,p_customer_id:customer.id,p_records:records,p_prepaid_used:prepaid,p_benefits_used:[]}),timeout('save_order_with_wallet')]);
     if(res?.error)throw res.error;
     const data=res?.data||{};
+    if(data.prepaid_balance_after!=null){
+      customer.prepaid_balance=num(data.prepaid_balance_after);
+      window.dispatchEvent(new CustomEvent('paimini:prepaid-updated',{detail:{customerId:customer.id,balance:customer.prepaid_balance}}));
+    }
     window.paiMiniMultiOrder?.clear?.();
     if($('#settlementUsePrepaid'))$('#settlementUsePrepaid').checked=false;
     if($('#settlementPrepaidAmount')){$('#settlementPrepaidAmount').value='';$('#settlementPrepaidAmount').disabled=true}
