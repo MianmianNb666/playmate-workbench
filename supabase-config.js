@@ -259,9 +259,9 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     settlementStarted=true;
     try{
-      const mod=await import("./order-settlement-safe.js?v=20260923-settlement3");
+      const mod=await import("./order-settlement-safe.js?v=20260924-settlement4");
       await mod.initOrderSettlementSafe?.();
-      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic4");
+      const atomic=await import("./order-wallet-atomic-safe.js?v=20260924-atomic5");
       await atomic.initOrderWalletAtomicSafe?.();
     }catch(error){
       settlementStarted=false;
