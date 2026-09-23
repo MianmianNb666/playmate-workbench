@@ -211,21 +211,43 @@ async function grantDays(userId,days){
   await loadAll();
 }
 
-async function sendPasswordReset(email){
-  const target=String(email||"").trim();
-  if(!target){alert("这个账号没有邮箱，无法发送重置链接。");return}
-  if(!confirm("发送密码重置邮件到 "+target+"？")) return;
+async function adminSetPassword(userId,email){
+  const target=String(email||"").trim()||"这个账号";
+  const password=window.prompt("给 "+target+" 设置一个新密码：\n\n至少 6 位。");
+  if(password==null) return;
+  if(password.length<6){alert("新密码至少 6 位。");return}
 
-  const redirectTo=new URL("./reset-password.html",window.location.href).href;
-  const {error}=await supabase.auth.resetPasswordForEmail(target,{redirectTo});
+  const confirmPassword=window.prompt("请再输入一次新密码确认：");
+  if(confirmPassword==null) return;
+  if(password!==confirmPassword){alert("两次输入的新密码不一致。");return}
 
-  if(error){
-    console.error("password reset email failed",error);
-    alert("发送失败："+error.message);
-    return;
+  if(!confirm("确认直接重置 "+target+" 的登录密码？\n\n原密码会立即失效。")) return;
+
+  const {data:{session}}=await supabase.auth.getSession();
+  const token=session?.access_token;
+  if(!token){alert("管理端登录已失效，请重新登录。");return}
+
+  try{
+    const response=await fetch("https://playmate-workbench.vercel.app/api/admin-reset-password",{
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "authorization":"Bearer "+token
+      },
+      body:JSON.stringify({user_id:userId,new_password:password})
+    });
+
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok){
+      const detail=payload?.message||payload?.error||("HTTP "+response.status);
+      throw new Error(detail);
+    }
+
+    alert("密码已经重置成功。\n\n账号："+target+"\n现在可以直接用新密码登录。");
+  }catch(error){
+    console.error("admin direct password reset failed",error);
+    alert("重置失败："+String(error?.message||error||"未知错误"));
   }
-
-  alert("密码重置邮件已发送到：\n"+target+"\n\n用户打开邮件里的链接后即可设置新密码。");
 }
 
 
@@ -463,8 +485,8 @@ function bind(){
   });
 
   $("userList").addEventListener("click",e=>{
-    const reset=e.target.closest("[data-reset-email]");
-    if(reset){sendPasswordReset(reset.dataset.resetEmail);return}
+    const reset=e.target.closest("[data-reset-user]");
+    if(reset){adminSetPassword(reset.dataset.resetUser,reset.dataset.resetEmail);return}
     const btn=e.target.closest("[data-grant-user]");
     if(btn) grantDays(btn.dataset.grantUser,Number(btn.dataset.days));
   });
