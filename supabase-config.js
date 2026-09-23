@@ -191,13 +191,13 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(managerStarted)return;
     managerStarted=true;
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy2");
+      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy3");
       await mod.initPrepaidManagerSafe?.();
-      const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets2");
+      const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets3");
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260923-prepaid-layout1");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260923-prepaid-unified2");
+      const unified=await import("./prepaid-unified-safe.js?v=20260923-prepaid-unified3");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
@@ -284,9 +284,9 @@ if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
     if(reportRulesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     reportRulesStarted=true;
     try{
-      const mod=await import("./report-rules-safe.js?v=20260923-report-rules7");
+      const mod=await import("./report-rules-safe.js?v=20260923-report-rules8");
       await mod.initReportRulesSafe?.();
-      const copyOnly=await import("./report-rules-copyonly.js?v=20260923-copyonly1");
+      const copyOnly=await import("./report-rules-copyonly.js?v=20260923-copyonly2");
       copyOnly.applyReportRulesCopyOnly?.();
     }catch(error){
       reportRulesStarted=false;
