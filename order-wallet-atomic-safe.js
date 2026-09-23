@@ -13,12 +13,22 @@ function plain(v){const n=num(v);return Number.isInteger(n)?String(n):n.toFixed(
 function toast(message){window.paiMiniOrderBridge?.toast?.(message)}
 function timeout(label){return new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timeout')),TIMEOUT_MS))}
 function orderTotal(){const lines=window.paiMiniMultiOrder?.lines;if(Array.isArray(lines)&&lines.length)return lines.reduce((s,x)=>s+num(x.total),0);const el=$('calcTotal');if(el)return num((el.textContent||'').replace(/[^0-9.-]/g,''));return num(ctx()?.state?.calc?.total)}
-function selectedCustomer(){const c=ctx();const name=($('#customerName')?.value||'').trim();const shopId=c?.shop?.id;return (c?.state?.customers||[]).find(x=>x.shop_id===shopId&&String(x.name||'').trim()===name)||null}
+function selectedCustomer(){
+  const c=ctx();
+  const selectedId=window.paiMiniSettlementSelection?.customer_id||$('settlementCustomerSelect')?.value||null;
+  if(selectedId){
+    const byId=(c?.state?.customers||[]).find(x=>String(x.id)===String(selectedId));
+    if(byId)return byId;
+  }
+  const name=($('#customerName')?.value||'').trim();
+  const shopId=c?.state?.shopId||c?.shop?.id;
+  return (c?.state?.customers||[]).find(x=>x.shop_id===shopId&&String(x.name||'').trim()===name)||null;
+}
 function discountRate(){return num(ctx()?.discountRate)||100}
 function parseMeasure(raw,unitMinutes){const text=String(raw||'').trim();if(!text)return 1;const direct=Number(text);if(Number.isFinite(direct))return direct;const h=text.match(/([0-9.]+)\s*(?:h|小时)/i);if(h&&unitMinutes)return Number(h[1])*60/unitMinutes;const m=text.match(/([0-9.]+)\s*(?:m|分)/i);if(m&&unitMinutes)return Number(m[1])/unitMinutes;return 1}
 
-function recordsForRpc(){
-  const c=ctx();const customer=selectedCustomer();if(!c||!customer)return [];
+function recordsForRpcWithCustomer(customer){
+  const c=ctx();if(!c||!customer)return [];
   const note=c.note||'';const staged=window.paiMiniMultiOrder?.lines||[];
   if(staged.length){
     return staged.map(x=>({
@@ -57,15 +67,25 @@ function recordsForRpc(){
   }];
 }
 
+function recordsForRpc(){return recordsForRpcWithCustomer(selectedCustomer())}
+
 function currentPrepaid(){const sel=window.paiMiniSettlementSelection||{};if(!sel.use_prepaid)return 0;return Math.max(0,Math.min(num(sel.prepaid_amount),num(sel.available_prepaid),orderTotal()))}
 function currentBenefits(){const rows=window.paiMiniSettlementSelection?.benefits_used;return Array.isArray(rows)?rows.map(x=>({benefit_id:x.benefit_id,quantity:Math.max(0,num(x.quantity))})).filter(x=>x.benefit_id&&x.quantity>0):[]}
 function usesSettlement(){return currentPrepaid()>0||currentBenefits().length>0}
-function syncButtons(){const use=usesSettlement();const atomic=$('settlementAtomicSave');if(atomic){atomic.disabled=!use||saving||!selectedCustomer()||orderTotal()<=0;atomic.classList.toggle('hidden',!use);atomic.textContent=saving?'扣款保存中…':'扣款并保存本单'}const coreSingle=$('saveRecordBtn'),coreMulti=$('saveWholeOrderBtn');if(coreSingle)coreSingle.disabled=use||saving;if(coreMulti)coreMulti.disabled=use||saving}
+function syncButtons(){const use=usesSettlement();const atomic=$('settlementAtomicSave');const hasCustomer=!!(window.paiMiniSettlementSelection?.customer_id||$('settlementCustomerSelect')?.value||selectedCustomer());if(atomic){atomic.disabled=!use||saving||!hasCustomer||orderTotal()<=0;atomic.classList.toggle('hidden',!use);atomic.textContent=saving?'扣款保存中…':'扣款并保存本单'}const coreSingle=$('saveRecordBtn'),coreMulti=$('saveWholeOrderBtn');if(coreSingle)coreSingle.disabled=use||saving;if(coreMulti)coreMulti.disabled=use||saving}
 function friendly(err){const m=String(err?.message||err||'');if(m.includes('prepaid_exceeds_order_total'))return '预存抵扣不能超过本单金额';if(m.includes('insufficient_prepaid_balance'))return '老板预存余额不足';if(m.includes('benefit_expired'))return '选择的权益已过期，请刷新后重试';if(m.includes('insufficient_benefit_quantity'))return '选择的权益数量不足，请刷新后重试';if(m.includes('benefit_not_found'))return '选择的权益已变化，请刷新后重试';if(m.includes('customer_not_found'))return '请先从老板档案中选择老板';if(m.includes('account_read_only_expired'))return '账号已到期，当前不能结算';if(m.includes('does not exist')||m.includes('save_order_with_wallet'))return '预存结算数据库还没升级';return m||'保存失败'}
 
 async function saveAtomic(){
-  if(saving)return;const c=ctx(),s=supabase(),customer=selectedCustomer();if(!c?.shop?.id||!s||!customer){toast('先从老板档案中选择老板');return}
-  const records=recordsForRpc();const prepaid=currentPrepaid();const benefits=currentBenefits();if(!records.length||orderTotal()<=0){toast('先把本单项目算好');return}if(prepaid<=0&&!benefits.length){toast('先选择本单要使用的预存或权益');return}
+  if(saving)return;
+  const c=ctx(),s=supabase();
+  let customer=selectedCustomer();
+  const selectedId=window.paiMiniSettlementSelection?.customer_id||$('settlementCustomerSelect')?.value||null;
+  if(!customer&&s&&selectedId){
+    const direct=await s.from('customers').select('*').eq('id',selectedId).maybeSingle();
+    if(!direct?.error&&direct?.data)customer=direct.data;
+  }
+  if(!c?.shop?.id||!s||!customer){toast('先从老板档案中选择老板');return}
+  const records=recordsForRpcWithCustomer(customer);const prepaid=currentPrepaid();const benefits=currentBenefits();if(!records.length||orderTotal()<=0){toast('先把本单项目算好');return}if(prepaid<=0&&!benefits.length){toast('先选择本单要使用的预存或权益');return}
   saving=true;syncButtons();const btn=$('settlementAtomicSave');const old=btn?.textContent;if(btn)btn.textContent='保存并结算中…';
   try{
     const res=await Promise.race([s.rpc('save_order_with_wallet',{p_shop_id:c.shop.id,p_customer_id:customer.id,p_records:records,p_prepaid_used:prepaid,p_benefits_used:benefits}),timeout('save_order_with_wallet')]);
