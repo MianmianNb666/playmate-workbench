@@ -63,64 +63,113 @@ async function saveWholeOrder(){
   if(!ctx.customerName){window.alert("先填写老板 / 顾客");return}
 
   const btn=$("saveWholeOrderBtn");
-  const old=btn.textContent;
-  btn.disabled=true; btn.textContent="整单保存中…";
+  const old=btn?.textContent||"保存整单";
+  if(btn){btn.disabled=true;btn.textContent="整单保存中…"}
+
   try{
-    let customer=ctx.state.customers.find(c=>c.name===ctx.customerName)||null;
+    // 只在当前店铺里找同名老板，避免误拿到别的店铺的同名档案。
+    let customer=(ctx.state.customers||[]).find(c=>c.shop_id===ctx.state.shopId&&String(c.name||"").trim()===ctx.customerName)||null;
+
     if(!customer){
       let created=await ctx.supabase.from("customers").insert({
-        shop_id:ctx.state.shopId,name:ctx.customerName,discount_rate:ctx.discountRate
+        shop_id:ctx.state.shopId,
+        name:ctx.customerName,
+        discount_rate:ctx.discountRate
       }).select().single();
-      if(created.error && /discount_rate|column/i.test(String(created.error.message||""))){
-        created=await ctx.supabase.from("customers").insert({shop_id:ctx.state.shopId,name:ctx.customerName}).select().single();
+
+      if(created.error && /discount_rate|schema cache|column/i.test(String(created.error.message||""))){
+        created=await ctx.supabase.from("customers").insert({
+          shop_id:ctx.state.shopId,
+          name:ctx.customerName
+        }).select().single();
       }
-      if(created.error) throw created.error;
-      customer=created.data;
-      ctx.state.customers.push(customer);
+
+      // 如果创建档案失败，再查一次，避免并发/已有档案导致整单直接终止。
+      if(created.error){
+        const existing=await ctx.supabase.from("customers")
+          .select("*")
+          .eq("shop_id",ctx.state.shopId)
+          .eq("name",ctx.customerName)
+          .maybeSingle();
+        if(existing.error) throw created.error;
+        customer=existing.data||null;
+      }else{
+        customer=created.data;
+        ctx.state.customers.push(customer);
+      }
     }
 
-    const historyRes=await ctx.supabase.from("consumption_records").select("amount").eq("customer_id",customer.id);
+    let historyQuery=ctx.supabase.from("consumption_records").select("amount");
+    historyQuery=customer?.id
+      ? historyQuery.eq("customer_id",customer.id)
+      : historyQuery.eq("shop_id",ctx.state.shopId).eq("customer_name_snapshot",ctx.customerName);
+
+    const historyRes=await historyQuery;
     if(historyRes.error) throw historyRes.error;
     let running=(historyRes.data||[]).reduce((sum,r)=>sum+Number(r.amount||0),0);
 
-    // Save sequentially so previous_total/new_total stay correct for every line.
-    for(const x of lines){
+    const rows=lines.map(x=>{
       const original=x.discountRate>0?x.total/(x.discountRate/100):x.total;
       const next=running+x.total;
-      const report='老板：'+ctx.customerName+'\n陪陪：'+x.companion+'\n消费项目：'+x.item+'\n单价：'+x.price+'/'+x.unit+'\n时长/数量：'+x.measure+'\n总价：'+x.total+'\n累计消费：'+next;
-      const base={
-        shop_id:ctx.state.shopId,customer_id:customer.id,item_id:null,
+      const report='老板：'+ctx.customerName+'\\n陪陪：'+x.companion+'\\n消费项目：'+x.item+'\\n单价：'+x.price+'/'+x.unit+'\\n时长/数量：'+x.measure+'\\n总价：'+x.total+'\\n累计消费：'+next;
+      const row={
+        shop_id:ctx.state.shopId,
+        customer_id:customer?.id||null,
+        item_id:null,
         customer_name_snapshot:ctx.customerName,
-        item_name:x.item,item_name_snapshot:x.item,
+        item_name:x.item,
+        item_name_snapshot:x.item,
         companion_name:x.companion,
         unit_price_snapshot:x.price,
-        unit_label:x.unit||"次",unit_label_snapshot:x.unit||"次",
+        unit_label:x.unit||"次",
+        unit_label_snapshot:x.unit||"次",
         unit_minutes_snapshot:x.unitMinutes,
-        quantity:x.quantity,duration_input:x.measure,
-        amount:x.total,previous_total:running,new_total:next,
-        note:ctx.note,report_text:report
+        quantity:x.quantity,
+        duration_input:x.measure,
+        amount:x.total,
+        previous_total:running,
+        new_total:next,
+        note:ctx.note,
+        report_text:report,
+        original_amount:original,
+        discount_rate_snapshot:x.discountRate
       };
-      let result=await ctx.supabase.from("consumption_records").insert({
-        ...base,original_amount:original,discount_rate_snapshot:x.discountRate
-      }).select("id").single();
-      if(result.error && /original_amount|discount_rate_snapshot|schema cache|column/i.test(String(result.error.message||""))){
-        result=await ctx.supabase.from("consumption_records").insert(base).select("id").single();
-      }
-      if(result.error) throw result.error;
       running=next;
+      return row;
+    });
+
+    // 整批一次写入，避免多项目只保存一半。
+    let result=await ctx.supabase.from("consumption_records").insert(rows).select("id");
+
+    // 兼容旧数据库没有折扣字段。
+    if(result.error && /original_amount|discount_rate_snapshot|schema cache|column/i.test(String(result.error.message||""))){
+      const compatRows=rows.map(({original_amount,discount_rate_snapshot,...row})=>row);
+      result=await ctx.supabase.from("consumption_records").insert(compatRows).select("id");
     }
+
+    // 如果历史 customer 外键异常，退化为纯快照保存，和主保存入口保持一致。
+    if(result.error && /foreign key|violates.*constraint|customer_id|item_id/i.test(String(result.error.message||""))){
+      const snapshotRows=rows.map(row=>({...row,customer_id:null,item_id:null}));
+      result=await ctx.supabase.from("consumption_records").insert(snapshotRows).select("id");
+    }
+
+    if(result.error) throw result.error;
+
     clear();
     await bridge.refreshAfterSave();
     bridge.toast("整单已保存 ♡");
   }catch(error){
     console.error("saveWholeOrder failed",error);
     const detail=String(error?.message||error||"未知错误");
-    window.alert("整单没有保存成功。\n\n原因："+detail);
+    window.alert("整单没有保存成功。\\n\\n原因："+detail);
   }finally{
-    btn.disabled=false;btn.textContent=old;
+    if(btn){btn.disabled=false;btn.textContent=old}
   }
 }
-document.addEventListener("DOMContentLoaded",()=>{
+
+function bindMultiOrder(){
+  if(window.__paiMiniMultiOrderBound)return;
+  window.__paiMiniMultiOrderBound=true;
   $("addOrderLineBtn")?.addEventListener("click",add);
   $("saveWholeOrderBtn")?.addEventListener("click",saveWholeOrder);
   $("orderLineList")?.addEventListener("click",e=>{
@@ -128,4 +177,10 @@ document.addEventListener("DOMContentLoaded",()=>{
     const i=lines.findIndex(x=>x.id===b.dataset.removeLine);if(i>=0)lines.splice(i,1);render();
   });
   render();
-});
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",bindMultiOrder,{once:true});
+}else{
+  bindMultiOrder();
+}
