@@ -210,6 +210,24 @@ async function grantDays(userId,days){
   await loadAll();
 }
 
+async function sendPasswordReset(email){
+  const target=String(email||"").trim();
+  if(!target){alert("这个账号没有邮箱，无法发送重置链接。");return}
+  if(!confirm("发送密码重置邮件到 "+target+"？")) return;
+
+  const redirectTo=new URL("./reset-password.html",window.location.href).href;
+  const {error}=await supabase.auth.resetPasswordForEmail(target,{redirectTo});
+
+  if(error){
+    console.error("password reset email failed",error);
+    alert("发送失败："+error.message);
+    return;
+  }
+
+  alert("密码重置邮件已发送到：\n"+target+"\n\n用户打开邮件里的链接后即可设置新密码。");
+}
+
+
 function renderInvites(){
   if(!state.invites.length){
     $("inviteList").innerHTML='<div class="empty">还没有邀请码。</div>';
@@ -444,6 +462,8 @@ function bind(){
   });
 
   $("userList").addEventListener("click",e=>{
+    const reset=e.target.closest("[data-reset-email]");
+    if(reset){sendPasswordReset(reset.dataset.resetEmail);return}
     const btn=e.target.closest("[data-grant-user]");
     if(btn) grantDays(btn.dataset.grantUser,Number(btn.dataset.days));
   });
