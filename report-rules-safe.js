@@ -28,7 +28,7 @@ function saveLocal(shopId,rule){try{localStorage.setItem(shopStorageKey(shopId),
 function ensureStyle(){
   if($('reportRulesSafeStyle'))return;
   const s=document.createElement('style');s.id='reportRulesSafeStyle';s.textContent=`
-  .report-rule-card{margin-top:14px}.report-rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.report-rule-grid .wide{grid-column:1/-1}.report-rule-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.report-rule-inline label{margin:0}.report-rule-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.report-rule-stat{border:1px solid var(--line);border-radius:13px;padding:10px;background:var(--paper)}.report-rule-stat span{display:block;color:var(--muted);font-size:10px}.report-rule-stat b{display:block;margin-top:4px;font-size:16px}.report-rule-note{color:var(--muted);font-size:11px;line-height:1.55;margin-top:8px}
+  .report-rule-card{margin-top:14px}.report-rule-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.report-rule-grid .wide{grid-column:1/-1}.report-rule-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.report-rule-inline label{margin:0}.report-rule-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.report-rule-stat{border:1px solid var(--line);border-radius:13px;padding:10px;background:var(--paper)}.report-rule-stat span{display:block;color:var(--muted);font-size:10px}.report-rule-stat b{display:block;margin-top:4px;font-size:16px}.report-rule-note{color:var(--muted);font-size:11px;line-height:1.55;margin-top:8px}.variable-box span[data-report-insert]{cursor:pointer;user-select:none}.variable-box span[data-report-insert]:active{transform:scale(.97)}.report-quick-label{width:100%;margin-top:7px;color:var(--muted);font-size:10px}
   @media(max-width:720px){.report-rule-grid{grid-template-columns:1fr 1fr}.report-rule-summary{grid-template-columns:1fr 1fr}}@media(max-width:520px){.report-rule-grid,.report-rule-summary{grid-template-columns:1fr}}
   `;document.head.appendChild(s);
 }
@@ -73,10 +73,36 @@ function mountOrderCard(){
   const actions=page.querySelector('.action-row');actions?.insertAdjacentElement('beforebegin',card);
 }
 
+function insertTemplateToken(token){
+  const ta=$('reportTemplateText');if(!ta)return;
+  const start=Number.isFinite(ta.selectionStart)?ta.selectionStart:ta.value.length;
+  const end=Number.isFinite(ta.selectionEnd)?ta.selectionEnd:start;
+  ta.value=ta.value.slice(0,start)+token+ta.value.slice(end);
+  const next=start+token.length;ta.focus();ta.setSelectionRange(next,next);
+  ta.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function makeInsertChip(text,token=text,title='点击插入模板'){
+  const span=document.createElement('span');span.textContent=text;span.dataset.reportInsert=token;span.title=title;span.tabIndex=0;
+  const insert=()=>insertTemplateToken(token);
+  span.addEventListener('click',insert);
+  span.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();insert()}});
+  return span;
+}
 function addVariableChips(){
   const box=document.querySelector('#page-shops .variable-box');if(!box||box.dataset.reportRulesAdded==='1')return;
   box.dataset.reportRulesAdded='1';
-  ['{团抽}','{团抽比例}','{团抽金额}','{派抽}','{派抽比例}','{派抽金额}','{到手}','{到手比例}','{到手金额}','{来源}'].forEach(v=>{const span=document.createElement('span');span.textContent=v;box.appendChild(span)});
+  box.querySelectorAll('span').forEach(span=>{
+    const token=(span.textContent||'').trim();
+    if(!token||span.dataset.reportInsert)return;
+    span.dataset.reportInsert=token;span.title='点击插入模板';span.tabIndex=0;
+    const insert=()=>insertTemplateToken(token);
+    span.addEventListener('click',insert);
+    span.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();insert()}});
+  });
+  ['{团抽}','{团抽比例}','{团抽金额}','{派抽}','{派抽比例}','{派抽金额}','{到手}','{到手比例}','{到手金额}','{来源}'].forEach(v=>box.appendChild(makeInsertChip(v)));
+  const label=document.createElement('div');label.className='report-quick-label';label.textContent='快捷百分比计算 · 点击后按本单总价自动算金额';
+  box.appendChild(label);
+  [5,10,15,20,25,30].forEach(p=>box.appendChild(makeInsertChip(p+'%','{'+p+'%}','点击插入：本单总价 × '+p+'%')));
 }
 
 async function loadRule(shopId){
@@ -141,7 +167,13 @@ async function syncCurrentShop(){
   if($('reportRuleShop')){$('reportRuleShop').value=shopId;fillSettings(rule)}
 }
 
-function replaceAllVars(template,vars){let out=String(template||'');Object.entries(vars).forEach(([k,v])=>{out=out.split(k).join(String(v??''))});return out}
+function replaceAllVars(template,vars){
+  let out=String(template||'');
+  const total=num(ctx()?.state?.calc?.total)||currentTotal();
+  out=out.replace(/\{\s*(\d+(?:\.\d+)?)%\s*\}/g,(_,pct)=>plain(total*clampPct(pct)/100));
+  Object.entries(vars).forEach(([k,v])=>{out=out.split(k).join(String(v??''))});
+  return out;
+}
 function reportVars(){
   const c=ctx(),calc=c?.state?.calc||{},item=c?.state?.selectedItem||{};const a=amounts();
   const total=num(calc.total)||a.total,history=num(c?.state?.historyTotal),newTotal=history+total;
