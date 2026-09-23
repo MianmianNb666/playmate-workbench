@@ -193,11 +193,11 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     try{
       const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy2");
       await mod.initPrepaidManagerSafe?.();
-      const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets1");
+      const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets2");
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260923-prepaid-layout1");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260923-prepaid-unified1");
+      const unified=await import("./prepaid-unified-safe.js?v=20260923-prepaid-unified2");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
@@ -259,9 +259,9 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     settlementStarted=true;
     try{
-      const mod=await import("./order-settlement-safe.js?v=20260923-settlement2");
+      const mod=await import("./order-settlement-safe.js?v=20260923-settlement3");
       await mod.initOrderSettlementSafe?.();
-      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic3");
+      const atomic=await import("./order-wallet-atomic-safe.js?v=20260923-atomic4");
       await atomic.initOrderWalletAtomicSafe?.();
     }catch(error){
       settlementStarted=false;
