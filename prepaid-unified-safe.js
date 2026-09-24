@@ -99,7 +99,7 @@ function renderBenefits(){
   box.innerHTML=state.benefits.length?state.benefits.map((b,i)=>`<div class="prepaid-unified-benefit" data-u-benefit-row="${i}"><label class="benefit-name">权益名称<input data-u-field="name" value="${safe(b.name)}"></label><label>数量<input data-u-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label><label>单位<input data-u-field="unit" value="${safe(b.unit||'个')}"></label><label>有效天数<input data-u-field="days" type="number" min="1" step="1" value="${safe(b.expires_days??'')}" placeholder="长期"></label><button class="tiny-btn danger" data-u-remove="${i}" type="button">删除</button></div>`).join(''):'<div class="empty-state">这个预设没有附赠权益。也可以临时添加。</div>';
 }
 function renderSummary(){
-  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const gift=(state.benefits||[]).filter(x=>x?.type==='balance'||(String(x?.name||'').trim()==='赠送余额'&&String(x?.unit||'').trim()==='元')).reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
+  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const live=readBenefits();if(live.length)state.benefits=live;const gift=(state.benefits||[]).filter(x=>x?.type==='balance'||String(x?.name||'').trim()==='赠送余额'||(String(x?.unit||'').trim()==='元'&&/余额/.test(String(x?.name||'')))).reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
   box.innerHTML=`<div class="prepaid-unified-stat"><span>当前余额</span><b>${money(before)}</b></div><div class="prepaid-unified-stat"><span>本次到账</span><b>${money(added)}</b></div><div class="prepaid-unified-stat"><span>添加后余额</span><b>${money(after)}</b></div>`;
 }
 
@@ -137,6 +137,8 @@ function bind(){
   $('prepaidUnifiedPreset')?.addEventListener('change',()=>{state.presetId=$('prepaidUnifiedPreset').value||null;applyPresetDraft()});
   $('prepaidUnifiedAmount')?.addEventListener('input',renderSummary);
   $('prepaidUnifiedAddBenefit')?.addEventListener('click',()=>{state.benefits=readBenefits();state.benefits.push({name:'',quantity:1,unit:'个',expires_days:''});renderBenefits()});
+  $('prepaidUnifiedBenefits')?.addEventListener('input',()=>{state.benefits=readBenefits();renderSummary()});
+  $('prepaidUnifiedBenefits')?.addEventListener('change',()=>{state.benefits=readBenefits();renderSummary()});
   $('prepaidUnifiedBenefits')?.addEventListener('click',e=>{const b=e.target.closest('[data-u-remove]');if(!b)return;state.benefits=readBenefits();state.benefits.splice(Number(b.dataset.uRemove),1);renderBenefits()});
   $('prepaidUnifiedApply')?.addEventListener('click',apply);
   window.addEventListener('paimini:prepaid-presets-updated',()=>void load());
