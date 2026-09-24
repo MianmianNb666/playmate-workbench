@@ -191,7 +191,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(managerStarted)return;
     managerStarted=true;
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260923-prepaid-lazy3");
+      const mod=await import("./prepaid-manager-safe.js?v=20260924-gift17");
       await mod.initPrepaidManagerSafe?.();
       const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets3");
       await presets.initPrepaidPresetsSafe?.();
@@ -259,7 +259,7 @@ if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
     if(settlementStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     settlementStarted=true;
     try{
-      const mod=await import("./order-settlement-safe.js?v=20260924-settlement13");
+      const mod=await import("./order-settlement-safe.js?v=20260924-gift17");
       await mod.initOrderSettlementSafe?.();
       const atomic=await import("./order-wallet-atomic-safe.js?v=20260924-atomic15");
       await atomic.initOrderWalletAtomicSafe?.();
