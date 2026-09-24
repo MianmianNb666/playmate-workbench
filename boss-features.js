@@ -243,8 +243,13 @@ async function imageUrlToDataUrl(url){
 }
 
 async function canvasToBlob(canvas){
+  if(typeof canvas?.toBlob!=="function") throw new Error("PNG转换：浏览器不支持 canvas.toBlob");
   return await new Promise((resolve,reject)=>{
-    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG conversion failed")),"image/png");
+    try{
+      canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG转换：toBlob 返回空文件")),"image/png");
+    }catch(error){
+      reject(new Error("PNG转换："+(error?.message||String(error))));
+    }
   });
 }
 
@@ -289,8 +294,10 @@ async function prepareExportImages(el){
   return ()=>restorers.forEach(fn=>fn());
 }
 
-async function captureExportPage(el,filename){
-  const canvas=await window.html2canvas(el,{
+async function captureExportPage(el,filename,pageLabel=""){
+  let canvas;
+  try{
+    canvas=await window.html2canvas(el,{
     scale:2,
     useCORS:true,
     allowTaint:false,
@@ -298,9 +305,16 @@ async function captureExportPage(el,filename){
     logging:false,
     width:Math.ceil(el.scrollWidth),
     height:Math.ceil(Math.max(el.scrollHeight,el.getBoundingClientRect().height)),
-    windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(el.scrollWidth))
-  });
-  await downloadCanvas(canvas,filename);
+      windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(el.scrollWidth))
+    });
+  }catch(error){
+    throw new Error((pageLabel?pageLabel+" · ":"")+"页面渲染："+(error?.message||String(error)));
+  }
+  try{
+    await downloadCanvas(canvas,filename);
+  }catch(error){
+    throw new Error((pageLabel?pageLabel+" · ":"")+(error?.message||String(error)));
+  }
 }
 
 async function exportElement(el,filename){
@@ -313,7 +327,7 @@ async function exportElement(el,filename){
   if(rows.length<=rowsPerPage){
     const restore=await prepareExportImages(el);
     try{
-      await captureExportPage(el,filename);
+      await captureExportPage(el,filename,"单页");
     }finally{
       restore();
     }
@@ -363,7 +377,11 @@ async function exportElement(el,filename){
     const restore=await prepareExportImages(pageEl);
     try{
       await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-      await captureExportPage(pageEl,exportPageName(filename,page+1,pageCount));
+      await captureExportPage(
+        pageEl,
+        exportPageName(filename,page+1,pageCount),
+        "第 "+(page+1)+"/"+pageCount+" 页"
+      );
     }finally{
       restore();
       host.remove();
@@ -410,10 +428,21 @@ function bind(){
   $("exportBossStatementBtn")?.addEventListener("click",async()=>{
     if(!localState.activeGroup) return;
     const clean=String(localState.activeGroup.customer||"老板").replace(/[\\/:*?"<>|]/g,"-");
-    await exportElement(
-      $("bossStatementCapture"),
-      clean+"-全部流水-"+Date.now()+".png"
-    );
+    try{
+      await exportElement(
+        $("bossStatementCapture"),
+        clean+"-全部流水-"+Date.now()+".png"
+      );
+    }catch(error){
+      console.error("boss statement export failed",error);
+      const detail=String(error?.message||error||"未知错误").slice(0,180);
+      const message="老板流水导出失败："+detail;
+      if(typeof window.paiMiniOrderBridge?.toast==="function"){
+        window.paiMiniOrderBridge.toast(message);
+      }else{
+        alert(message);
+      }
+    }
   });
 
   $("previewCurrentReceiptTab")?.addEventListener("click",()=>{
