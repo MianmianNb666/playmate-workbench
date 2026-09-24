@@ -267,9 +267,7 @@ function exportPageName(filename,page,total){
   return `${base}-第${page}页-共${total}页.png`;
 }
 
-async function exportElement(el,filename){
-  if(!el||!window.html2canvas) return;
-
+async function prepareExportImages(el){
   const restorers=[];
   const images=[...el.querySelectorAll("img")];
   for(const img of images){
@@ -288,45 +286,90 @@ async function exportElement(el,filename){
       restorers.push(()=>{img.style.display=oldDisplay});
     }
   }
+  return ()=>restorers.forEach(fn=>fn());
+}
 
-  try{
-    const scale=2;
-    const safeCssPageHeight=6000;
-    const fullHeight=Math.max(el.scrollHeight,el.getBoundingClientRect().height);
-    const canvas=await window.html2canvas(el,{
-      scale,
-      useCORS:true,
-      allowTaint:false,
-      backgroundColor:null,
-      logging:false,
-      width:Math.ceil(el.scrollWidth),
-      height:Math.ceil(fullHeight),
-      windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(el.scrollWidth)),
-      windowHeight:Math.max(document.documentElement.clientHeight,Math.min(Math.ceil(fullHeight),safeCssPageHeight))
+async function captureExportPage(el,filename){
+  const canvas=await window.html2canvas(el,{
+    scale:2,
+    useCORS:true,
+    allowTaint:false,
+    backgroundColor:null,
+    logging:false,
+    width:Math.ceil(el.scrollWidth),
+    height:Math.ceil(Math.max(el.scrollHeight,el.getBoundingClientRect().height)),
+    windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(el.scrollWidth))
+  });
+  await downloadCanvas(canvas,filename);
+}
+
+async function exportElement(el,filename){
+  if(!el||!window.html2canvas) return;
+
+  const rows=[...el.querySelectorAll(".statement-list .statement-row")];
+  const rowsPerPage=10;
+
+  // Short statements keep the original one-image experience.
+  if(rows.length<=rowsPerPage){
+    const restore=await prepareExportImages(el);
+    try{
+      await captureExportPage(el,filename);
+    }finally{
+      restore();
+    }
+    return;
+  }
+
+  // Long statements are split in the DOM first. This avoids ever creating
+  // one giant canvas on mobile, which is the failure mode we are protecting.
+  const pageCount=Math.ceil(rows.length/rowsPerPage);
+  const sourceList=el.querySelector(".statement-list");
+  const sourceTotal=el.querySelector(".receipt-total");
+  const sourceMessage=el.querySelector(".receipt-message");
+  const sourceFooter=el.querySelector(".receipt-footer");
+
+  for(let page=0;page<pageCount;page++){
+    const pageEl=el.cloneNode(true);
+    pageEl.style.width=Math.max(320,Math.ceil(el.getBoundingClientRect().width||380))+"px";
+    pageEl.style.maxWidth="none";
+    pageEl.style.height="auto";
+    pageEl.style.maxHeight="none";
+    pageEl.style.overflow="visible";
+
+    const pageRows=[...pageEl.querySelectorAll(".statement-list .statement-row")];
+    pageRows.forEach((row,index)=>{
+      if(index<page*rowsPerPage || index>=(page+1)*rowsPerPage) row.remove();
     });
 
-    const sourcePageHeight=Math.max(1,Math.floor(safeCssPageHeight*scale));
-    const totalPages=Math.max(1,Math.ceil(canvas.height/sourcePageHeight));
-
-    if(totalPages===1){
-      await downloadCanvas(canvas,filename);
-      return;
+    const meta=pageEl.querySelector(".statement-meta");
+    if(meta){
+      const marker=document.createElement("div");
+      marker.innerHTML="分页<b>第 "+(page+1)+" / "+pageCount+" 页</b>";
+      meta.appendChild(marker);
     }
 
-    for(let page=0;page<totalPages;page++){
-      const sourceY=page*sourcePageHeight;
-      const sliceHeight=Math.min(sourcePageHeight,canvas.height-sourceY);
-      const pageCanvas=document.createElement("canvas");
-      pageCanvas.width=canvas.width;
-      pageCanvas.height=sliceHeight;
-      const ctx=pageCanvas.getContext("2d");
-      if(!ctx) throw new Error("canvas context unavailable");
-      ctx.drawImage(canvas,0,sourceY,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight);
-      await downloadCanvas(pageCanvas,exportPageName(filename,page+1,totalPages));
-      await new Promise(resolve=>setTimeout(resolve,180));
+    // Totals/message/footer belong to the last page only.
+    if(page<pageCount-1){
+      pageEl.querySelector(".receipt-total")?.remove();
+      pageEl.querySelector(".receipt-message")?.remove();
+      pageEl.querySelector(".receipt-footer")?.remove();
     }
-  }finally{
-    restorers.forEach(fn=>fn());
+
+    const host=document.createElement("div");
+    host.style.cssText="position:fixed;left:-10000px;top:0;z-index:-1;pointer-events:none;background:#fff;";
+    host.appendChild(pageEl);
+    document.body.appendChild(host);
+
+    const restore=await prepareExportImages(pageEl);
+    try{
+      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+      await captureExportPage(pageEl,exportPageName(filename,page+1,pageCount));
+    }finally{
+      restore();
+      host.remove();
+    }
+
+    await new Promise(resolve=>setTimeout(resolve,220));
   }
 }
 async function loadData(){
