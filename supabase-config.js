@@ -334,29 +334,9 @@ if(typeof window!=="undefined" && !window.__paiMiniReportRulesScheduled){
   setTimeout(()=>clearInterval(reportRulesTimer),30000);
 }
 
-// 老板全部流水 PNG 导出修复：独立接管该按钮，普通小票不受影响。
-if(typeof window!=="undefined" && !window.__paiMiniBossStatementExportScheduled){
-  window.__paiMiniBossStatementExportScheduled=true;
-  let exportFixStarted=false;
-  const startBossExportFix=async()=>{
-    const app=document.getElementById("appRoot");
-    const btn=document.getElementById("exportBossStatementBtn");
-    if(exportFixStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden") || !btn) return;
-    exportFixStarted=true;
-    try{
-      const mod=await import("./boss-statement-export-safe.js?v=20260923-boss-export1");
-      mod.initBossStatementExportSafe?.();
-    }catch(error){
-      exportFixStarted=false;
-      console.warn("boss statement export safe load failed",error);
-    }
-  };
-  const bossExportTimer=setInterval(()=>{
-    if(exportFixStarted){clearInterval(bossExportTimer);return;}
-    void startBossExportFix();
-  },500);
-  setTimeout(()=>clearInterval(bossExportTimer),30000);
-}
+// 老板全部流水导出由 boss-features.js 统一处理。
+ // 旧 boss-statement-export-safe.js 曾用 capture 监听器 stopImmediatePropagation
+ // 抢占按钮，导致新版导出永远不会执行。这里明确停用旧接管器。
 
 if(typeof window!=="undefined" && !window.__paiMiniBootWatchdogInstalled){
   window.__paiMiniBootWatchdogInstalled=true;
