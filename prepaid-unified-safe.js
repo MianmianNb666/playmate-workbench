@@ -47,7 +47,7 @@ function mount(){
     <div class="prepaid-unified-grid">
       <label>老板<select id="prepaidUnifiedCustomer"></select></label>
       <label>预存预设<select id="prepaidUnifiedPreset"></select></label>
-      <label>本次预存金额<input id="prepaidUnifiedAmount" type="number" min="0" step="0.01" placeholder="0.00"></label>
+      <label>本次实充金额<input id="prepaidUnifiedAmount" type="number" min="0" step="0.01" placeholder="0.00"></label><label>套餐赠送余额<input id="prepaidUnifiedGiftAmount" type="number" min="0" step="0.01" value="0.00" readonly></label>
       <label>备注<input id="prepaidUnifiedNote" maxlength="160" placeholder="默认记录套餐名称，可临时修改"></label>
     </div>
     <div id="prepaidUnifiedSummary" class="prepaid-unified-summary"></div>
@@ -79,8 +79,8 @@ function renderPresetOptions(){
 }
 function applyPresetDraft(){
   const p=currentPreset();
-  if(!p){state.benefits=[];if($('prepaidUnifiedAmount'))$('prepaidUnifiedAmount').value='';if($('prepaidUnifiedNote'))$('prepaidUnifiedNote').value='';renderBenefits();renderSummary();return}
-  $('prepaidUnifiedAmount').value=num(p.amount).toFixed(2);$('prepaidUnifiedNote').value=p.note||p.name||'';state.benefits=presetBenefits(p);renderBenefits();renderSummary();
+  if(!p){state.benefits=[];if($('prepaidUnifiedAmount'))$('prepaidUnifiedAmount').value='';if($('prepaidUnifiedGiftAmount'))$('prepaidUnifiedGiftAmount').value='0.00';if($('prepaidUnifiedNote'))$('prepaidUnifiedNote').value='';renderBenefits();renderSummary();return}
+  $('prepaidUnifiedAmount').value=num(p.amount).toFixed(2);if($('prepaidUnifiedGiftAmount'))$('prepaidUnifiedGiftAmount').value=num(p.gift_amount).toFixed(2);$('prepaidUnifiedNote').value=p.note||p.name||'';state.benefits=presetBenefits(p);renderBenefits();renderSummary();
 }
 function readBenefits(){
   return [...document.querySelectorAll('#prepaidUnifiedBenefits [data-u-benefit-row]')].map(row=>({
@@ -100,7 +100,7 @@ async function load(){
   const s=supabase();if(!s)return;
   try{
     const [customers,presets]=await Promise.all([
-      query(s.from('customers').select('id,name,shop_id,prepaid_balance').order('name'),'customers'),
+      query(s.from('customers').select('id,name,shop_id,prepaid_balance,gift_balance').order('name'),'customers'),
       query(s.from('wallet_presets').select('*').eq('preset_type','prepaid').order('sort_order').order('created_at'),'presets')
     ]);
     state.customers=customers;state.presets=presets;renderSelectors();
@@ -114,7 +114,7 @@ async function apply(){
   if(!confirm(`给「${c.name}」添加 ${money(amount)} 预存？\n来源预设：${p.name}${benefits.length?`\n附赠权益：${benefits.length} 项`:''}`))return;
   busy=true;$('prepaidUnifiedApply').disabled=true;
   try{
-    const result=await rpc('apply_custom_prepaid_package',{p_customer_id:c.id,p_preset_id:p.id,p_amount:amount,p_benefits:benefits,p_note:$('prepaidUnifiedNote')?.value.trim()||null});
+    const result=await rpc('apply_custom_prepaid_package_with_gift',{p_customer_id:c.id,p_preset_id:p.id,p_amount:amount,p_benefits:benefits,p_note:$('prepaidUnifiedNote')?.value.trim()||null});
     if(result?.balance_after!=null)c.prepaid_balance=result.balance_after;
     renderSummary();
     document.getElementById('prepaidSafeRefresh')?.click();
