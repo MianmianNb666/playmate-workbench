@@ -61,7 +61,7 @@ function mount(){
   bind();return true;
 }
 
-function presetBenefits(p){return Array.isArray(p?.bundled_benefits)?p.bundled_benefits.map(x=>({type:x.type||'benefit',name:x.name||'',quantity:num(x.quantity||1),unit:x.unit||'个',expires_days:x.expires_days??''})):[]}
+function presetBenefits(p){return Array.isArray(p?.bundled_benefits)?p.bundled_benefits.map(x=>{const isBalance=x.type==='balance'||(String(x.name||'').trim()==='赠送余额'&&String(x.unit||'').trim()==='元');return {type:isBalance?'balance':'benefit',name:isBalance?'赠送余额':(x.name||''),quantity:num(x.quantity||1),unit:isBalance?'元':(x.unit||'个'),expires_days:isBalance?'':(x.expires_days??'')}}):[]}
 function renderSelectors(){
   const csel=$('prepaidUnifiedCustomer'),psel=$('prepaidUnifiedPreset');if(!csel||!psel)return;
   const currentShopId=ctx()?.shop?.id;
@@ -83,16 +83,23 @@ function applyPresetDraft(){
   $('prepaidUnifiedAmount').value=num(p.amount).toFixed(2);$('prepaidUnifiedNote').value=p.note||p.name||'';state.benefits=presetBenefits(p);renderBenefits();renderSummary();
 }
 function readBenefits(){
-  return [...document.querySelectorAll('#prepaidUnifiedBenefits [data-u-benefit-row]')].map(row=>({
-    name:(row.querySelector('[data-u-field="name"]')?.value||'').trim(),quantity:num(row.querySelector('[data-u-field="quantity"]')?.value),unit:(row.querySelector('[data-u-field="unit"]')?.value||'个').trim()||'个',expires_days:(row.querySelector('[data-u-field="days"]')?.value||'').trim()
-  })).filter(x=>x.name&&x.quantity>0).map(x=>({...x,expires_days:x.expires_days?Number(x.expires_days):null}));
+  return [...document.querySelectorAll('#prepaidUnifiedBenefits [data-u-benefit-row]')].map(row=>{
+    const index=Number(row.dataset.uBenefitRow);
+    const prior=state.benefits[index]||{};
+    const name=(row.querySelector('[data-u-field="name"]')?.value||'').trim();
+    const quantity=num(row.querySelector('[data-u-field="quantity"]')?.value);
+    const unit=(row.querySelector('[data-u-field="unit"]')?.value||'个').trim()||'个';
+    const days=(row.querySelector('[data-u-field="days"]')?.value||'').trim();
+    const isBalance=prior.type==='balance'||(name==='赠送余额'&&unit==='元');
+    return {type:isBalance?'balance':'benefit',name:isBalance?'赠送余额':name,quantity,unit:isBalance?'元':unit,expires_days:isBalance?null:(days?Number(days):null)};
+  }).filter(x=>x.name&&x.quantity>0);
 }
 function renderBenefits(){
   const box=$('prepaidUnifiedBenefits');if(!box)return;
   box.innerHTML=state.benefits.length?state.benefits.map((b,i)=>`<div class="prepaid-unified-benefit" data-u-benefit-row="${i}"><label class="benefit-name">权益名称<input data-u-field="name" value="${safe(b.name)}"></label><label>数量<input data-u-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label><label>单位<input data-u-field="unit" value="${safe(b.unit||'个')}"></label><label>有效天数<input data-u-field="days" type="number" min="1" step="1" value="${safe(b.expires_days??'')}" placeholder="长期"></label><button class="tiny-btn danger" data-u-remove="${i}" type="button">删除</button></div>`).join(''):'<div class="empty-state">这个预设没有附赠权益。也可以临时添加。</div>';
 }
 function renderSummary(){
-  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const preset=currentPreset();const gift=(Array.isArray(preset?.bundled_benefits)?preset.bundled_benefits:[]).filter(x=>(x?.type||'benefit')==='balance').reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
+  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const gift=(state.benefits||[]).filter(x=>x?.type==='balance'||(String(x?.name||'').trim()==='赠送余额'&&String(x?.unit||'').trim()==='元')).reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
   box.innerHTML=`<div class="prepaid-unified-stat"><span>当前余额</span><b>${money(before)}</b></div><div class="prepaid-unified-stat"><span>本次到账</span><b>${money(added)}</b></div><div class="prepaid-unified-stat"><span>添加后余额</span><b>${money(after)}</b></div>`;
 }
 
