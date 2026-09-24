@@ -190,19 +190,29 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
   const loadManager=async()=>{
     if(managerStarted)return;
     managerStarted=true;
+    const prepaidMount=document.getElementById("prepaidPageMount");
+    if(prepaidMount){
+      prepaidMount.style.visibility="hidden";
+      prepaidMount.style.minHeight=prepaidMount.offsetHeight+"px";
+    }
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260924-giftbalance19");
+      const mod=await import("./prepaid-manager-safe.js?v=20260924-giftbalance21");
       await mod.initPrepaidManagerSafe?.();
       const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets3");
       await presets.initPrepaidPresetsSafe?.();
-      const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance19");
+      const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance21");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260924-giftbalance18");
+      const unified=await import("./prepaid-unified-safe.js?v=20260924-giftbalance21");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
       console.warn("prepaid manager lazy load failed",error);
       window.paiMiniOrderBridge?.toast?.("预存模块读取失败，请稍后重试");
+    }finally{
+      if(prepaidMount){
+        prepaidMount.style.visibility="";
+        prepaidMount.style.minHeight="";
+      }
     }
   };
 
