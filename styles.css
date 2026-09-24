@@ -2630,3 +2630,5 @@ html.pre-top body:not(.booting){
     grid-template-columns:28px 1fr auto;
   }
 }
+
+.active-shop-chip{display:inline-flex;align-items:center;gap:4px;margin-top:7px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--muted);font-size:11px;line-height:1.2}.active-shop-chip b{color:var(--text);font-weight:800}
