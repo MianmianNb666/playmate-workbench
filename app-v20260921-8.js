@@ -2425,23 +2425,34 @@ async function deleteRecord(id){
   if(!record)return;
   if(!confirm("确定删除这条消费记录吗？如果它属于整单，会删除同一整单的全部项目。"))return;
 
-  const walletUsed=Number(record.prepaid_used||0)>0;
-  const benefitsUsed=Array.isArray(record.benefits_used)&&record.benefits_used.length>0;
+  const groupRecords=record.order_group_id?state.records.filter(r=>r.order_group_id===record.order_group_id):[record];
+  const settlementRecord=groupRecords.find(r=>Number(r.prepaid_used||0)>0||Number(r.prepaid_paid_used||0)>0||Number(r.gift_balance_used||0)>0||(Array.isArray(r.benefits_used)&&r.benefits_used.length>0))||record;
+  const walletAmount=Math.max(Number(settlementRecord.prepaid_used||0),Number(settlementRecord.prepaid_paid_used||0)+Number(settlementRecord.gift_balance_used||0));
+  const walletUsed=walletAmount>0;
+  const benefitsUsed=Array.isArray(settlementRecord.benefits_used)&&settlementRecord.benefits_used.length>0;
   let restore=false;
 
   if(walletUsed||benefitsUsed){
     const detail=[
-      walletUsed?"预存 ¥"+Number(record.prepaid_used||0).toFixed(2):"",
-      benefitsUsed?"权益 "+record.benefits_used.length+" 项":""
+      walletUsed?"预存 ¥"+walletAmount.toFixed(2):"",
+      benefitsUsed?"权益 "+settlementRecord.benefits_used.length+" 项":""
     ].filter(Boolean).join("、");
     restore=confirm("这单使用了"+detail+"。\n\n确定：删除并原路退回余额/权益\n取消：仅删除记录，不退回");
   }
 
-  const {error}=await supabase.rpc("delete_order_with_wallet_restore",{
+  let error=null;
+  const rpcResult=await supabase.rpc("delete_order_with_wallet_restore",{
     p_record_id:id,
     p_restore_wallet:restore,
     p_restore_benefits:restore
   });
+  error=rpcResult.error;
+  if(error && !restore){
+    // Plain deletion must keep working even if the optional restore RPC is unavailable.
+    const ids=record.order_group_id?groupRecords.map(r=>r.id):[id];
+    const fallback=await supabase.from("consumption_records").delete().in("id",ids);
+    error=fallback.error;
+  }
   if(error){
     const missing=String(error.message||"").includes("delete_order_with_wallet_restore");
     toast(missing?"请先运行【赠送余额版】SQL，再使用删除退款功能":"删除失败："+error.message);
