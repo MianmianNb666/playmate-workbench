@@ -2612,3 +2612,21 @@ html.pre-top body:not(.booting){
  .multi-order-card .card-title{align-items:flex-start;flex-direction:column}
  #addOrderLineBtn{width:100%}
 }
+
+
+/* Desktop batch-select checkbox: keep it compact instead of inheriting global input sizing. */
+@media (min-width: 769px){
+  .record-row input[data-record-select]{
+    width:16px;
+    height:16px;
+    min-width:16px;
+    padding:0;
+    margin:0;
+    border-radius:4px;
+    box-shadow:none;
+    accent-color:var(--pink);
+  }
+  .record-row:has(input[data-record-select]){
+    grid-template-columns:28px 1fr auto;
+  }
+}
