@@ -211,7 +211,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(shellReady || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     shellReady=true;
     try{
-      await import("./prepaid-page.js?v=20260923-prepaid-shell-clean2");
+      await import("./prepaid-page.js?v=20260924-giftbalance20");
       const btn=document.querySelector('.nav-tab[data-page="prepaid"]');
       btn?.addEventListener("click",()=>void loadManager(),{passive:true});
     }catch(error){
