@@ -1168,19 +1168,53 @@ async function deleteCustomerProfile(id){
   const customer=state.customers.find(c=>c.id===id);
   if(!customer) return;
 
-  if(!confirm("删除「"+customer.name+"」的顾客档案？历史消费流水会继续保留。")) return;
+  const related=state.records.filter(r=>
+    r.customer_id===id ||
+    String(r.customer_name_snapshot||"").trim()===String(customer.name||"").trim()
+  );
+  const total=related.reduce((sum,r)=>sum+Number(r.amount||0),0);
+
+  let deleteRecords=false;
+  if(related.length){
+    deleteRecords=confirm(
+      "删除「"+customer.name+"」的顾客档案？\n\n"+
+      "这个老板还有 "+related.length+" 条消费记录，共 ¥"+total.toFixed(2)+"。\n\n"+
+      "【确定】档案 + 全部消费记录一起删除\n"+
+      "【取消】进入下一步，可选择只删档案"
+    );
+    if(!deleteRecords){
+      if(!confirm("仅删除「"+customer.name+"」的顾客档案，并保留全部消费记录？")) return;
+    }else{
+      if(!confirm("再次确认：将永久删除该老板档案和全部 "+related.length+" 条消费记录。\n历史预存余额 / 权益不会退回。")) return;
+    }
+  }else{
+    if(!confirm("删除「"+customer.name+"」的顾客档案？这个老板目前没有消费记录。")) return;
+  }
+
+  if(deleteRecords){
+    const ids=[...new Set(related.map(r=>r.id))];
+    if(ids.length){
+      const {error:recordError}=await supabase.from("consumption_records").delete().in("id",ids);
+      if(recordError){toast("消费记录删除失败："+recordError.message);return}
+    }
+  }
 
   const {error}=await supabase.from("customers").delete().eq("id",id);
   if(error){
-    toast("删除失败："+error.message);
+    toast("档案删除失败："+error.message);
+    await loadRecords();
+    renderRecords();
     return;
   }
 
   state.customers=state.customers.filter(c=>c.id!==id);
   if(state.editingCustomerId===id) resetCustomerProfileForm();
+  await loadRecords();
+  renderRecords();
   renderCustomerList();
   renderCustomerProfiles();
-  toast("顾客档案已删除");
+  renderDataSummary();
+  toast(deleteRecords?"顾客档案和全部消费记录已删除 ♡":"顾客档案已删除，消费记录已保留");
 }
 
 async function useCustomerProfile(id){
