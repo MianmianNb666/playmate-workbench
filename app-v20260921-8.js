@@ -1029,7 +1029,7 @@ function customerStats(customer){
     r.shop_id===state.shopId &&
     (
       r.customer_id===customer.id ||
-      (!r.customer_id && String(r.customer_name_snapshot||"")===String(customer.name||""))
+      String(r.customer_name_snapshot||"").trim()===String(customer.name||"").trim()
     )
   );
 
