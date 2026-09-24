@@ -199,11 +199,11 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       // 预存页恢复原结构：套餐预设 + 套餐发放。
       // 赠送余额作为“附赠权益”的一种类型，不再加载独立余额管理大卡片。
       document.getElementById("prepaidManagerSafeCard")?.remove();
-      const presets=await import("./prepaid-presets-safe.js?v=20260925-globalshopsync1");
+      const presets=await import("./prepaid-presets-safe.js?v=20260925-shopguard1");
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance21");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260925-shopsync2");
+      const unified=await import("./prepaid-unified-safe.js?v=20260925-shopguard1");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
@@ -271,7 +271,7 @@ if(typeof window!=="undefined" && !window.__paiMiniBossWalletScheduled){
     if(walletStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden") || !list) return;
     walletStarted=true;
     try{
-      await import("./boss-wallet.js?v=20260925-globalshopsync1");
+      await import("./boss-wallet.js?v=20260925-shopguard1");
     }catch(error){
       walletStarted=false;
       console.warn("boss wallet load failed",error);
