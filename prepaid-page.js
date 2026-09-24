@@ -39,8 +39,8 @@ export function ensurePrepaidPage(){
         <span class="head-heart">♡</span>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div class="card-title"><div><b>老板预存管理</b><small>查看余额、设置预存、管理权益和流水</small></div></div>
-        <p class="muted" style="margin:0">选择老板后，可以增加或扣减预存余额、调整权益、查看每一笔变动，并导出明细。</p>
+        <div class="card-title"><div><b>老板预存管理【赠送余额版】</b><small>实充余额 + 赠送余额 + 权益，分开记账</small></div></div>
+        <p class="muted" style="margin:0">选择老板后，可分别调整实充余额与赠送余额、管理权益并查看流水。派单抵扣默认先使用赠送余额。</p>
       </div>
       <div id="prepaidPageMount"></div>
     `;
