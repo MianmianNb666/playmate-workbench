@@ -203,7 +203,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance21");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260924-presetbenefit2");
+      const unified=await import("./prepaid-unified-safe.js?v=20260924-combinedbalance1");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
@@ -222,7 +222,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(shellReady || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     shellReady=true;
     try{
-      await import("./prepaid-page.js?v=20260924-giftbalance20");
+      await import("./prepaid-page.js?v=20260924-combinedbalance1");
       const btn=document.querySelector('.nav-tab[data-page="prepaid"]');
       btn?.addEventListener("click",()=>void loadManager(),{passive:true});
     }catch(error){
