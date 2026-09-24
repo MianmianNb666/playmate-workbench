@@ -64,8 +64,8 @@ function mount(){
 function presetBenefits(p){return Array.isArray(p?.bundled_benefits)?p.bundled_benefits.map(x=>{const isBalance=x.type==='balance'||(String(x.name||'').trim()==='赠送余额'&&String(x.unit||'').trim()==='元');return {type:isBalance?'balance':'benefit',name:isBalance?'赠送余额':(x.name||''),quantity:num(x.quantity||1),unit:isBalance?'元':(x.unit||'个'),expires_days:isBalance?'':(x.expires_days??'')}}):[]}
 function renderSelectors(){
   const csel=$('prepaidUnifiedCustomer'),psel=$('prepaidUnifiedPreset');if(!csel||!psel)return;
-  const currentShopId=ctx()?.shop?.id;
-  const customers=state.customers.filter(c=>!currentShopId||c.shop_id===currentShopId);
+  const currentShopId=ctx()?.shop?.id||null;
+  const customers=currentShopId?state.customers.filter(c=>c.shop_id===currentShopId):[];
   csel.innerHTML=customers.length?customers.map(c=>`<option value="${safe(c.id)}">${safe(c.name)}</option>`).join(''):'<option value="">还没有老板档案</option>';
   if(state.customerId&&customers.some(c=>c.id===state.customerId))csel.value=state.customerId;else state.customerId=csel.value||null;
   renderPresetOptions();
@@ -155,6 +155,7 @@ function bind(){
   $('prepaidUnifiedBenefits')?.addEventListener('click',e=>{const b=e.target.closest('[data-u-remove]');if(!b)return;state.benefits=readBenefits();state.benefits.splice(Number(b.dataset.uRemove),1);renderBenefits()});
   $('prepaidUnifiedApply')?.addEventListener('click',apply);
   window.addEventListener('paimini:prepaid-presets-updated',()=>void load());
+  window.addEventListener('paimini:shop-changing',()=>{state.customerId=null;state.presetId=null;state.customers=[];state.presets=[];state.benefits=[];renderSelectors();renderBenefits();renderSummary()});
   window.addEventListener('paimini:shop-changed',()=>{state.customerId=null;state.presetId=null;void load()});
   // 初次进入由 initPrepaidUnifiedSafe() 的 load() 负责；预设变化由 prepaid-presets-updated 负责刷新，避免点进页面重复请求。
 }
