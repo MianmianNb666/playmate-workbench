@@ -203,7 +203,7 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance21");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260924-combinedbalance1");
+      const unified=await import("./prepaid-unified-safe.js?v=20260924-combinedbalance2");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
