@@ -119,9 +119,9 @@ function render(){
 
   const reversed=new Set(state.prepaid.map(x=>x.reversal_of_id).filter(Boolean));
   pre.innerHTML=state.prepaid.length?state.prepaid.map(row=>{
-    const n=Number(row.delta||0),canReverse=row.kind==="topup"&&n>0&&!reversed.has(row.id)&&(!row.preset_id||row.package_issue_id);
+    const n=Number(row.delta||0),isPaid=String(row.balance_type||"paid")==="paid",canReverse=isPaid&&row.kind==="topup"&&n>0&&!reversed.has(row.id)&&(!row.preset_id||row.package_issue_id);
     const oldPackage=row.kind==="topup"&&row.preset_id&&!row.package_issue_id&&!reversed.has(row.id);
-    return `<div class="boss-ledger-row"><div><b>${safe(prepaidKindText(row.kind))}</b><p>${safe(dateText(row.created_at))}${row.note?` · ${safe(row.note)}`:""}</p><p>${money(row.balance_before,c)} → ${money(row.balance_after,c)}${oldPackage?" · 旧版套餐记录需手动调整":""}</p></div><div><strong class="${n>=0?"boss-ledger-positive":"boss-ledger-negative"}">${n>=0?"+":""}${money(n,c)}</strong>${canReverse?`<div style="margin-top:6px"><button class="tiny-btn" data-reverse-topup="${safe(row.id)}" type="button" ${isReadonly()?"disabled":""}>撤销这笔</button></div>`:""}</div></div>`;
+    return `<div class="boss-ledger-row"><div><b>${safe(prepaidKindText(row.kind))}</b><p>${safe(dateText(row.created_at))}${row.note?` · ${safe(row.note)}`:""}</p><p>${money(row.balance_before,c)} → ${money(row.balance_after,c)}${oldPackage?" · 旧版套餐记录需手动调整":""}</p></div><div><strong class="${n>=0?"boss-ledger-positive":"boss-ledger-negative"}">${n>=0?"+":""}${money(n,c)}</strong>${canReverse?`<div style="margin-top:6px"><button class="tiny-btn" data-reverse-topup="${safe(row.id)}" type="button" ${isReadonly()?"disabled":""}>撤回预存</button></div>`:""}</div></div>`;
   }).join(""):'<div class="boss-wallet-empty">还没有预存流水。</div>';
 
   benefits.innerHTML=activeBenefits.length?activeBenefits.map(b=>`<div class="boss-benefit-item"><div><b>${safe(b.name)}</b><small>${b.expires_at?`有效至 ${safe(dateText(b.expires_at))}`:"长期有效"}${b.note?` · ${safe(b.note)}`:""}</small></div><span class="boss-benefit-qty">${qty(b.quantity)} ${safe(b.unit_label||"个")}</span></div>`).join(""):'<div class="boss-wallet-empty">当前没有可用权益。</div>';
@@ -183,7 +183,8 @@ function friendlyError(message){
   const m=String(message||"");
   if(m.includes("insufficient_prepaid_balance"))return "余额不足，不能扣成负数";
   if(m.includes("insufficient_benefit_quantity"))return "权益数量不足，不能扣成负数";
-  if(m.includes("insufficient_prepaid_balance_for_reversal"))return "当前余额不足，无法完整撤销这笔充值";
+  if(m.includes("insufficient_prepaid_balance_for_reversal"))return "实充余额已有消费，无法完整撤回这笔预存";
+  if(m.includes("insufficient_gift_balance_for_reversal"))return "这笔赠送余额已有消费，无法完整撤回这笔预存";
   if(m.includes("package_benefit_already_used"))return "这笔套餐的赠送权益已经使用过，不能整笔撤销；请改用手动调整";
   if(m.includes("legacy_package_requires_manual_adjustment"))return "这是旧版套餐流水，无法安全自动撤销，请使用手动调整";
   if(m.includes("already_reversed"))return "这笔充值已经撤销过了";
@@ -194,11 +195,18 @@ function friendlyError(message){
 async function reverseTopup(id){
   if(isReadonly()){toast("账号已到期，当前为只读模式",true);return}
   const row=state.prepaid.find(x=>x.id===id);if(!row)return;
-  if(!confirm(`撤销这笔 ${money(row.delta)} 充值？如果它来自新版预存套餐，尚未使用的附赠权益也会一起撤回。`))return;
-  const note=window.prompt("撤销原因（可留空）：","")??null;if(note===null)return;
+  const issue=row.package_issue_id||null;
+  const giftRows=issue?state.prepaid.filter(x=>x.package_issue_id===issue&&x.kind==="topup"&&Number(x.delta)>0&&String(x.balance_type||"paid")==="gift"&&!state.prepaid.some(r=>r.reversal_of_id===x.id)):[];
+  const gift=giftRows.reduce((sum,x)=>sum+Number(x.delta||0),0);
+  const benefitRows=issue?state.benefitLedger.filter(x=>x.package_issue_id===issue&&x.kind==="grant"&&Number(x.delta)>0&&!state.benefitLedger.some(r=>r.reversal_of_id===x.id)):[];
+  const benefitText=benefitRows.length?"\n赠送权益："+benefitRows.map(x=>`${x.benefit_name} ${qty(x.delta)}`).join("、"):"";
+  const detail=`确认撤回这笔预存？\n\n实充：${money(row.delta)}${gift>0?`\n赠送余额：${money(gift)}`:""}${benefitText}\n\n仅按实际到账回收；任一余额或权益已经消费，整笔都会拒绝，不会部分撤回。`;
+  if(!confirm(detail))return;
+  const note=window.prompt("撤回原因（可留空）：","")??null;if(note===null)return;
   const {error}=await supabase.rpc("reverse_prepaid_topup",{p_ledger_id:id,p_note:note||null});
-  if(error){toast("撤销失败："+friendlyError(error.message),true);return}
-  toast("这笔充值已撤销，流水已保留 ♡");await loadWallet();
+  if(error){toast("撤回失败："+friendlyError(error.message),true);return}
+  toast("这笔预存已完整撤回，流水已保留 ♡");await loadWallet();
+  window.dispatchEvent(new CustomEvent("paimini:prepaid-updated",{detail:{customer_id:row.customer_id}}));
 }
 
 function csvCell(v){const s=String(v??"");return '"'+s.replaceAll('"','""')+'"'}
