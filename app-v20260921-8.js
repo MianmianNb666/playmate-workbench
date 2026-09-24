@@ -911,11 +911,15 @@ async function loadCurrentShopData(){
 }
 
 async function loadRecords(){
+  if(!state.shopId){state.records=[];return}
+  const requestedShopId=state.shopId;
   const {data,error}=await supabase.from("consumption_records")
     .select("*")
+    .eq("shop_id",requestedShopId)
     .order("occurred_at",{ascending:false})
     .limit(300);
   if(error) throw error;
+  if(state.shopId!==requestedShopId)return;
   state.records=data||[];
 }
 
@@ -2581,7 +2585,11 @@ function bindEvents(){
     $("receiptShop").value=state.shopId;
     $("customerShop").value=state.shopId;
     resetCustomerProfileForm();
+    state.customers=[];state.customerBenefits=[];state.records=[];
+    renderCustomerList();renderCustomerProfiles();renderRecords();
+    window.dispatchEvent(new CustomEvent("paimini:shop-changing",{detail:{shopId:state.shopId}}));
     await loadCurrentShopData();
+    await loadRecords();
     renderAll();
     window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
   });
@@ -2667,8 +2675,13 @@ function bindEvents(){
     $("calcShop").value=state.shopId;
     $("templateShop").value=state.shopId;
     $("receiptShop").value=state.shopId;
+    state.customers=[];state.customerBenefits=[];state.records=[];
+    renderCustomerList();renderCustomerProfiles();renderRecords();
+    window.dispatchEvent(new CustomEvent("paimini:shop-changing",{detail:{shopId:state.shopId}}));
     await loadCurrentShopData();
+    await loadRecords();
     renderAll();
+    window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
   });
 
   $("saveCustomerProfileBtn").addEventListener("click",saveCustomerProfile);
