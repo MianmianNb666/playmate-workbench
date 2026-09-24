@@ -227,14 +227,14 @@ async function refresh(){
 
   state.customer=c;
   state.selectedCustomerId=String(c.id);
-  state.balance=num(c.prepaid_balance);
+  state.balance=num(c.prepaid_balance)+num(c.gift_balance);
   render();
 
   if(!s)return;
   try{
     const [fresh,benefits]=await Promise.all([
       Promise.race([
-        s.from('customers').select('id,name,shop_id,prepaid_balance').eq('id',c.id).maybeSingle(),
+        s.from('customers').select('id,name,shop_id,prepaid_balance,gift_balance').eq('id',c.id).maybeSingle(),
         timeout('customer balance')
       ]),
       query(
@@ -252,7 +252,7 @@ async function refresh(){
 
     if(fresh?.data){
       state.customer={...state.customer,...fresh.data};
-      state.balance=num(fresh.data.prepaid_balance);
+      state.balance=num(fresh.data.prepaid_balance)+num(fresh.data.gift_balance);
     }
     state.benefits=(benefits||[]).filter(x=>!x.expires_at||new Date(x.expires_at).getTime()>Date.now());
 
