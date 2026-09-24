@@ -144,7 +144,8 @@ async function deletePreset(id){if(!confirm('删除这个预存套餐预设？�
 
 function bind(){
   $('presetShop')?.addEventListener('change',async()=>{const id=$('presetShop').value||null;state.shopId=id;renderList();if(id&&core()?.shop?.id!==id){document.getElementById('calcShop').value=id;document.getElementById('calcShop').dispatchEvent(new Event('change',{bubbles:true}))}});
-  window.addEventListener('paimini:shop-changed',()=>{renderShopOptions();renderList()});
+  window.addEventListener('paimini:shop-changing',()=>{const id=core()?.shop?.id||null;state.shopId=id;const s=$('presetShop');if(s&&id)s.value=id;renderList()});
+  window.addEventListener('paimini:shop-changed',()=>{state.shopId=core()?.shop?.id||null;renderShopOptions();renderList()});
   $('presetAddBenefit')?.addEventListener('click',()=>{state.benefits=readBenefitDrafts();state.benefits.push(newBenefitDraft());renderBenefitRows()});
   $('presetBenefitRows')?.addEventListener('change',e=>{const t=e.target.closest('[data-benefit-field="type"]');if(!t)return;state.benefits=readBenefitDrafts();const i=Number(t.closest('[data-benefit-index]')?.dataset.benefitIndex);state.benefits[i]=t.value==='balance'?{type:'balance',name:'赠送余额',quantity:100,unit:'元',expires_days:''}:newBenefitDraft();renderBenefitRows()});
   $('presetBenefitRows')?.addEventListener('click',e=>{const b=e.target.closest('[data-remove-benefit]');if(!b)return;state.benefits=readBenefitDrafts();state.benefits.splice(Number(b.dataset.removeBenefit),1);renderBenefitRows()});
