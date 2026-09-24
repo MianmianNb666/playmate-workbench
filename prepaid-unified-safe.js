@@ -106,11 +106,24 @@ function renderSummary(){
 async function load(){
   const s=supabase();if(!s)return;
   try{
+    const shopId=ctx()?.shop?.id||null;
+    const customerQuery=shopId
+      ? s.from('customers').select('id,name,shop_id,prepaid_balance,gift_balance').eq('shop_id',shopId).order('name')
+      : s.from('customers').select('id,name,shop_id,prepaid_balance,gift_balance').order('name');
+    const presetQuery=shopId
+      ? s.from('wallet_presets').select('*').eq('preset_type','prepaid').eq('shop_id',shopId).order('sort_order').order('created_at')
+      : s.from('wallet_presets').select('*').eq('preset_type','prepaid').order('sort_order').order('created_at');
     const [customers,presets]=await Promise.all([
-      query(s.from('customers').select('id,name,shop_id,prepaid_balance,gift_balance').order('name'),'customers'),
-      query(s.from('wallet_presets').select('*').eq('preset_type','prepaid').order('sort_order').order('created_at'),'presets')
+      query(customerQuery,'customers'),
+      query(presetQuery,'presets')
     ]);
-    state.customers=customers;state.presets=presets;renderSelectors();
+    // If the shop changed while these requests were in flight, discard the stale result.
+    if(shopId && ctx()?.shop?.id!==shopId)return void load();
+    state.customerId=null;
+    state.presetId=null;
+    state.customers=customers;
+    state.presets=presets;
+    renderSelectors();
   }catch(e){console.warn('unified prepaid load failed',e);toast('预存资料读取失败，请点进预存页重试')}
 }
 
@@ -142,7 +155,7 @@ function bind(){
   $('prepaidUnifiedBenefits')?.addEventListener('click',e=>{const b=e.target.closest('[data-u-remove]');if(!b)return;state.benefits=readBenefits();state.benefits.splice(Number(b.dataset.uRemove),1);renderBenefits()});
   $('prepaidUnifiedApply')?.addEventListener('click',apply);
   window.addEventListener('paimini:prepaid-presets-updated',()=>void load());
-  window.addEventListener('paimini:shop-changed',()=>void load());
+  window.addEventListener('paimini:shop-changed',()=>{state.customerId=null;state.presetId=null;void load()});
   // 初次进入由 initPrepaidUnifiedSafe() 的 load() 负责；预设变化由 prepaid-presets-updated 负责刷新，避免点进页面重复请求。
 }
 
