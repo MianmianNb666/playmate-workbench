@@ -243,28 +243,66 @@ async function imageUrlToDataUrl(url){
 }
 
 async function canvasToBlob(canvas){
-  if(typeof canvas?.toBlob!=="function") throw new Error("PNG转换：浏览器不支持 canvas.toBlob");
-  return await new Promise((resolve,reject)=>{
+  if(typeof canvas?.toBlob==="function"){
+    const blob=await new Promise((resolve,reject)=>{
+      try{
+        canvas.toBlob(value=>value?resolve(value):reject(new Error("toBlob 返回空文件")),"image/png");
+      }catch(error){ reject(error); }
+    });
+    return blob;
+  }
+  const dataUrl=canvas.toDataURL("image/png");
+  const response=await fetch(dataUrl);
+  return await response.blob();
+}
+
+async function savePngBlob(blob,filename){
+  const file=new File([blob],filename,{type:"image/png"});
+
+  // Android / embedded browsers often ignore <a download>. Prefer native share
+  // when file sharing is supported, then fall back to a normal blob download.
+  if(navigator.share && navigator.canShare){
     try{
-      canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG转换：toBlob 返回空文件")),"image/png");
+      if(navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:filename});
+        return "shared";
+      }
     }catch(error){
-      reject(new Error("PNG转换："+(error?.message||String(error))));
+      if(error?.name==="AbortError") throw new Error("已取消保存");
+      console.warn("native share failed, falling back to download",error);
     }
-  });
+  }
+
+  const url=URL.createObjectURL(blob);
+  try{
+    const link=document.createElement("a");
+    link.href=url;
+    link.download=filename;
+    link.rel="noopener";
+    link.style.display="none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return "downloaded";
+  }finally{
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+  }
 }
 
 async function downloadCanvas(canvas,filename){
-  const blob=await canvasToBlob(canvas);
-  const url=URL.createObjectURL(blob);
-  const link=document.createElement("a");
-  link.download=filename;
-  link.href=url;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  let blob;
+  try{
+    blob=await canvasToBlob(canvas);
+  }catch(error){
+    throw new Error("PNG转换："+(error?.message||String(error)));
+  }
+  if(!blob?.size) throw new Error("PNG转换：生成的图片为空");
+  try{
+    return await savePngBlob(blob,filename);
+  }catch(error){
+    throw new Error("图片保存："+(error?.message||String(error)));
+  }
 }
-
 function exportPageName(filename,page,total){
   if(total<=1) return filename;
   const dot=filename.toLowerCase().lastIndexOf(".png");
@@ -321,7 +359,7 @@ async function exportElement(el,filename){
   if(!el||!window.html2canvas) return;
 
   const rows=[...el.querySelectorAll(".statement-list .statement-row")];
-  const rowsPerPage=10;
+  const rowsPerPage=8;
 
   // Short statements keep the original one-image experience.
   if(rows.length<=rowsPerPage){
