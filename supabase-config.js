@@ -196,13 +196,14 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
       prepaidMount.style.minHeight=prepaidMount.offsetHeight+"px";
     }
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260924-giftbalance21");
-      await mod.initPrepaidManagerSafe?.();
-      const presets=await import("./prepaid-presets-safe.js?v=20260924-presetgift1");
+      // 预存页恢复原结构：套餐预设 + 套餐发放。
+      // 赠送余额作为“附赠权益”的一种类型，不再加载独立余额管理大卡片。
+      document.getElementById("prepaidManagerSafeCard")?.remove();
+      const presets=await import("./prepaid-presets-safe.js?v=20260924-presetbenefit2");
       await presets.initPrepaidPresetsSafe?.();
       const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance21");
       polish.applyPrepaidLayoutPolish?.();
-      const unified=await import("./prepaid-unified-safe.js?v=20260924-presetgift1");
+      const unified=await import("./prepaid-unified-safe.js?v=20260924-presetbenefit2");
       await unified.initPrepaidUnifiedSafe?.();
     }catch(error){
       managerStarted=false;
