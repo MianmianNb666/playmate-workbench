@@ -13,7 +13,10 @@ const localState={
   records:[],
   groups:[],
   previewMode:"current",
-  activeGroup:null
+  activeGroup:null,
+  prepaid:[],
+  benefits:[],
+  benefitLedger:[]
 };
 
 function safe(value){
@@ -111,12 +114,22 @@ function renderBossSummary(){
   }).join("");
 }
 
+function statementEntries(group){
+  const customerId=group.records?.find(r=>r.customer_id)?.customer_id||null;
+  const consumption=(group.records||[]).map(r=>({type:"consume",at:r.occurred_at,amount:Number(r.amount||0),record:r}));
+  if(!customerId)return consumption.sort((a,b)=>new Date(b.at)-new Date(a.at));
+  const prepaid=localState.prepaid.filter(x=>x.customer_id===customerId).map(x=>({type:"prepaid",at:x.created_at,amount:Number(x.delta||0),record:x}));
+  const benefits=localState.benefitLedger.filter(x=>x.customer_id===customerId&&Number(x.delta||0)!==0).map(x=>({type:"benefit",at:x.created_at,amount:Number(x.delta||0),record:x}));
+  return [...consumption,...prepaid,...benefits].sort((a,b)=>new Date(b.at)-new Date(a.at));
+}
+
 function statementHtml(group,settings){
   const shop=localState.shops.find(s=>s.id===group.shop_id)||{};
   const records=group.records||[];
   const total=records.reduce((sum,r)=>sum+Number(r.amount||0),0);
-  const newest=records[0]?.occurred_at;
-  const oldest=records[records.length-1]?.occurred_at;
+  const entries=statementEntries(group);
+  const newest=entries[0]?.at||records[0]?.occurred_at;
+  const oldest=entries[entries.length-1]?.at||records[records.length-1]?.occurred_at;
   const newestDate=newest?dateParts(newest).date:"-";
   const oldestDate=oldest?dateParts(oldest).date:"-";
 
@@ -133,27 +146,24 @@ function statementHtml(group,settings){
 
     <div class="statement-meta">
       <div>老板<b>${safe(group.customer)}</b></div>
-      <div>流水笔数<b>${records.length} 笔</b></div>
+      <div>流水笔数<b>${entries.length} 笔</b></div>
       <div>时间范围<b>${safe(oldestDate)} - ${safe(newestDate)}</b></div>
       <div>全部累计<b>${money(total,shop)}</b></div>
     </div>
 
     <div class="statement-list">
-      ${records.map(r=>{
-        const d=dateParts(r.occurred_at);
-        return `
-          <div class="statement-row">
-            <time>${safe(d.date)}<br>${safe(d.time)}</time>
-            <div>
-              <b>${safe(r.item_name_snapshot||"")}</b>
-              <span>
-                ${settings.show_companion?"陪陪 "+safe(r.companion_name||"-")+" · ":""}
-                ${settings.show_quantity?safe(r.duration_input||r.quantity||""):""}
-              </span>
-            </div>
-            <strong>${money(r.amount,shop)}</strong>
-          </div>
-        `;
+      ${entries.map(entry=>{
+        const d=dateParts(entry.at),r=entry.record;
+        if(entry.type==="prepaid"){
+          const gift=r.balance_type==="gift";
+          const title=entry.amount>=0?(gift?"赠送余额":"增加预存"):(r.kind==="refund"?"撤回 / 退款":(gift?"扣除赠送余额":"扣除预存"));
+          return `<div class="statement-row"><time>${safe(d.date)}<br>${safe(d.time)}</time><div><b>${safe(title)}</b><span>${safe(r.note||"")}${r.balance_after!=null?" · 该类余额 "+money(r.balance_after,shop):""}</span></div><strong>${entry.amount>=0?"+":""}${money(entry.amount,shop)}</strong></div>`;
+        }
+        if(entry.type==="benefit"){
+          const unit=r.unit_label||"";const title=entry.amount>=0?"赠送权益":"使用 / 回收权益";
+          return `<div class="statement-row"><time>${safe(d.date)}<br>${safe(d.time)}</time><div><b>${safe(title)} · ${safe(r.benefit_name||"权益")}</b><span>${safe(r.note||"")}</span></div><strong>${entry.amount>=0?"+":""}${safe(entry.amount)}${safe(unit)}</strong></div>`;
+        }
+        return `<div class="statement-row"><time>${safe(d.date)}<br>${safe(d.time)}</time><div><b>${safe(r.item_name_snapshot||"消费")}</b><span>${settings.show_companion?"陪陪 "+safe(r.companion_name||"-")+" · ":""}${settings.show_quantity?safe(r.duration_input||r.quantity||""):""}${r.prepaid_used?" · 预存扣除 "+money(r.prepaid_used,shop):""}</span></div><strong>-${money(r.amount,shop)}</strong></div>`;
       }).join("")}
     </div>
 
@@ -272,12 +282,18 @@ async function exportElement(el,filename){
 
 async function loadData(){
   if(!localState.session) return;
-  const [shops,records]=await Promise.all([
+  const [shops,records,prepaid,benefits,benefitLedger]=await Promise.all([
     supabase.from("shops").select("*").order("name"),
-    supabase.from("consumption_records").select("*").order("occurred_at",{ascending:false}).limit(1000)
+    supabase.from("consumption_records").select("*").order("occurred_at",{ascending:false}).limit(1000),
+    supabase.from("customer_prepaid_ledger").select("*").order("created_at",{ascending:false}).limit(2000),
+    supabase.from("customer_benefits").select("*").order("updated_at",{ascending:false}).limit(2000),
+    supabase.from("customer_benefit_ledger").select("*").order("created_at",{ascending:false}).limit(2000)
   ]);
   if(!shops.error) localState.shops=shops.data||[];
   if(!records.error) localState.records=records.data||[];
+  if(!prepaid.error) localState.prepaid=prepaid.data||[];
+  if(!benefits.error) localState.benefits=benefits.data||[];
+  if(!benefitLedger.error) localState.benefitLedger=benefitLedger.data||[];
   renderBossSummary();
   if(localState.previewMode==="statement") renderReceiptPreviewMode();
 }
