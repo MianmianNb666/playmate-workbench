@@ -1870,17 +1870,25 @@ function sampleReceiptData(){
   };
 }
 
-function receiptWalletLines(data,shop){
-  const customerId=String(data?.customerId||data?.customer_id||'').trim();
+function receiptCustomer(data){
+  const customerId=String(data?.customerId||data?.customer_id||window.paiMiniSettlementSelection?.customer_id||'').trim();
   const name=String(data?.customer||'').trim();
-  const c=(state.customers||[]).find(x=>customerId&&String(x.id)===customerId)
+  return (state.customers||[]).find(x=>customerId&&String(x.id)===customerId)
     || (state.customers||[]).find(x=>String(x.name||'').trim()===name && (!data?.shop?.id || x.shop_id===data.shop.id))
-    || (state.customers||[]).find(x=>String(x.name||'').trim()===name);
-  if(!c)return [];
-  const paid=Number(c.prepaid_balance||0);
-  const gift=Number(c.gift_balance||0);
-  const total=paid+gift;
-  return [["预存余额",money(total,shop)]];
+    || (state.customers||[]).find(x=>String(x.name||'').trim()===name)
+    || null;
+}
+function receiptWalletLines(data,shop){
+  const c=receiptCustomer(data);if(!c)return [];
+  const current=Number(c.prepaid_balance||0)+Number(c.gift_balance||0);
+  const selected=Math.max(0,Number(window.paiMiniSettlementSelection?.prepaid_amount||0));
+  const usePrepaid=!!window.paiMiniSettlementSelection?.use_prepaid;
+  const balanceAfter=data?.prepaid_balance_after!=null?Number(data.prepaid_balance_after):Math.max(0,current-(usePrepaid?selected:0));
+  const lines=[["预存余额",money(balanceAfter,shop)]];
+  const used=new Map((window.paiMiniSettlementSelection?.benefits_used||[]).map(x=>[String(x.benefit_id),Number(x.quantity||0)]));
+  const benefits=(window.paiMiniSettlementSelection?.benefits||[]).map(x=>({...x,quantity:Math.max(0,Number(x.quantity||0)-Number(used.get(String(x.id||x.benefit_id))||0))})).filter(x=>x.quantity>0);
+  if(benefits.length)lines.push(["剩余赠送权益",benefits.map(x=>String(x.name||"权益")+" "+plainNumber(x.quantity)+(x.unit_label||x.unit||"个")).join("｜")]);
+  return lines;
 }
 
 function receiptHtml(data,settings){
