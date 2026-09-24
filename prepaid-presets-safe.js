@@ -75,7 +75,7 @@ function renderShopOptions(){
   const s=$('presetShop');if(!s)return;
   const core=ctx();const uid=core?.state?.session?.user?.id;
   state.shops=(core?.state?.shops||[]).filter(shop=>shop.user_id===uid);
-  state.shopId=state.shopId&&state.shops.some(x=>x.id===state.shopId)?state.shopId:(core?.shop?.id&&state.shops.some(x=>x.id===core.shop.id)?core.shop.id:state.shops[0]?.id||null);
+  state.shopId=core?.shop?.id&&state.shops.some(x=>x.id===core.shop.id)?core.shop.id:(state.shopId&&state.shops.some(x=>x.id===state.shopId)?state.shopId:state.shops[0]?.id||null);
   s.innerHTML=state.shops.length?state.shops.map(x=>`<option value="${safe(x.id)}">${safe(x.name)}</option>`).join(''):'<option value="">还没有自己的店铺</option>';
   if(state.shopId)s.value=state.shopId;
 }
@@ -143,7 +143,8 @@ async function togglePreset(id){const s=supabase(),p=state.presets.find(x=>x.id=
 async function deletePreset(id){if(!confirm('删除这个预存套餐预设？已产生的历史流水不会删除。'))return;const s=supabase();const r=await s.from('wallet_presets').delete().eq('id',id);if(r.error){toast('删除失败：'+r.error.message);return}await loadPresets()}
 
 function bind(){
-  $('presetShop')?.addEventListener('change',()=>{state.shopId=$('presetShop').value||null;renderList()});
+  $('presetShop')?.addEventListener('change',async()=>{const id=$('presetShop').value||null;state.shopId=id;renderList();if(id&&core()?.shop?.id!==id){document.getElementById('calcShop').value=id;document.getElementById('calcShop').dispatchEvent(new Event('change',{bubbles:true}))}});
+  window.addEventListener('paimini:shop-changed',()=>{renderShopOptions();renderList()});
   $('presetAddBenefit')?.addEventListener('click',()=>{state.benefits=readBenefitDrafts();state.benefits.push(newBenefitDraft());renderBenefitRows()});
   $('presetBenefitRows')?.addEventListener('change',e=>{const t=e.target.closest('[data-benefit-field="type"]');if(!t)return;state.benefits=readBenefitDrafts();const i=Number(t.closest('[data-benefit-index]')?.dataset.benefitIndex);state.benefits[i]=t.value==='balance'?{type:'balance',name:'赠送余额',quantity:100,unit:'元',expires_days:''}:newBenefitDraft();renderBenefitRows()});
   $('presetBenefitRows')?.addEventListener('click',e=>{const b=e.target.closest('[data-remove-benefit]');if(!b)return;state.benefits=readBenefitDrafts();state.benefits.splice(Number(b.dataset.removeBenefit),1);renderBenefitRows()});
