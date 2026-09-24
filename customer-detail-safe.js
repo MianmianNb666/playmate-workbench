@@ -68,10 +68,10 @@ function customerFromState(id){return (ctx()?.state?.customers||[]).find(c=>c.id
 
 async function fetchCustomer(id){
   const s=supabase();if(!s)return customerFromState(id);
-  const full=await Promise.race([s.from('customers').select('id,shop_id,name,contact,notes,discount_rate,prepaid_balance,birthday,region,preferences').eq('id',id).maybeSingle(),timeout('customer detail')]);
+  const full=await Promise.race([s.from('customers').select('id,shop_id,name,contact,notes,discount_rate,prepaid_balance,gift_balance,birthday,region,preferences').eq('id',id).maybeSingle(),timeout('customer detail')]);
   if(!full?.error)return full?.data||customerFromState(id);
   if(String(full.error?.message||'').includes('birthday')||String(full.error?.message||'').includes('region')||String(full.error?.message||'').includes('preferences')){
-    const basic=await query(s.from('customers').select('id,shop_id,name,contact,notes,discount_rate,prepaid_balance').eq('id',id).maybeSingle(),'customer basic');
+    const basic=await query(s.from('customers').select('id,shop_id,name,contact,notes,discount_rate,prepaid_balance,gift_balance').eq('id',id).maybeSingle(),'customer basic');
     return basic||customerFromState(id);
   }
   throw full.error;
@@ -102,7 +102,7 @@ function render(customer,details){
       <div><span>生日</span><b>${safe(customer.birthday?fmtDate(customer.birthday):'未填写')}</b></div><div><span>地区</span><b>${safe(customer.region||'未填写')}</b></div>
       <div><span>折扣</span><b>${safe(customer.discount_rate??100)}%</b></div><div><span>所属店铺</span><b>${safe(shop?.name||'-')}</b></div>
     </div>${customer.preferences?`<p style="font-size:12px"><b>偏好：</b>${safe(customer.preferences)}</p>`:''}${customer.notes?`<p style="font-size:12px"><b>备注：</b>${safe(customer.notes)}</p>`:''}</section>
-    <section class="customer-detail-card"><h4>💰 预存余额</h4><div class="customer-detail-balance">${money(customer.prepaid_balance,customer.shop_id)}</div><div class="customer-detail-sub"><span>累计增加 ${money(topup,customer.shop_id)}</span><span>累计使用 ${money(used,customer.shop_id)}</span><span>历史消费 ${money(totalOrders,customer.shop_id)}</span></div></section>
+    <section class="customer-detail-card"><h4>💰 预存余额</h4><div class="customer-detail-balance">${money(num(customer.prepaid_balance)+num(customer.gift_balance),customer.shop_id)}</div><div class="customer-detail-sub"><span>累计增加 ${money(topup,customer.shop_id)}</span><span>累计使用 ${money(used,customer.shop_id)}</span><span>历史消费 ${money(totalOrders,customer.shop_id)}</span></div></section>
     <section class="customer-detail-card wide"><h4>🎁 当前权益</h4><div class="customer-benefit-list">${activeBenefits.length?activeBenefits.map(x=>`<span class="customer-benefit-chip">${safe(x.name)} × ${safe(x.quantity)} ${safe(x.unit_label||'个')}${x.expires_at?` · ${safe(fmtDate(x.expires_at))}到期`:''}</span>`).join(''):'<span class="customer-detail-empty">暂无可用权益</span>'}</div></section>
     <section class="customer-detail-card wide"><h4>🧾 过往单子</h4><div class="customer-order-list">${orders.length?orders.slice(0,12).map(r=>`<div class="customer-order-row"><small>${safe(fmtDateTime(r.occurred_at))}</small><div><b>${safe(r.item_name_snapshot||'未命名项目')}</b><small>${r.companion_name?`陪陪 ${safe(r.companion_name)} · `:''}${safe(r.duration_input||r.quantity||'')}</small></div><strong>${money(r.amount,customer.shop_id)}</strong></div>`).join(''):'<div class="customer-detail-empty">还没有消费记录</div>'}</div>${orders.length>12?`<div class="customer-order-more">这里先显示最近 12 笔，共 ${orders.length} 笔，可点下方“查看消费记录”看更多。</div>`:''}</section>`;
   $('customerDetailBirthday').value=customer.birthday?String(customer.birthday).slice(0,10):'';
