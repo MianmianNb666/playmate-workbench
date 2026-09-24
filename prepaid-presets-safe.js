@@ -25,20 +25,22 @@ function ensureStyle(){
   `;document.head.appendChild(style);
 }
 
-function newBenefitDraft(){return {name:'',quantity:1,unit:'个',expires_days:''}}
+function newBenefitDraft(){return {type:'benefit',name:'',quantity:1,unit:'个',expires_days:''}}
 function renderBenefitRows(){
   const wrap=$('presetBenefitRows');if(!wrap)return;
   if(!state.benefits.length)state.benefits=[newBenefitDraft()];
-  wrap.innerHTML=state.benefits.map((b,i)=>`
+  wrap.innerHTML=state.benefits.map((b,i)=>{
+    const isBalance=b.type==='balance';
+    return `
     <div class="preset-benefit-row" data-benefit-index="${i}">
-      <label class="benefit-name">权益名称<input data-benefit-field="name" value="${safe(b.name)}" placeholder="例如 赠送时长"></label>
-      <label>数量<input data-benefit-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label>
-      <label>单位<input data-benefit-field="unit" value="${safe(b.unit||'个')}" placeholder="次 / 分钟"></label>
-      <label>有效天数<input data-benefit-field="expires_days" type="number" min="1" step="1" value="${safe(b.expires_days)}" placeholder="留空=长期"></label>
+      <label>类型<select data-benefit-field="type"><option value="benefit" ${!isBalance?'selected':''}>普通权益</option><option value="balance" ${isBalance?'selected':''}>赠送余额</option></select></label>
+      ${isBalance
+        ? `<label class="benefit-name">赠送金额<input data-benefit-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}" placeholder="例如 100"></label><input data-benefit-field="name" type="hidden" value="赠送余额"><input data-benefit-field="unit" type="hidden" value="元"><input data-benefit-field="expires_days" type="hidden" value="">`
+        : `<label class="benefit-name">权益名称<input data-benefit-field="name" value="${safe(b.name)}" placeholder="例如 赠送时长"></label><label>数量<input data-benefit-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label><label>单位<input data-benefit-field="unit" value="${safe(b.unit||'个')}" placeholder="次 / 分钟"></label><label>有效天数<input data-benefit-field="expires_days" type="number" min="1" step="1" value="${safe(b.expires_days)}" placeholder="留空=长期"></label>`}
       <button class="tiny-btn danger" data-remove-benefit="${i}" type="button">删除</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
-
 function mount(){
   const mount=$('prepaidPageMount');if(!mount)return false;
   let card=$('prepaidPresetSafeCard');
@@ -50,7 +52,7 @@ function mount(){
         <div class="preset-safe-form">
           <label>店铺<select id="presetShop"></select></label>
           <label>套餐名称<input id="presetName" placeholder="例如 充500送2小时"></label>
-          <label>实充金额<input id="presetAmount" type="number" min="0" step="0.01" placeholder="500"></label><label>赠送余额<input id="presetGiftAmount" type="number" min="0" step="0.01" placeholder="例如 100，不赠送可留空"></label>
+          <label>预存金额<input id="presetAmount" type="number" min="0" step="0.01" placeholder="500"></label>
           <label>排序<input id="presetSort" type="number" step="1" value="0"></label>
           <label class="wide">备注<input id="presetNote" maxlength="160" placeholder="可选"></label>
         </div>
@@ -88,7 +90,7 @@ function renderList(){
   const rows=state.presets.filter(x=>x.shop_id===state.shopId&&x.preset_type==='prepaid');
   list.innerHTML=rows.length?rows.map(p=>`
     <div class="preset-safe-item">
-      <div class="preset-safe-item-head"><div><b>${safe(p.name)}</b><p>实充 ¥${num(p.amount).toFixed(2)} · 赠送 ¥${num(p.gift_amount).toFixed(2)} · 到账 ¥${(num(p.amount)+num(p.gift_amount)).toFixed(2)}</p></div><span class="status-tag ${p.is_active===false?'off':''}">${p.is_active===false?'已停用':'启用中'}</span></div>
+      <div class="preset-safe-item-head"><div><b>${safe(p.name)}</b><p>预存 ¥${num(p.amount).toFixed(2)}</p></div><span class="status-tag ${p.is_active===false?'off':''}">${p.is_active===false?'已停用':'启用中'}</span></div>
       <p>${safe(presetBenefitsText(p))}${p.note?`<br>${safe(p.note)}`:''}</p>
       <div class="preset-safe-actions">
         <button class="tiny-btn" data-apply-preset="${safe(p.id)}" type="button" ${p.is_active===false?'disabled':''}>发给当前老板</button>
@@ -109,22 +111,24 @@ async function loadPresets(){
 
 function readBenefitDrafts(){
   const rows=[...document.querySelectorAll('[data-benefit-index]')];
-  return rows.map(row=>({
-    name:(row.querySelector('[data-benefit-field="name"]')?.value||'').trim(),
-    quantity:num(row.querySelector('[data-benefit-field="quantity"]')?.value||1),
-    unit:(row.querySelector('[data-benefit-field="unit"]')?.value||'个').trim()||'个',
-    expires_days:(row.querySelector('[data-benefit-field="expires_days"]')?.value||'').trim()
-  })).filter(x=>x.name&&x.quantity>0).map(x=>({...x,expires_days:x.expires_days?Number(x.expires_days):null}));
+  return rows.map(row=>{
+    const type=row.querySelector('[data-benefit-field="type"]')?.value||'benefit';
+    const quantity=num(row.querySelector('[data-benefit-field="quantity"]')?.value||0);
+    if(type==='balance')return quantity>0?{type:'balance',name:'赠送余额',quantity,unit:'元',expires_days:null}:null;
+    const name=(row.querySelector('[data-benefit-field="name"]')?.value||'').trim();
+    const unit=(row.querySelector('[data-benefit-field="unit"]')?.value||'个').trim()||'个';
+    const days=(row.querySelector('[data-benefit-field="expires_days"]')?.value||'').trim();
+    return name&&quantity>0?{type:'benefit',name,quantity,unit,expires_days:days?Number(days):null}:null;
+  }).filter(Boolean);
 }
-
 async function savePreset(){
-  if(busy)return;const s=supabase();const name=$('presetName')?.value.trim();const amount=num($('presetAmount')?.value);const giftAmount=num($('presetGiftAmount')?.value);const shopId=$('presetShop')?.value;
+  if(busy)return;const s=supabase();const name=$('presetName')?.value.trim();const amount=num($('presetAmount')?.value);const shopId=$('presetShop')?.value;
   if(!s||!shopId){toast('先选择店铺');return}if(!name){toast('先填写套餐名称');return}if(!(amount>0)){toast('预存金额要大于 0');return}
   busy=true;$('presetSave').disabled=true;
   try{
-    const payload={shop_id:shopId,preset_type:'prepaid',name,amount,gift_amount:Math.max(0,giftAmount),bundled_benefits:readBenefitDrafts(),note:$('presetNote')?.value.trim()||null,sort_order:Number($('presetSort')?.value||0),is_active:true};
+    const payload={shop_id:shopId,preset_type:'prepaid',name,amount,bundled_benefits:readBenefitDrafts(),note:$('presetNote')?.value.trim()||null,sort_order:Number($('presetSort')?.value||0),is_active:true};
     const r=await Promise.race([s.from('wallet_presets').insert(payload),deadline('save preset')]);if(r?.error)throw r.error;
-    $('presetName').value='';$('presetAmount').value='';$('presetGiftAmount').value='';$('presetNote').value='';$('presetSort').value='0';state.benefits=[newBenefitDraft()];renderBenefitRows();await loadPresets();toast('预存套餐已保存 ♡');
+    $('presetName').value='';$('presetAmount').value='';$('presetNote').value='';$('presetSort').value='0';state.benefits=[newBenefitDraft()];renderBenefitRows();await loadPresets();toast('预存套餐已保存 ♡');
   }catch(e){console.warn('preset save failed',e);toast('保存预设失败：'+String(e?.message||e))}finally{busy=false;$('presetSave').disabled=false}
 }
 
@@ -141,6 +145,7 @@ async function deletePreset(id){if(!confirm('删除这个预存套餐预设？�
 function bind(){
   $('presetShop')?.addEventListener('change',()=>{state.shopId=$('presetShop').value||null;renderList()});
   $('presetAddBenefit')?.addEventListener('click',()=>{state.benefits=readBenefitDrafts();state.benefits.push(newBenefitDraft());renderBenefitRows()});
+  $('presetBenefitRows')?.addEventListener('change',e=>{const t=e.target.closest('[data-benefit-field="type"]');if(!t)return;state.benefits=readBenefitDrafts();const i=Number(t.closest('[data-benefit-index]')?.dataset.benefitIndex);state.benefits[i]=t.value==='balance'?{type:'balance',name:'赠送余额',quantity:100,unit:'元',expires_days:''}:newBenefitDraft();renderBenefitRows()});
   $('presetBenefitRows')?.addEventListener('click',e=>{const b=e.target.closest('[data-remove-benefit]');if(!b)return;state.benefits=readBenefitDrafts();state.benefits.splice(Number(b.dataset.removeBenefit),1);renderBenefitRows()});
   $('presetSave')?.addEventListener('click',savePreset);
   $('presetList')?.addEventListener('click',e=>{const a=e.target.closest('[data-apply-preset]');const t=e.target.closest('[data-toggle-preset]');const d=e.target.closest('[data-delete-preset]');if(a)applyPreset(a.dataset.applyPreset);if(t)togglePreset(t.dataset.togglePreset);if(d)deletePreset(d.dataset.deletePreset)});
