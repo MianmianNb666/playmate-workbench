@@ -1871,8 +1871,10 @@ function sampleReceiptData(){
 }
 
 function receiptWalletLines(data,shop){
+  const customerId=String(data?.customerId||data?.customer_id||'').trim();
   const name=String(data?.customer||'').trim();
-  const c=(state.customers||[]).find(x=>String(x.name||'').trim()===name && (!data?.shop?.id || x.shop_id===data.shop.id))
+  const c=(state.customers||[]).find(x=>customerId&&String(x.id)===customerId)
+    || (state.customers||[]).find(x=>String(x.name||'').trim()===name && (!data?.shop?.id || x.shop_id===data.shop.id))
     || (state.customers||[]).find(x=>String(x.name||'').trim()===name);
   if(!c)return [];
   const paid=Number(c.prepaid_balance||0);
