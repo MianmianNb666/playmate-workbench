@@ -27,7 +27,7 @@ function applyBadges(){
     if(checkout&&checkout.textContent.trim()!=='去结账')checkout.textContent='去结账';
     const id=card.querySelector('[data-edit-customer]')?.dataset.editCustomer||checkout?.dataset.useCustomer;
     if(!id)return;
-    const balance=balances.has(id)?balances.get(id):Number((ctx()?.state?.customers||[]).find(x=>x.id===id)?.prepaid_balance||0);
+    const customer=(ctx()?.state?.customers||[]).find(x=>x.id===id);const balance=balances.has(id)?balances.get(id):(Number(customer?.prepaid_balance||0)+Number(customer?.gift_balance||0));
     const text=safeMoney(balance,id);
     let badge=card.querySelector('.customer-prepaid-badge');
     if(!badge){
@@ -43,9 +43,9 @@ function applyBadges(){
 async function refresh(){
   const s=supabase();if(!s)return applyBadges();
   try{
-    const result=await Promise.race([s.from('customers').select('id,prepaid_balance'),timeout()]);
+    const result=await Promise.race([s.from('customers').select('id,prepaid_balance,gift_balance'),timeout()]);
     if(result?.error)throw result.error;
-    (result?.data||[]).forEach(c=>balances.set(c.id,Number(c.prepaid_balance||0)));
+    (result?.data||[]).forEach(c=>balances.set(c.id,Number(c.prepaid_balance||0)+Number(c.gift_balance||0)));
   }catch(e){console.warn('customer prepaid badges refresh failed',e)}
   applyBadges();
 }
