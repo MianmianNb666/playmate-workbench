@@ -92,8 +92,8 @@ function renderBenefits(){
   box.innerHTML=state.benefits.length?state.benefits.map((b,i)=>`<div class="prepaid-unified-benefit" data-u-benefit-row="${i}"><label class="benefit-name">权益名称<input data-u-field="name" value="${safe(b.name)}"></label><label>数量<input data-u-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label><label>单位<input data-u-field="unit" value="${safe(b.unit||'个')}"></label><label>有效天数<input data-u-field="days" type="number" min="1" step="1" value="${safe(b.expires_days??'')}" placeholder="长期"></label><button class="tiny-btn danger" data-u-remove="${i}" type="button">删除</button></div>`).join(''):'<div class="empty-state">这个预设没有附赠权益。也可以临时添加。</div>';
 }
 function renderSummary(){
-  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value),before=num(c?.prepaid_balance),after=before+Math.max(0,amount);
-  box.innerHTML=`<div class="prepaid-unified-stat"><span>当前余额</span><b>${money(before)}</b></div><div class="prepaid-unified-stat"><span>本次增加</span><b>${money(amount)}</b></div><div class="prepaid-unified-stat"><span>添加后余额</span><b>${money(after)}</b></div>`;
+  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const preset=currentPreset();const gift=(Array.isArray(preset?.bundled_benefits)?preset.bundled_benefits:[]).filter(x=>(x?.type||'benefit')==='balance').reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
+  box.innerHTML=`<div class="prepaid-unified-stat"><span>当前余额</span><b>${money(before)}</b></div><div class="prepaid-unified-stat"><span>本次到账</span><b>${money(added)}</b></div><div class="prepaid-unified-stat"><span>添加后余额</span><b>${money(after)}</b></div>`;
 }
 
 async function load(){
@@ -116,9 +116,10 @@ async function apply(){
   try{
     const result=await rpc('apply_custom_prepaid_package_with_gift',{p_customer_id:c.id,p_preset_id:p.id,p_amount:amount,p_benefits:benefits,p_note:$('prepaidUnifiedNote')?.value.trim()||null});
     if(result?.balance_after!=null)c.prepaid_balance=result.balance_after;
+    if(result?.gift_result?.balance_after!=null)c.gift_balance=result.gift_result.balance_after;
     renderSummary();
     document.getElementById('prepaidSafeRefresh')?.click();
-    window.dispatchEvent(new CustomEvent('paimini:prepaid-updated',{detail:{customerId:c.id,balance:c.prepaid_balance}}));
+    window.dispatchEvent(new CustomEvent('paimini:prepaid-updated',{detail:{customerId:c.id,balance:num(c.prepaid_balance)+num(c.gift_balance)}}));
     toast('已添加预存 ♡');
   }catch(e){console.warn('custom prepaid issue failed',e);toast(String(e?.message||e).includes('apply_custom_prepaid_package')?'请先运行最新预存 SQL':'添加预存失败：'+String(e?.message||e))}
   finally{busy=false;$('prepaidUnifiedApply').disabled=false}
