@@ -193,6 +193,14 @@ function renderUsers(){
       +  '</div>'
       +'</div>';
   }).join("");
+  document.querySelectorAll(".admin-reset-password-btn").forEach(btn=>{
+    btn.onclick=()=>{
+      const userId=btn.getAttribute("data-reset-user")||"";
+      const email=btn.getAttribute("data-reset-email")||"";
+      if(!userId){alert("没有读取到用户 ID，请刷新管理端后重试。");return}
+      void adminSetPassword(userId,email);
+    };
+  });
 }
 
 async function grantDays(userId,days){
