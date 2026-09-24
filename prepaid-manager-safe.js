@@ -40,7 +40,7 @@ function mount(){
   let card=$('prepaidManagerSafeCard');
   if(!card){card=document.createElement('div');card.id='prepaidManagerSafeCard';card.className='card prepaid-safe-card';mount.prepend(card)}
   card.innerHTML=`
-    <div class="card-title"><div><b>老板预存余额 ♡</b><small>设置预存、调整权益、查看流水</small></div></div>
+    <div class="card-title"><div><b>老板预存余额 ♡【赠送余额版】</b><small>实充余额 + 赠送余额 + 权益，分开记账</small></div></div>
     <div class="prepaid-safe-toolbar">
       <label>选择老板<select id="prepaidSafeCustomer"></select></label>
       <button id="prepaidSafeRefresh" class="btn ghost" type="button">刷新</button>
@@ -49,9 +49,10 @@ function mount(){
     <div id="prepaidSafeSummary" class="prepaid-safe-summary"></div>
     <div class="prepaid-safe-grid">
       <div class="prepaid-safe-box">
-        <h3>预存余额</h3><p>可以增加或扣减老板余额，每次修改都会留下流水。</p>
+        <h3>预存余额</h3><p>实充与赠送余额分开记录；派单抵扣时默认先用赠送余额。</p>
         <div class="prepaid-safe-form">
           <label>调整金额<input id="prepaidSafeAmount" type="number" min="0" step="0.01" placeholder="例如 100"></label>
+          <label>余额类型<select id="prepaidSafeBalanceType"><option value="paid">实充余额</option><option value="gift">赠送余额</option></select></label>
           <label>操作<select id="prepaidSafeDirection"><option value="add">增加余额</option><option value="subtract">扣减余额</option></select></label>
           <label class="wide">备注（选填）<input id="prepaidSafeNote" maxlength="160" placeholder="例如 充值 / 补录 / 更正"></label>
         </div>
@@ -90,9 +91,10 @@ function render(){
   if(!c){summary.innerHTML='<div class="prepaid-safe-empty">先建立老板档案。</div>';ledger.innerHTML=benefits.innerHTML=bl.innerHTML='';return}
   const plus=state.prepaid.filter(x=>num(x.delta)>0).reduce((a,b)=>a+num(b.delta),0),minus=Math.abs(state.prepaid.filter(x=>num(x.delta)<0).reduce((a,b)=>a+num(b.delta),0));
   const active=state.benefits.filter(x=>num(x.quantity)>0);
-  summary.innerHTML=`<div class="prepaid-safe-stat"><span>当前余额</span><b>${money(c.prepaid_balance)}</b></div><div class="prepaid-safe-stat"><span>累计增加</span><b>${money(plus)}</b></div><div class="prepaid-safe-stat"><span>累计扣减</span><b>${money(minus)}</b></div><div class="prepaid-safe-stat"><span>当前权益</span><b>${active.length} 种</b></div>`;
+  const paid=num(c.prepaid_balance),gift=num(c.gift_balance),total=paid+gift;
+  summary.innerHTML=`<div class="prepaid-safe-stat"><span>可用总余额</span><b>${money(total)}</b></div><div class="prepaid-safe-stat"><span>实充余额</span><b>${money(paid)}</b></div><div class="prepaid-safe-stat"><span>赠送余额</span><b>${money(gift)}</b></div><div class="prepaid-safe-stat"><span>当前权益</span><b>${active.length} 种</b></div>`;
   const reversed=new Set(state.prepaid.map(x=>x.reversal_of_id).filter(Boolean));
-  ledger.innerHTML=state.prepaid.length?state.prepaid.map(r=>{const n=num(r.delta),can=r.kind==='topup'&&n>0&&!reversed.has(r.id)&&(!r.preset_id||r.package_issue_id);return `<div class="prepaid-safe-row"><div><b>${safe(kindText(r.kind))}</b><p>${safe(dateText(r.created_at))}${r.note?' · '+safe(r.note):''}</p><p>${money(r.balance_before)} → ${money(r.balance_after)}</p></div><div><strong class="${n>=0?'prepaid-safe-good':'prepaid-safe-bad'}">${n>=0?'+':''}${money(n)}</strong>${can?`<div style="margin-top:6px"><button class="tiny-btn" data-prepaid-reverse="${safe(r.id)}" type="button">撤销这笔</button></div>`:''}</div></div>`}).join(''):'<div class="prepaid-safe-empty">还没有预存流水。</div>';
+  ledger.innerHTML=state.prepaid.length?state.prepaid.map(r=>{const n=num(r.delta),can=r.kind==='topup'&&n>0&&!reversed.has(r.id)&&(!r.preset_id||r.package_issue_id);const type=r.balance_type==='gift'?'赠送余额':'实充余额';return `<div class="prepaid-safe-row"><div><b>${safe(type)} · ${safe(kindText(r.kind))}</b><p>${safe(dateText(r.created_at))}${r.note?' · '+safe(r.note):''}</p><p>${money(r.balance_before)} → ${money(r.balance_after)}</p></div><div><strong class="${n>=0?'prepaid-safe-good':'prepaid-safe-bad'}">${n>=0?'+':''}${money(n)}</strong>${can?`<div style="margin-top:6px"><button class="tiny-btn" data-prepaid-reverse="${safe(r.id)}" type="button">撤销这笔</button></div>`:''}</div></div>`}).join(''):'<div class="prepaid-safe-empty">还没有预存流水。</div>';
   benefits.innerHTML=active.length?active.map(b=>`<div class="prepaid-safe-row"><div><b>${safe(b.name)}</b><p>${b.expires_at?'有效至 '+safe(dateText(b.expires_at)):'长期有效'}</p></div><strong>${qty(b.quantity)} ${safe(b.unit_label||'个')}</strong></div>`).join(''):'<div class="prepaid-safe-empty">当前没有可用权益。</div>';
   bl.innerHTML=state.benefitLedger.length?state.benefitLedger.map(r=>{const n=num(r.delta);return `<div class="prepaid-safe-row"><div><b>${safe(r.benefit_name)} · ${safe(benefitKind(r.kind))}</b><p>${safe(dateText(r.created_at))}${r.note?' · '+safe(r.note):''}</p></div><strong class="${n>=0?'prepaid-safe-good':'prepaid-safe-bad'}">${n>=0?'+':''}${qty(n)}</strong></div>`}).join(''):'<div class="prepaid-safe-empty">还没有权益流水。</div>';
   const ro=isReadonly();['prepaidSafeAdjust','prepaidSafeBenefitAdjust'].forEach(id=>{const el=$(id);if(el)el.disabled=ro});
@@ -120,8 +122,8 @@ async function loadWallet(){
 function setBusy(next){busy=next;['prepaidSafeAdjust','prepaidSafeBenefitAdjust','prepaidSafeRefresh'].forEach(id=>{const el=$(id);if(el)el.disabled=next||isReadonly()})}
 async function adjustPrepaid(){
   if(busy||isReadonly())return;const c=currentCustomer();const amount=num($('prepaidSafeAmount')?.value);if(!c){toast('先选择老板');return}if(!(amount>0)){toast('调整金额要大于 0');return}
-  const delta=$('prepaidSafeDirection')?.value==='subtract'?-amount:amount;setBusy(true);
-  try{await callRpc('adjust_customer_prepaid',{p_customer_id:c.id,p_delta:delta,p_kind:'adjust',p_note:$('prepaidSafeNote')?.value.trim()||null,p_related_record_id:null});$('prepaidSafeAmount').value='';$('prepaidSafeNote').value='';await loadWallet();toast('预存余额已修改 ♡')}catch(e){console.warn('prepaid adjust failed',e);toast(String(e?.message||e).includes('insufficient_prepaid_balance')?'余额不足，不能扣成负数':'预存修改失败，请稍后重试')}finally{setBusy(false)}
+  const delta=$('prepaidSafeDirection')?.value==='subtract'?-amount:amount;const type=$('prepaidSafeBalanceType')?.value||'paid';setBusy(true);
+  try{await callRpc(type==='gift'?'adjust_customer_gift_balance':'adjust_customer_prepaid',{p_customer_id:c.id,p_delta:delta,p_kind:'adjust',p_note:$('prepaidSafeNote')?.value.trim()||null,p_related_record_id:null});$('prepaidSafeAmount').value='';$('prepaidSafeNote').value='';await loadWallet();toast(type==='gift'?'赠送余额已修改 ♡':'实充余额已修改 ♡')}catch(e){console.warn('prepaid adjust failed',e);toast(String(e?.message||e).includes('insufficient_prepaid_balance')?'余额不足，不能扣成负数':'预存修改失败，请稍后重试')}finally{setBusy(false)}
 }
 async function adjustBenefit(){
   if(busy||isReadonly())return;const c=currentCustomer();const name=$('prepaidSafeBenefitName')?.value.trim();const amount=num($('prepaidSafeBenefitAmount')?.value);if(!c){toast('先选择老板');return}if(!name){toast('先填写权益名称');return}if(!(amount>0)){toast('权益数量要大于 0');return}
@@ -130,7 +132,7 @@ async function adjustBenefit(){
 }
 async function reverseTopup(id){if(busy||isReadonly())return;const row=state.prepaid.find(x=>x.id===id);if(!row||!confirm(`撤销这笔 ${money(row.delta)} 充值？`))return;setBusy(true);try{await callRpc('reverse_prepaid_topup',{p_ledger_id:id,p_note:null});await loadWallet();toast('这笔充值已撤销 ♡')}catch(e){console.warn('reverse topup failed',e);toast('撤销失败：'+String(e?.message||e))}finally{setBusy(false)}}
 function csvCell(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
-function exportCsv(){const c=currentCustomer();if(!c){toast('先选择老板');return}const rows=[['类型','时间','名称/操作','变动','变动前','变动后','备注']];state.prepaid.slice().reverse().forEach(r=>rows.push(['预存',dateText(r.created_at),kindText(r.kind),num(r.delta),num(r.balance_before),num(r.balance_after),r.note||'']));state.benefitLedger.slice().reverse().forEach(r=>rows.push(['权益',dateText(r.created_at),`${r.benefit_name} · ${benefitKind(r.kind)}`,num(r.delta),num(r.quantity_before),num(r.quantity_after),r.note||'']));const blob=new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(c.name||'老板').replace(/[\\/:*?"<>|]/g,'-')+'-预存明细.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function exportCsv(){const c=currentCustomer();if(!c){toast('先选择老板');return}const rows=[['类型','时间','名称/操作','变动','变动前','变动后','备注']];state.prepaid.slice().reverse().forEach(r=>rows.push([r.balance_type==='gift'?'赠送余额':'实充余额',dateText(r.created_at),kindText(r.kind),num(r.delta),num(r.balance_before),num(r.balance_after),r.note||'']));state.benefitLedger.slice().reverse().forEach(r=>rows.push(['权益',dateText(r.created_at),`${r.benefit_name} · ${benefitKind(r.kind)}`,num(r.delta),num(r.quantity_before),num(r.quantity_after),r.note||'']));const blob=new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(c.name||'老板').replace(/[\\/:*?"<>|]/g,'-')+'-预存明细.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function bind(){
   $('prepaidSafeCustomer')?.addEventListener('change',async()=>{state.customerId=$('prepaidSafeCustomer').value||null;await loadWallet()});
   $('prepaidSafeRefresh')?.addEventListener('click',loadBase);$('prepaidSafeExport')?.addEventListener('click',exportCsv);$('prepaidSafeAdjust')?.addEventListener('click',adjustPrepaid);$('prepaidSafeBenefitAdjust')?.addEventListener('click',adjustBenefit);$('prepaidSafeLedger')?.addEventListener('click',e=>{const b=e.target.closest('[data-prepaid-reverse]');if(b)reverseTopup(b.dataset.prepaidReverse)});
