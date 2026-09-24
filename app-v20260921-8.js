@@ -2420,7 +2420,7 @@ function renderRecords(){
     const d=dateParts(r.occurred_at);
     return `
       <div class="record-row">
-        ${state.recordBulkMode?`<label style="display:flex;align-items:center;justify-content:center;padding:4px"><input data-record-select="${r.id}" type="checkbox" ${state.recordBulkSelected.has(r.id)?"checked":""} aria-label="选择这条消费记录"></label>`:""}
+        ${state.recordBulkMode?`<label style="display:flex;align-items:center;justify-content:center;padding:4px"><input data-record-select="${r.id}" type="checkbox" style="width:16px!important;height:16px!important;min-width:16px!important;max-width:16px!important;padding:0!important;margin:0!important;border-radius:4px!important;box-shadow:none!important;appearance:auto!important;-webkit-appearance:checkbox!important" ${state.recordBulkSelected.has(r.id)?"checked":""} aria-label="选择这条消费记录"></label>`:""}
         <div class="record-main">
           <b>${safe(r.customer_name_snapshot)} · ${safe(r.item_name_snapshot)}</b>
           <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}${Number(r.discount_rate_snapshot??100)<100?" · "+safe(discountLabel(r.discount_rate_snapshot)):""}</p>
