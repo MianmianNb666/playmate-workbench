@@ -117,8 +117,9 @@ async function load(){
 async function apply(){
   if(busy)return;const c=currentCustomer(),p=currentPreset(),amount=num($('prepaidUnifiedAmount')?.value);
   if(!c)return toast('先选择老板');if(!p)return toast('先选择预存预设');if(!(amount>0))return toast('预存金额要大于 0');
-  const benefits=readBenefits();
-  if(!confirm(`给「${c.name}」添加 ${money(amount)} 预存？\n来源预设：${p.name}${benefits.length?`\n附赠权益：${benefits.length} 项`:''}`))return;
+  const benefits=readBenefits().map(x=>{const isGift=x.type==='balance'||String(x.name||'').trim()==='赠送余额'||(String(x.unit||'').trim()==='元'&&/余额/.test(String(x.name||'')));return isGift?{...x,type:'balance',name:'赠送余额',unit:'元',expires_days:null}:x});
+  const giftAmount=benefits.filter(x=>x.type==='balance').reduce((sum,x)=>sum+num(x.quantity),0);
+  if(!confirm(`给「${c.name}」添加 ${money(amount)} 预存？${giftAmount>0?`\n赠送余额：${money(giftAmount)}\n实际到账：${money(amount+giftAmount)}`:''}\n来源预设：${p.name}${benefits.length?`\n附赠权益：${benefits.length} 项`:''}`))return;
   busy=true;$('prepaidUnifiedApply').disabled=true;
   try{
     const result=await rpc('apply_custom_prepaid_package_with_gift',{p_customer_id:c.id,p_preset_id:p.id,p_amount:amount,p_benefits:benefits,p_note:$('prepaidUnifiedNote')?.value.trim()||null});
