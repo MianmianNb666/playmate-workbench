@@ -112,7 +112,7 @@ function render(){
   const deduct=Math.abs(state.prepaid.filter(x=>Number(x.delta)<0).reduce((s,x)=>s+Number(x.delta||0),0));
   const activeBenefits=state.benefits.filter(x=>Number(x.quantity||0)>0);
   summary.innerHTML=`
-    <div class="boss-wallet-stat"><span>当前预存余额</span><b>${money(c.prepaid_balance,c)}</b></div>
+    <div class="boss-wallet-stat"><span>当前预存余额</span><b>${money(Number(c.prepaid_balance||0)+Number(c.gift_balance||0),c)}</b></div>
     <div class="boss-wallet-stat"><span>累计增加</span><b>${money(topup,c)}</b></div>
     <div class="boss-wallet-stat"><span>累计扣减 / 退款</span><b>${money(deduct,c)}</b></div>
     <div class="boss-wallet-stat"><span>当前权益</span><b>${activeBenefits.length} 种</b></div>`;
