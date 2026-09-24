@@ -261,6 +261,29 @@ if(typeof window!=="undefined" && !window.__paiMiniCustomerPrepaidBadgesSchedule
   setTimeout(()=>clearInterval(badgesTimer),30000);
 }
 
+// 老板余额 / 权益与撤回预存：顾客页显示后独立加载。
+if(typeof window!=="undefined" && !window.__paiMiniBossWalletScheduled){
+  window.__paiMiniBossWalletScheduled=true;
+  let walletStarted=false;
+  const startBossWallet=async()=>{
+    const app=document.getElementById("appRoot");
+    const list=document.getElementById("customerProfileList");
+    if(walletStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden") || !list) return;
+    walletStarted=true;
+    try{
+      await import("./boss-wallet.js?v=20260924-prepaidreverse1");
+    }catch(error){
+      walletStarted=false;
+      console.warn("boss wallet load failed",error);
+    }
+  };
+  const walletTimer=setInterval(()=>{
+    if(walletStarted){clearInterval(walletTimer);return;}
+    void startBossWallet();
+  },450);
+  setTimeout(()=>clearInterval(walletTimer),30000);
+}
+
 // 派单页结算选择器：核心页面显示后独立加载。
 if(typeof window!=="undefined" && !window.__paiMiniSettlementScheduled){
   window.__paiMiniSettlementScheduled=true;
