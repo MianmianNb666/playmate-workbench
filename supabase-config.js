@@ -191,11 +191,11 @@ if(typeof window!=="undefined" && !window.__paiMiniPrepaidSectionScheduled){
     if(managerStarted)return;
     managerStarted=true;
     try{
-      const mod=await import("./prepaid-manager-safe.js?v=20260924-gift17");
+      const mod=await import("./prepaid-manager-safe.js?v=20260924-giftbalance19");
       await mod.initPrepaidManagerSafe?.();
       const presets=await import("./prepaid-presets-safe.js?v=20260923-prepaid-presets3");
       await presets.initPrepaidPresetsSafe?.();
-      const polish=await import("./prepaid-layout-polish.js?v=20260923-prepaid-layout1");
+      const polish=await import("./prepaid-layout-polish.js?v=20260924-giftbalance19");
       polish.applyPrepaidLayoutPolish?.();
       const unified=await import("./prepaid-unified-safe.js?v=20260924-giftbalance18");
       await unified.initPrepaidUnifiedSafe?.();
