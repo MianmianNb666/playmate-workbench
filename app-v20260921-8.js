@@ -1870,6 +1870,21 @@ function sampleReceiptData(){
   };
 }
 
+function receiptWalletLines(data,shop){
+  const name=String(data?.customer||'').trim();
+  const c=(state.customers||[]).find(x=>String(x.name||'').trim()===name && (!data?.shop?.id || x.shop_id===data.shop.id))
+    || (state.customers||[]).find(x=>String(x.name||'').trim()===name);
+  if(!c)return [];
+  const paid=Number(c.prepaid_balance||0);
+  const gift=Number(c.gift_balance||0);
+  const total=paid+gift;
+  return [
+    ["可用余额",money(total,shop)],
+    ["实充余额",money(paid,shop)],
+    ["赠送余额",money(gift,shop)]
+  ];
+}
+
 function receiptHtml(data,settings){
   const shop=data.shop||currentShop()||{};
   const logo=settings.show_logo && shop.logo_url
@@ -1888,6 +1903,7 @@ function receiptHtml(data,settings){
   if(settings.show_total_spent) lines.push(["累计消费",money(data.newTotal,shop)]);
   if(settings.show_note && data.note) lines.push(["备注",data.note]);
   if(settings.show_time) lines.push(["时间",`${data.date} ${data.time}`]);
+  lines.push(...receiptWalletLines(data,shop));
 
   return `
     <div class="receipt-head">
@@ -1958,6 +1974,7 @@ function multiReceiptHtml(data,settings){
   if(settings.show_total_spent) common.push(["累计消费",money(data.newTotal,shop)]);
   if(settings.show_note && data.note) common.push(["备注",data.note]);
   if(settings.show_time) common.push(["时间",`${data.date} ${data.time}`]);
+  common.push(...receiptWalletLines(data,shop));
 
   const groupedHtml=groups.map((group,groupIndex)=>`
     <div class="receipt-multi-group" style="padding:10px 0;${groupIndex?"border-top:1px dashed #ead9d5;":""}">
