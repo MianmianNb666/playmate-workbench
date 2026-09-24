@@ -39,6 +39,9 @@ function mount(){
   $('bossWalletCard')?.remove();
   let card=$('prepaidManagerSafeCard');
   if(!card){card=document.createElement('div');card.id='prepaidManagerSafeCard';card.className='card prepaid-safe-card';mount.prepend(card)}
+  // 旧版布局整理器曾给此卡片写入内联 display；每次挂载都强制恢复可见。
+  card.style.removeProperty('display');
+  card.hidden=false;
   card.innerHTML=`
     <div class="card-title"><div><b>老板预存余额 ♡【赠送余额版】</b><small>实充余额 + 赠送余额 + 权益，分开记账</small></div></div>
     <div class="prepaid-safe-toolbar">
@@ -139,7 +142,12 @@ function bind(){
 }
 
 export async function initPrepaidManagerSafe(){
-  if(started)return;started=true;ensureStyle();
+  if(started){
+    const card=$('prepaidManagerSafeCard');
+    if(card){card.style.removeProperty('display');card.hidden=false}
+    return;
+  }
+  started=true;ensureStyle();
   if(!mount()){started=false;throw new Error('prepaid page not ready')}
   await loadBase();
 }
