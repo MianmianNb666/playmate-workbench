@@ -16,7 +16,8 @@ const localState={
   activeGroup:null,
   prepaid:[],
   benefits:[],
-  benefitLedger:[]
+  benefitLedger:[],
+  customers:[]
 };
 
 function safe(value){
@@ -115,7 +116,9 @@ function renderBossSummary(){
 }
 
 function statementEntries(group){
-  const customerId=group.records?.find(r=>r.customer_id)?.customer_id||null;
+  const customerId=group.records?.find(r=>r.customer_id)?.customer_id
+    || localState.customers.find(c=>c.shop_id===group.shop_id&&String(c.name||"").trim()===String(group.customer||"").trim())?.id
+    || null;
   const consumption=(group.records||[]).map(r=>({type:"consume",at:r.occurred_at,amount:Number(r.amount||0),record:r}));
   if(!customerId)return consumption.sort((a,b)=>new Date(b.at)-new Date(a.at));
   const prepaid=localState.prepaid.filter(x=>x.customer_id===customerId).map(x=>({type:"prepaid",at:x.created_at,amount:Number(x.delta||0),record:x}));
@@ -282,18 +285,20 @@ async function exportElement(el,filename){
 
 async function loadData(){
   if(!localState.session) return;
-  const [shops,records,prepaid,benefits,benefitLedger]=await Promise.all([
+  const [shops,records,prepaid,benefits,benefitLedger,customers]=await Promise.all([
     supabase.from("shops").select("*").order("name"),
     supabase.from("consumption_records").select("*").order("occurred_at",{ascending:false}).limit(1000),
     supabase.from("customer_prepaid_ledger").select("*").order("created_at",{ascending:false}).limit(2000),
     supabase.from("customer_benefits").select("*").order("updated_at",{ascending:false}).limit(2000),
-    supabase.from("customer_benefit_ledger").select("*").order("created_at",{ascending:false}).limit(2000)
+    supabase.from("customer_benefit_ledger").select("*").order("created_at",{ascending:false}).limit(2000),
+    supabase.from("customers").select("id,shop_id,name,prepaid_balance,gift_balance").order("name")
   ]);
   if(!shops.error) localState.shops=shops.data||[];
   if(!records.error) localState.records=records.data||[];
   if(!prepaid.error) localState.prepaid=prepaid.data||[];
   if(!benefits.error) localState.benefits=benefits.data||[];
   if(!benefitLedger.error) localState.benefitLedger=benefitLedger.data||[];
+  if(!customers.error) localState.customers=customers.data||[];
   renderBossSummary();
   if(localState.previewMode==="statement") renderReceiptPreviewMode();
 }
