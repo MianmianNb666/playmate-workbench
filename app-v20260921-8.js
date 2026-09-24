@@ -24,6 +24,7 @@ const state = {
   categories:[],
   items:[],
   customers:[],
+  customerBenefits:[],
   records:[],
   selectedItem:null,
   categoryFilter:"all",
@@ -886,17 +887,19 @@ async function loadShops(){
 
 async function loadCurrentShopData(){
   if(!state.shopId) return;
-  const [cats,items,customers,template,receipt]=await Promise.all([
+  const [cats,items,customers,customerBenefits,template,receipt]=await Promise.all([
     supabase.from("price_categories").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
     supabase.from("price_items").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
     supabase.from("customers").select("*").eq("shop_id",state.shopId).order("name"),
+    supabase.from("customer_benefits").select("*").order("updated_at",{ascending:false}),
     supabase.from("report_templates").select("*").eq("shop_id",state.shopId).maybeSingle(),
     supabase.from("receipt_settings").select("*").eq("shop_id",state.shopId).maybeSingle()
   ]);
-  for(const result of [cats,items,customers,template,receipt]) if(result.error) throw result.error;
+  for(const result of [cats,items,customers,customerBenefits,template,receipt]) if(result.error) throw result.error;
   state.categories=cats.data||[];
   state.items=items.data||[];
   state.customers=customers.data||[];
+  state.customerBenefits=customerBenefits.data||[];
   state.template=template.data||{template_text:DEFAULT_TEMPLATE};
   state.receiptSettings=receipt.data||defaultReceipt();
   state.selectedItem=null;
@@ -1886,7 +1889,8 @@ function receiptWalletLines(data,shop){
   const balanceAfter=data?.prepaid_balance_after!=null?Number(data.prepaid_balance_after):Math.max(0,current-(usePrepaid?selected:0));
   const lines=[["预存余额",money(balanceAfter,shop)]];
   const used=new Map((window.paiMiniSettlementSelection?.benefits_used||[]).map(x=>[String(x.benefit_id),Number(x.quantity||0)]));
-  const benefits=(window.paiMiniSettlementSelection?.benefits||[]).map(x=>({...x,quantity:Math.max(0,Number(x.quantity||0)-Number(used.get(String(x.id||x.benefit_id))||0))})).filter(x=>x.quantity>0);
+  const source=(window.paiMiniSettlementSelection?.benefits?.length?window.paiMiniSettlementSelection.benefits:(state.customerBenefits||[]).filter(x=>x.customer_id===c.id));
+  const benefits=source.map(x=>({...x,quantity:Math.max(0,Number(x.quantity||0)-Number(used.get(String(x.id||x.benefit_id))||0))})).filter(x=>x.quantity>0);
   if(benefits.length)lines.push(["剩余赠送权益",benefits.map(x=>String(x.name||"权益")+" "+plainNumber(x.quantity)+(x.unit_label||x.unit||"个")).join("｜")]);
   return lines;
 }
