@@ -8,7 +8,7 @@ function ensureStyle(){
   style.textContent=`
     #prepaidPageMount{display:flex;flex-direction:column;gap:14px}
     #prepaidPresetSafeCard{order:0;margin-top:0}
-    #prepaidManagerSafeCard{order:1;margin-top:0}
+    
     .prepaid-combined-box{border:1px solid var(--line);border-radius:16px;padding:14px}
     .prepaid-combined-section+.prepaid-combined-section{margin-top:18px;padding-top:18px;border-top:1px dashed var(--line)}
     .prepaid-combined-section>h3{margin:0 0 4px}
