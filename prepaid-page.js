@@ -35,7 +35,7 @@ export function ensurePrepaidPage(){
     page.className='page';
     page.innerHTML=`
       <div class="page-head">
-        <div><small>PREPAID</small><h2>预存</h2></div>
+        <div><small>PREPAID</small><h2>预存</h2><div class="active-shop-chip">当前店铺：<b data-active-shop-name>未选择店铺</b></div></div>
         <span class="head-heart">♡</span>
       </div>
       <div class="card" style="margin-bottom:14px">
