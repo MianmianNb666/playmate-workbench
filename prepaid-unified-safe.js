@@ -142,6 +142,7 @@ function bind(){
   $('prepaidUnifiedBenefits')?.addEventListener('click',e=>{const b=e.target.closest('[data-u-remove]');if(!b)return;state.benefits=readBenefits();state.benefits.splice(Number(b.dataset.uRemove),1);renderBenefits()});
   $('prepaidUnifiedApply')?.addEventListener('click',apply);
   window.addEventListener('paimini:prepaid-presets-updated',()=>void load());
+  window.addEventListener('paimini:shop-changed',()=>void load());
   // 初次进入由 initPrepaidUnifiedSafe() 的 load() 负责；预设变化由 prepaid-presets-updated 负责刷新，避免点进页面重复请求。
 }
 
