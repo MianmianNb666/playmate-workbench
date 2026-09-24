@@ -90,7 +90,7 @@ function readBenefits(){
     const quantity=num(row.querySelector('[data-u-field="quantity"]')?.value);
     const unit=(row.querySelector('[data-u-field="unit"]')?.value||'个').trim()||'个';
     const days=(row.querySelector('[data-u-field="days"]')?.value||'').trim();
-    const isBalance=prior.type==='balance'||(name==='赠送余额'&&unit==='元');
+    const isBalance=prior.type==='balance'||name==='赠送余额'||(unit==='元'&&/余额/.test(name));
     return {type:isBalance?'balance':'benefit',name:isBalance?'赠送余额':name,quantity,unit:isBalance?'元':unit,expires_days:isBalance?null:(days?Number(days):null)};
   }).filter(x=>x.name&&x.quantity>0);
 }
@@ -99,7 +99,7 @@ function renderBenefits(){
   box.innerHTML=state.benefits.length?state.benefits.map((b,i)=>`<div class="prepaid-unified-benefit" data-u-benefit-row="${i}"><label class="benefit-name">权益名称<input data-u-field="name" value="${safe(b.name)}"></label><label>数量<input data-u-field="quantity" type="number" min="0" step="0.01" value="${safe(b.quantity)}"></label><label>单位<input data-u-field="unit" value="${safe(b.unit||'个')}"></label><label>有效天数<input data-u-field="days" type="number" min="1" step="1" value="${safe(b.expires_days??'')}" placeholder="长期"></label><button class="tiny-btn danger" data-u-remove="${i}" type="button">删除</button></div>`).join(''):'<div class="empty-state">这个预设没有附赠权益。也可以临时添加。</div>';
 }
 function renderSummary(){
-  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const live=readBenefits();if(live.length)state.benefits=live;const gift=(state.benefits||[]).filter(x=>x?.type==='balance'||String(x?.name||'').trim()==='赠送余额'||(String(x?.unit||'').trim()==='元'&&/余额/.test(String(x?.name||'')))).reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
+  const c=currentCustomer(),box=$('prepaidUnifiedSummary');if(!box)return;const amount=num($('prepaidUnifiedAmount')?.value);const live=readBenefits();state.benefits=live;const gift=(live||[]).filter(x=>x?.type==='balance'||String(x?.name||'').trim()==='赠送余额'||(String(x?.unit||'').trim()==='元'&&/余额/.test(String(x?.name||'')))).reduce((sum,x)=>sum+num(x?.quantity),0);const before=num(c?.prepaid_balance)+num(c?.gift_balance);const added=Math.max(0,amount)+Math.max(0,gift);const after=before+added;
   box.innerHTML=`<div class="prepaid-unified-stat"><span>当前余额</span><b>${money(before)}</b></div><div class="prepaid-unified-stat"><span>本次到账</span><b>${money(added)}</b></div><div class="prepaid-unified-stat"><span>添加后余额</span><b>${money(after)}</b></div>`;
 }
 
