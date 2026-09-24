@@ -271,7 +271,7 @@ if(typeof window!=="undefined" && !window.__paiMiniBossWalletScheduled){
     if(walletStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden") || !list) return;
     walletStarted=true;
     try{
-      await import("./boss-wallet.js?v=20260924-prepaidreverse1");
+      await import("./boss-wallet.js?v=20260925-shopsync1");
     }catch(error){
       walletStarted=false;
       console.warn("boss wallet load failed",error);
