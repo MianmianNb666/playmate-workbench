@@ -1878,11 +1878,7 @@ function receiptWalletLines(data,shop){
   const paid=Number(c.prepaid_balance||0);
   const gift=Number(c.gift_balance||0);
   const total=paid+gift;
-  return [
-    ["可用余额",money(total,shop)],
-    ["实充余额",money(paid,shop)],
-    ["赠送余额",money(gift,shop)]
-  ];
+  return [["预存余额",money(total,shop)]];
 }
 
 function receiptHtml(data,settings){
