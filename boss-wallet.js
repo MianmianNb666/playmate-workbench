@@ -133,11 +133,17 @@ function render(){
 
 async function loadBase(){
   if(!state.session)return;
+  const activeShopId=window.paiMiniOrderBridge?.getContext?.()?.shop?.id||null;
+  const customerQuery=activeShopId
+    ? supabase.from("customers").select("*").eq("shop_id",activeShopId).order("name")
+    : supabase.from("customers").select("*").order("name");
   const [customers,shops]=await Promise.all([
-    supabase.from("customers").select("*").order("name"),
+    customerQuery,
     supabase.from("shops").select("*").order("name")
   ]);
   if(customers.error){toast("老板档案读取失败："+customers.error.message,true);return}
+  if(activeShopId && window.paiMiniOrderBridge?.getContext?.()?.shop?.id!==activeShopId)return void loadBase();
+  state.customerId=null;
   state.customers=customers.data||[];if(!shops.error)state.shops=shops.data||[];
   renderSelector();await loadWallet();injectProfileButtons();
 }
