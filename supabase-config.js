@@ -247,7 +247,7 @@ if(typeof window!=="undefined" && !window.__paiMiniCustomerPrepaidBadgesSchedule
     if(badgesStarted || !document.body || document.body.classList.contains("booting") || !app || app.classList.contains("hidden")) return;
     badgesStarted=true;
     try{
-      const mod=await import("./customer-prepaid-badge-safe.js?v=20260923-customer-prepaid1");
+      const mod=await import("./customer-prepaid-badge-safe.js?v=20260924-combinedcustomer1");
       await mod.initCustomerPrepaidBadgesSafe?.();
     }catch(error){
       badgesStarted=false;
