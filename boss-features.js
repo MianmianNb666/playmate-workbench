@@ -242,6 +242,31 @@ async function imageUrlToDataUrl(url){
   });
 }
 
+async function canvasToBlob(canvas){
+  return await new Promise((resolve,reject)=>{
+    canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("PNG conversion failed")),"image/png");
+  });
+}
+
+async function downloadCanvas(canvas,filename){
+  const blob=await canvasToBlob(canvas);
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement("a");
+  link.download=filename;
+  link.href=url;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+
+function exportPageName(filename,page,total){
+  if(total<=1) return filename;
+  const dot=filename.toLowerCase().lastIndexOf(".png");
+  const base=dot>=0?filename.slice(0,dot):filename;
+  return `${base}-第${page}页-共${total}页.png`;
+}
+
 async function exportElement(el,filename){
   if(!el||!window.html2canvas) return;
 
@@ -265,24 +290,45 @@ async function exportElement(el,filename){
   }
 
   try{
+    const scale=2;
+    const safeCssPageHeight=6000;
+    const fullHeight=Math.max(el.scrollHeight,el.getBoundingClientRect().height);
     const canvas=await window.html2canvas(el,{
-      scale:2,
+      scale,
       useCORS:true,
       allowTaint:false,
       backgroundColor:null,
-      logging:false
+      logging:false,
+      width:Math.ceil(el.scrollWidth),
+      height:Math.ceil(fullHeight),
+      windowWidth:Math.max(document.documentElement.clientWidth,Math.ceil(el.scrollWidth)),
+      windowHeight:Math.max(document.documentElement.clientHeight,Math.min(Math.ceil(fullHeight),safeCssPageHeight))
     });
-    const link=document.createElement("a");
-    link.download=filename;
-    link.href=canvas.toDataURL("image/png");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+
+    const sourcePageHeight=Math.max(1,Math.floor(safeCssPageHeight*scale));
+    const totalPages=Math.max(1,Math.ceil(canvas.height/sourcePageHeight));
+
+    if(totalPages===1){
+      await downloadCanvas(canvas,filename);
+      return;
+    }
+
+    for(let page=0;page<totalPages;page++){
+      const sourceY=page*sourcePageHeight;
+      const sliceHeight=Math.min(sourcePageHeight,canvas.height-sourceY);
+      const pageCanvas=document.createElement("canvas");
+      pageCanvas.width=canvas.width;
+      pageCanvas.height=sliceHeight;
+      const ctx=pageCanvas.getContext("2d");
+      if(!ctx) throw new Error("canvas context unavailable");
+      ctx.drawImage(canvas,0,sourceY,canvas.width,sliceHeight,0,0,canvas.width,sliceHeight);
+      await downloadCanvas(pageCanvas,exportPageName(filename,page+1,totalPages));
+      await new Promise(resolve=>setTimeout(resolve,180));
+    }
   }finally{
     restorers.forEach(fn=>fn());
   }
 }
-
 async function loadData(){
   if(!localState.session) return;
   const [shops,records,prepaid,benefits,benefitLedger,customers]=await Promise.all([
