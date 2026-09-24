@@ -378,7 +378,9 @@
         <div class="record-toolbar">
           <input id="recordSearch" placeholder="搜索老板 / 项目 / 陪陪">
           <select id="recordShopFilter"></select>
+          <button id="recordBulkToggle" class="btn soft" type="button">批量删除</button>
         </div>
+        <div id="recordBulkBar" class="row-actions hidden" style="margin:10px 0"><button id="recordBulkSelectAll" class="tiny-btn" type="button">全选 / 取消全选</button><button id="recordBulkDelete" class="tiny-btn danger" type="button">删除已选 (0)</button></div>
         <div id="recordList" class="record-list"></div>
         <div id="emptyRecords" class="empty-state hidden">还没有保存过消费记录。</div>
       </div>
@@ -672,7 +674,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260925-customerstats1"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260925-recordbulk1"></script>
   <script type="module" src="./boss-features.js?v=20260924-statementwallet2"></script>
   <script type="module" src="./price-import.js?v=20260922-v21"></script>
   <script type="module" src="./multi-order.js?v=20260924-unifiedsave16"></script>
