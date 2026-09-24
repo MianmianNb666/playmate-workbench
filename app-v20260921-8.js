@@ -1,5 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260924-unifiedsave15";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260924-gift17";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
@@ -2372,14 +2372,38 @@ function renderRecords(){
 }
 
 async function deleteRecord(id){
-  if(!confirm("确定删除这条消费记录吗？当前累计会按剩余记录重新计算。")) return;
-  const {error}=await supabase.from("consumption_records").delete().eq("id",id);
-  if(error){toast("删除失败："+error.message);return}
+  const record=state.records.find(r=>r.id===id);
+  if(!record)return;
+  if(!confirm("确定删除这条消费记录吗？如果它属于整单，会删除同一整单的全部项目。"))return;
+
+  const walletUsed=Number(record.prepaid_used||0)>0;
+  const benefitsUsed=Array.isArray(record.benefits_used)&&record.benefits_used.length>0;
+  let restore=false;
+
+  if(walletUsed||benefitsUsed){
+    const detail=[
+      walletUsed?"预存 ¥"+Number(record.prepaid_used||0).toFixed(2):"",
+      benefitsUsed?"权益 "+record.benefits_used.length+" 项":""
+    ].filter(Boolean).join("、");
+    restore=confirm("这单使用了"+detail+"。\n\n确定：删除并原路退回余额/权益\n取消：仅删除记录，不退回");
+  }
+
+  const {error}=await supabase.rpc("delete_order_with_wallet_restore",{
+    p_record_id:id,
+    p_restore_wallet:restore,
+    p_restore_benefits:restore
+  });
+  if(error){
+    const missing=String(error.message||"").includes("delete_order_with_wallet_restore");
+    toast(missing?"请先运行【赠送余额版】SQL，再使用删除退款功能":"删除失败："+error.message);
+    return;
+  }
   await loadRecords();
   renderRecords();
   await refreshCustomerTotal();
   renderDataSummary();
-  toast("记录已删除");
+  window.dispatchEvent(new CustomEvent("paimini:prepaid-updated"));
+  toast(restore?"订单已删除，余额 / 权益已原路退回 ♡":"记录已删除");
 }
 
 async function reuseRecord(id){
