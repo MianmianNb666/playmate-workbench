@@ -237,6 +237,7 @@ function bindGlobal(){
     loadWallet();$("bossWalletCard")?.scrollIntoView({behavior:"smooth",block:"start"});
   });
   $("saveCustomerProfileBtn")?.addEventListener("click",()=>setTimeout(loadBase,650));
+  window.addEventListener("paimini:shop-changed",()=>{state.customerId=null;void loadBase()});
 }
 
 injectStyle();injectCard();bindGlobal();injectProfileButtons();
