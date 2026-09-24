@@ -37,6 +37,8 @@ const state = {
   editingShopId:null,
   editingCustomerId:null,
   customerSearch:"",
+  recordBulkMode:false,
+  recordBulkSelected:new Set(),
   theme:null
 };
 
@@ -2375,11 +2377,16 @@ function renderRecords(){
       .some(v=>String(v||"").toLowerCase().includes(q));
   });
   $("emptyRecords").classList.toggle("hidden",filtered.length>0);
+  const bulkBar=$("recordBulkBar"),bulkToggle=$("recordBulkToggle"),bulkDelete=$("recordBulkDelete");
+  if(bulkBar)bulkBar.classList.toggle("hidden",!state.recordBulkMode);
+  if(bulkToggle)bulkToggle.textContent=state.recordBulkMode?"取消批量删除":"批量删除";
+  if(bulkDelete)bulkDelete.textContent=`删除已选 (${state.recordBulkSelected.size})`;
   $("recordList").innerHTML=filtered.map(r=>{
     const shop=state.shops.find(s=>s.id===r.shop_id);
     const d=dateParts(r.occurred_at);
     return `
       <div class="record-row">
+        ${state.recordBulkMode?`<label style="display:flex;align-items:center;justify-content:center;padding:4px"><input data-record-select="${r.id}" type="checkbox" ${state.recordBulkSelected.has(r.id)?"checked":""} aria-label="选择这条消费记录"></label>`:""}
         <div class="record-main">
           <b>${safe(r.customer_name_snapshot)} · ${safe(r.item_name_snapshot)}</b>
           <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}${Number(r.discount_rate_snapshot??100)<100?" · "+safe(discountLabel(r.discount_rate_snapshot)):""}</p>
@@ -2387,7 +2394,7 @@ function renderRecords(){
           <div class="row-actions">
             <button class="tiny-btn" data-reuse-record="${r.id}" type="button">再次使用</button>
             <button class="tiny-btn" data-copy-record="${r.id}" type="button">复制报备</button>
-            <button class="tiny-btn danger" data-delete-record="${r.id}" type="button">删除</button>
+            ${state.recordBulkMode?"":`<button class="tiny-btn danger" data-delete-record="${r.id}" type="button">删除</button>`}
           </div>
         </div>
         <div class="record-money">
@@ -2396,6 +2403,21 @@ function renderRecords(){
         </div>
       </div>`;
   }).join("");
+}
+
+
+async function deleteSelectedRecords(){
+  const ids=[...state.recordBulkSelected].filter(id=>state.records.some(r=>r.id===id));
+  if(!ids.length){toast("先勾选要删除的消费记录");return}
+  if(!confirm(`确定删除选中的 ${ids.length} 条消费记录吗？\n\n批量删除只清除消费记录，不会退回历史预存余额或权益。`))return;
+  const groups=new Set();
+  for(const id of ids){const r=state.records.find(x=>x.id===id);if(r?.order_group_id)groups.add(r.order_group_id)}
+  const expanded=state.records.filter(r=>ids.includes(r.id)||(r.order_group_id&&groups.has(r.order_group_id))).map(r=>r.id);
+  const {error}=await supabase.from("consumption_records").delete().in("id",[...new Set(expanded)]);
+  if(error){toast("批量删除失败："+error.message);return}
+  state.recordBulkSelected.clear();state.recordBulkMode=false;
+  await loadRecords();renderRecords();await refreshCustomerTotal();renderDataSummary();
+  toast(`已删除 ${expanded.length} 条消费记录 ♡`);
 }
 
 async function deleteRecord(id){
@@ -2635,7 +2657,11 @@ function bindEvents(){
   $("saveReceiptSettingsBtn").addEventListener("click",saveReceiptSettings);
 
   $("recordSearch").addEventListener("input",renderRecords);
+  $("recordBulkToggle")?.addEventListener("click",()=>{state.recordBulkMode=!state.recordBulkMode;state.recordBulkSelected.clear();renderRecords()});
+  $("recordBulkDelete")?.addEventListener("click",deleteSelectedRecords);
+  $("recordBulkSelectAll")?.addEventListener("click",()=>{const boxes=[...document.querySelectorAll("[data-record-select]")];const all=boxes.length&&boxes.every(b=>b.checked);boxes.forEach(b=>{b.checked=!all;if(!all)state.recordBulkSelected.add(b.dataset.recordSelect);else state.recordBulkSelected.delete(b.dataset.recordSelect)});renderRecords()});
   $("recordShopFilter").addEventListener("change",renderRecords);
+  $("recordList").addEventListener("change",e=>{const box=e.target.closest("[data-record-select]");if(!box)return;if(box.checked)state.recordBulkSelected.add(box.dataset.recordSelect);else state.recordBulkSelected.delete(box.dataset.recordSelect);renderRecords()});
   $("recordList").addEventListener("click",e=>{
     const reuse=e.target.closest("[data-reuse-record]");
     const copy=e.target.closest("[data-copy-record]");
