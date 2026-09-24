@@ -2583,6 +2583,7 @@ function bindEvents(){
     resetCustomerProfileForm();
     await loadCurrentShopData();
     renderAll();
+    window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
   });
 
   $("customerName").addEventListener("input",()=>{
