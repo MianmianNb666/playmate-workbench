@@ -942,12 +942,13 @@ function populateShopSelectors(){
   $("templateShop").innerHTML=shopOptions;
   $("receiptShop").innerHTML=receiptOptions;
   $("customerShop").innerHTML=shopOptions;
-  $("recordShopFilter").innerHTML='<option value="all">全部店铺</option>'+shopOptions;
+  $("recordShopFilter").innerHTML=shopOptions;
 
   if(state.shopId){
     $("calcShop").value=state.shopId;
     $("templateShop").value=state.shopId;
     $("customerShop").value=state.shopId;
+    $("recordShopFilter").value=state.shopId;
 
     const receiptShopId=receiptShops.some(s=>s.id===state.shopId)
       ? state.shopId
@@ -966,6 +967,7 @@ function renderAll(){
   renderReceiptSettings();
   renderRecords();
   renderCustomerProfiles();
+  renderActiveShopBadges();
   renderDataSummary();
   renderThemeControls();
   resetCalculatorVisual();
@@ -1028,6 +1030,12 @@ function renderItems(){
 
 function renderCustomerList(){
   $("customerList").innerHTML=state.customers.map(c=>`<option value="${safe(c.name)}"></option>`).join("");
+}
+
+function renderActiveShopBadges(){
+  const shop=currentShop();
+  const name=shop?.name||"未选择店铺";
+  document.querySelectorAll("[data-active-shop-name]").forEach(el=>{el.textContent=name});
 }
 
 function customerStats(customer){
@@ -2407,9 +2415,9 @@ async function saveReceiptSettings(){
 
 function renderRecords(){
   const q=$("recordSearch").value.trim().toLowerCase();
-  const shopFilter=$("recordShopFilter").value||"all";
+  const shopFilter=state.shopId||"";
   const filtered=state.records.filter(r=>{
-    if(shopFilter!=="all" && r.shop_id!==shopFilter) return false;
+    if(shopFilter && r.shop_id!==shopFilter) return false;
     if(!q) return true;
     return [r.customer_name_snapshot,r.item_name_snapshot,r.companion_name,r.note]
       .some(v=>String(v||"").toLowerCase().includes(q));
@@ -2719,7 +2727,10 @@ function bindEvents(){
   $("recordBulkToggle")?.addEventListener("click",()=>{state.recordBulkMode=!state.recordBulkMode;state.recordBulkSelected.clear();renderRecords()});
   $("recordBulkDelete")?.addEventListener("click",deleteSelectedRecords);
   $("recordBulkSelectAll")?.addEventListener("click",()=>{const boxes=[...document.querySelectorAll("[data-record-select]")];const all=boxes.length&&boxes.every(b=>b.checked);boxes.forEach(b=>{b.checked=!all;if(!all)state.recordBulkSelected.add(b.dataset.recordSelect);else state.recordBulkSelected.delete(b.dataset.recordSelect)});renderRecords()});
-  $("recordShopFilter").addEventListener("change",renderRecords);
+  $("recordShopFilter").addEventListener("change",async()=>{
+    const id=$("recordShopFilter").value;
+    if(id&&id!==state.shopId) await useShop(id);
+  });
   $("recordList").addEventListener("change",e=>{const box=e.target.closest("[data-record-select]");if(!box)return;if(box.checked)state.recordBulkSelected.add(box.dataset.recordSelect);else state.recordBulkSelected.delete(box.dataset.recordSelect);renderRecords()});
   $("recordList").addEventListener("click",e=>{
     const reuse=e.target.closest("[data-reuse-record]");
