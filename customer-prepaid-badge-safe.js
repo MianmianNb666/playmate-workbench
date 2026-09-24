@@ -1,4 +1,4 @@
-// PaiMini 顾客档案预存余额标记。
+// PaiMini 顾客档案预存余额标记。combined total refresh v2
 // 只增强顾客卡片显示，不改顾客保存 / 删除逻辑。
 
 let started=false;
