@@ -38,7 +38,7 @@ function injectCard(){
   const page=$("page-customers");if(!page||$("bossWalletCard"))return false;
   const card=document.createElement("div");card.id="bossWalletCard";card.className="card boss-wallet-card";
   card.innerHTML=`
-    <div class="card-title"><div><b>老板余额与权益 ♡</b><small>所有余额和权益变动都会自动留流水，不会静默改账</small></div></div>
+    <div class="card-title"><div><b>老板余额与权益 ♡</b><small>所有余额和权益变动都会自动留流水，不会静默改账</small><div class="active-shop-chip">当前店铺：<b data-active-shop-name>未选择店铺</b></div></div></div>
     <div class="boss-wallet-toolbar">
       <label>选择老板<select id="bossWalletCustomer"></select></label>
       <button id="bossWalletRefreshBtn" class="btn ghost" type="button">刷新</button>
