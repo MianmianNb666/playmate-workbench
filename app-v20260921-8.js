@@ -888,7 +888,8 @@ async function loadShops(){
 }
 
 async function loadCurrentShopData(){
-  if(!state.shopId) return;
+  if(!state.shopId){state.customers=[];state.customerBenefits=[];return}
+  const requestedShopId=state.shopId;
   const [cats,items,customers,customerBenefits,template,receipt]=await Promise.all([
     supabase.from("price_categories").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
     supabase.from("price_items").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
@@ -1058,7 +1059,7 @@ function renderCustomerProfiles(){
   if(!list||!empty) return;
 
   const q=(state.customerSearch||"").trim().toLowerCase();
-  const customers=state.customers.filter(customer=>{
+  const customers=state.customers.filter(customer=>customer.shop_id===state.shopId).filter(customer=>{
     if(!q) return true;
     return [customer.name,customer.contact,customer.notes]
       .some(v=>String(v||"").toLowerCase().includes(q));
