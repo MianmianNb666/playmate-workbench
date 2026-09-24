@@ -50,7 +50,7 @@ function mount(){
         <div class="preset-safe-form">
           <label>店铺<select id="presetShop"></select></label>
           <label>套餐名称<input id="presetName" placeholder="例如 充500送2小时"></label>
-          <label>预存金额<input id="presetAmount" type="number" min="0" step="0.01" placeholder="500"></label>
+          <label>实充金额<input id="presetAmount" type="number" min="0" step="0.01" placeholder="500"></label><label>赠送余额<input id="presetGiftAmount" type="number" min="0" step="0.01" placeholder="例如 100，不赠送可留空"></label>
           <label>排序<input id="presetSort" type="number" step="1" value="0"></label>
           <label class="wide">备注<input id="presetNote" maxlength="160" placeholder="可选"></label>
         </div>
@@ -88,7 +88,7 @@ function renderList(){
   const rows=state.presets.filter(x=>x.shop_id===state.shopId&&x.preset_type==='prepaid');
   list.innerHTML=rows.length?rows.map(p=>`
     <div class="preset-safe-item">
-      <div class="preset-safe-item-head"><div><b>${safe(p.name)}</b><p>预存 ¥${num(p.amount).toFixed(2)}</p></div><span class="status-tag ${p.is_active===false?'off':''}">${p.is_active===false?'已停用':'启用中'}</span></div>
+      <div class="preset-safe-item-head"><div><b>${safe(p.name)}</b><p>实充 ¥${num(p.amount).toFixed(2)} · 赠送 ¥${num(p.gift_amount).toFixed(2)} · 到账 ¥${(num(p.amount)+num(p.gift_amount)).toFixed(2)}</p></div><span class="status-tag ${p.is_active===false?'off':''}">${p.is_active===false?'已停用':'启用中'}</span></div>
       <p>${safe(presetBenefitsText(p))}${p.note?`<br>${safe(p.note)}`:''}</p>
       <div class="preset-safe-actions">
         <button class="tiny-btn" data-apply-preset="${safe(p.id)}" type="button" ${p.is_active===false?'disabled':''}>发给当前老板</button>
@@ -118,13 +118,13 @@ function readBenefitDrafts(){
 }
 
 async function savePreset(){
-  if(busy)return;const s=supabase();const name=$('presetName')?.value.trim();const amount=num($('presetAmount')?.value);const shopId=$('presetShop')?.value;
+  if(busy)return;const s=supabase();const name=$('presetName')?.value.trim();const amount=num($('presetAmount')?.value);const giftAmount=num($('presetGiftAmount')?.value);const shopId=$('presetShop')?.value;
   if(!s||!shopId){toast('先选择店铺');return}if(!name){toast('先填写套餐名称');return}if(!(amount>0)){toast('预存金额要大于 0');return}
   busy=true;$('presetSave').disabled=true;
   try{
-    const payload={shop_id:shopId,preset_type:'prepaid',name,amount,bundled_benefits:readBenefitDrafts(),note:$('presetNote')?.value.trim()||null,sort_order:Number($('presetSort')?.value||0),is_active:true};
+    const payload={shop_id:shopId,preset_type:'prepaid',name,amount,gift_amount:Math.max(0,giftAmount),bundled_benefits:readBenefitDrafts(),note:$('presetNote')?.value.trim()||null,sort_order:Number($('presetSort')?.value||0),is_active:true};
     const r=await Promise.race([s.from('wallet_presets').insert(payload),deadline('save preset')]);if(r?.error)throw r.error;
-    $('presetName').value='';$('presetAmount').value='';$('presetNote').value='';$('presetSort').value='0';state.benefits=[newBenefitDraft()];renderBenefitRows();await loadPresets();toast('预存套餐已保存 ♡');
+    $('presetName').value='';$('presetAmount').value='';$('presetGiftAmount').value='';$('presetNote').value='';$('presetSort').value='0';state.benefits=[newBenefitDraft()];renderBenefitRows();await loadPresets();toast('预存套餐已保存 ♡');
   }catch(e){console.warn('preset save failed',e);toast('保存预设失败：'+String(e?.message||e))}finally{busy=false;$('presetSave').disabled=false}
 }
 
