@@ -23,7 +23,7 @@ function ensureStyle(){
   if($('prepaidUnifiedStyle'))return;
   const s=document.createElement('style');s.id='prepaidUnifiedStyle';s.textContent=`
   .prepaid-unified-card{margin-top:14px}.prepaid-unified-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.prepaid-unified-grid .wide{grid-column:1/-1}.prepaid-unified-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0}.prepaid-unified-stat{border:1px solid var(--line);border-radius:14px;padding:11px;background:var(--paper)}.prepaid-unified-stat span{display:block;color:var(--muted);font-size:11px}.prepaid-unified-stat b{display:block;margin-top:4px;font-size:17px}.prepaid-unified-benefits{display:grid;gap:8px;margin-top:10px}.prepaid-unified-benefit{display:grid;grid-template-columns:2fr .8fr .8fr 1fr auto;gap:7px;align-items:end;border:1px solid var(--line);border-radius:13px;padding:10px}.prepaid-unified-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.prepaid-unified-note{font-size:11px;color:var(--muted);line-height:1.55;margin-top:7px}
-  #prepaidManagerSafeCard{display:none!important}#prepaidPresetSafeCard [data-apply-preset]{display:none!important}
+  #prepaidPresetSafeCard [data-apply-preset]{display:none!important}
   @media(max-width:720px){.prepaid-unified-grid,.prepaid-unified-summary{grid-template-columns:1fr}.prepaid-unified-grid .wide{grid-column:auto}.prepaid-unified-benefit{grid-template-columns:1fr 1fr}.prepaid-unified-benefit .benefit-name{grid-column:1/-1}}
   `;document.head.appendChild(s);
 }
