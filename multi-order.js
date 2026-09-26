@@ -42,7 +42,7 @@ function render(){
   box.innerHTML=lines.length?lines.map((x,i)=>'<div class="order-line"><div class="order-line-main"><b>'+escapeHtml(x.companion)+'</b><small>项目 '+(i+1)+'</small></div><div class="order-line-item"><b>'+escapeHtml(x.item)+'</b><small>'+money(x.price)+' / '+escapeHtml(x.unit)+' · '+escapeHtml(x.measure)+'</small></div><div class="order-line-price">'+money(x.total)+'</div><button class="order-line-remove" data-remove-line="'+x.id+'" type="button" aria-label="删除">×</button></div>').join(""):'<div class="empty-state">还没有添加项目。填好上面的陪陪、项目和数量后，点「添加当前项目」。</div>';
   const total=lines.reduce((a,x)=>a+x.total,0);
   if($("orderGrandTotal")) $("orderGrandTotal").textContent=money(total);
-  window.paiMiniMultiOrder={lines:[...lines],total,clear,save:saveWholeOrder};
+  window.paiMiniMultiOrder={lines:[...lines],total,clear,save:saveWholeOrder,report:buildWholeOrderReport};
 }
 function escapeHtml(v){const d=document.createElement("div");d.textContent=String(v??"");return d.innerHTML}
 function add(){
@@ -53,6 +53,34 @@ function add(){
   if($("calcFormula")) $("calcFormula").textContent="已加入本单，可继续添加同一陪玩或换一个陪玩";
 }
 function clear(){lines.splice(0);render()}
+
+function buildWholeOrderReport(){
+  if(!lines.length)return "";
+  const customer=($("customerName")?.value||"").trim();
+  const note=($("calcNote")?.value||"").trim();
+  const total=lines.reduce((sum,line)=>sum+Number(line.total||0),0);
+  const grouped=[];
+  for(const line of lines){
+    let group=grouped.find(x=>x.companion===line.companion);
+    if(!group){group={companion:line.companion,lines:[]};grouped.push(group)}
+    group.lines.push(line);
+  }
+  const out=[];
+  if(customer)out.push("老板："+customer);
+  grouped.forEach(group=>{
+    out.push("陪陪："+group.companion);
+    group.lines.forEach((line,index)=>{
+      const prefix=group.lines.length>1?"项目"+(index+1)+"：":"消费项目：";
+      out.push(prefix+line.item);
+      out.push("单价："+line.price+"/"+line.unit);
+      out.push("时长/数量："+line.measure);
+      out.push("小计："+Number(line.total||0).toFixed(2));
+    });
+  });
+  out.push("本单总价："+total.toFixed(2));
+  if(note)out.push("备注："+note);
+  return out.join("\n");
+}
 
 async function saveWholeOrder(){
   if(!lines.length){window.alert("先添加至少一个陪玩项目");return}
@@ -111,7 +139,7 @@ async function saveWholeOrder(){
     const rows=lines.map(x=>{
       const original=x.discountRate>0?x.total/(x.discountRate/100):x.total;
       const next=running+x.total;
-      const report='老板：'+ctx.customerName+'\\n陪陪：'+x.companion+'\\n消费项目：'+x.item+'\\n单价：'+x.price+'/'+x.unit+'\\n时长/数量：'+x.measure+'\\n总价：'+x.total+'\\n累计消费：'+next;
+      const report='老板：'+ctx.customerName+'\\n陪陪：'+x.companion+'\\n消费项目：'+x.item+'\\n单价：'+x.price+'/'+x.unit+'\\n时长/数量：'+x.measure+'\\n总价：'+x.total+'\\n累计消费：'+next+(ctx.note?'\\n备注：'+ctx.note:'');
       const row={
         shop_id:ctx.state.shopId,
         customer_id:customer?.id||null,
