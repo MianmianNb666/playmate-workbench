@@ -391,15 +391,47 @@ async function loadRobotDraftIntoCalculator(draft){
     renderItems();
   }
 
+  // Robot: exact-match an existing boss profile in the current shop.
+  // This only binds the profile/prepaid preview. It does NOT auto-deduct or auto-save.
+  const normalizedCustomer=customer.toLowerCase();
+  const customerMatches=normalizedCustomer
+    ? state.customers.filter(c=>
+        c.shop_id===state.shopId &&
+        String(c.name||"").trim().toLowerCase()===normalizedCustomer
+      )
+    : [];
+  const matchedCustomer=customerMatches.length===1?customerMatches[0]:null;
+
+  if(matchedCustomer){
+    $("customerName").value=matchedCustomer.name||customer;
+  }
+
   await refreshCustomerTotal();
   calculate();
+
+  // Keep the prepaid/benefit settlement card on the same boss automatically.
+  // The settlement module owns the actual balance read and deduction controls.
+  if(matchedCustomer && $("settlementCustomerSelect")){
+    $("settlementCustomerSelect").value=matchedCustomer.id;
+    $("settlementCustomerSelect").dispatchEvent(new Event("change",{bubbles:true}));
+  }
+
+  let autoAdded=false;
+  if(matchedItem && companion && measure){
+    const staged=window.paiMiniMultiOrder?.addFromCalculator?.();
+    autoAdded=!!staged;
+  }
+
   showPage("calculator");
   window.scrollTo({top:0,behavior:"smooth"});
 
   return {
     ok:true,
     matched:!!matchedItem,
-    ambiguous:!matchedItem && exactMatches.length>1
+    ambiguous:!matchedItem && exactMatches.length>1,
+    customerMatched:!!matchedCustomer,
+    customerAmbiguous:customerMatches.length>1,
+    autoAdded
   };
 }
 
