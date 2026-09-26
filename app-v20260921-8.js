@@ -2655,7 +2655,7 @@ function showPage(name){
   if(name==="records" || name==="receipt"){
     Promise.all([
       loadFeatureOnce("boss-features","./boss-features.js?v=20260926-lazy2"),
-      loadFeatureOnce("boss-export-safe","./boss-statement-export-safe.js?v=20260926-exportfix1")
+      loadFeatureOnce("boss-export-safe","./boss-statement-export-safe.js?v=20260926-exportfix2")
     ]).then(([,safeExport])=>{
       safeExport.initBossStatementExportSafe?.();
     }).catch(error=>{
