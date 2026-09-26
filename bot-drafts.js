@@ -18,6 +18,34 @@ function setCardVisible(visible){
   $("botDraftCard")?.classList.toggle("hidden",!visible);
 }
 
+function getDraftItemMatch(draft){
+  const api=bridge();
+  const {state}=api?.getContext?.()||{};
+  const itemName=String(draft?.item_name||"").trim().toLowerCase();
+  if(!itemName) return {kind:"missing",label:"⚠️ 未识别项目，请手动选择价格"};
+
+  const activeItems=(state?.items||[]).filter(item=>item.is_active!==false);
+  const matches=activeItems.filter(item=>
+    String(item.name||"").trim().toLowerCase()===itemName
+  );
+
+  if(matches.length===1){
+    const item=matches[0];
+    const price=Number(item.unit_price||0);
+    const unit=item.unit_label||"次";
+    return {
+      kind:"matched",
+      label:`✓ 已匹配价格表 · ¥${price.toFixed(2)} / ${unit}`
+    };
+  }
+
+  if(matches.length>1){
+    return {kind:"ambiguous",label:"⚠️ 找到多个同名项目，请手动选择价格"};
+  }
+
+  return {kind:"missing",label:"⚠️ 项目未匹配价格表，请手动选择价格"};
+}
+
 function render(){
   const list=$("botDraftList");
   const empty=$("botDraftEmpty");
@@ -35,6 +63,7 @@ function render(){
     const total=Number.isFinite(Number(draft.expected_total))
       ? ` · 预计 ¥${Number(draft.expected_total).toFixed(2)}`
       : "";
+    const itemMatch=getDraftItemMatch(draft);
     return `
       <div class="bot-draft-row" data-bot-draft-row="${draft.id}">
         <div class="bot-draft-main">
@@ -43,6 +72,7 @@ function render(){
             <span>待载入</span>
           </div>
           <p>陪陪：${escapeHtml(companion)} · 来源：${escapeHtml(source)}</p>
+          <div class="bot-draft-match bot-draft-match-${itemMatch.kind}">${escapeHtml(itemMatch.label)}</div>
           ${draft.raw_message?`<small>原消息：${escapeHtml(draft.raw_message)}</small>`:""}
         </div>
         <div class="bot-draft-actions">
