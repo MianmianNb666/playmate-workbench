@@ -432,7 +432,7 @@ async function loadRobotDraftIntoCalculator(draft){
 
   let autoAdded=false;
   if(matchedItem && companion && measure){
-    const staged=window.paiMiniMultiOrder?.addFromCalculator?.();
+    const staged=window.paiMiniMultiOrder?.addFromCalculator?.({preserveCalculator:true});
     autoAdded=!!staged;
   }
 
