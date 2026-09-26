@@ -129,6 +129,7 @@
       <button class="nav-tab active" data-page="calculator" type="button">派单计算</button>
       <button class="nav-tab" data-page="shops" type="button">我的店铺</button>
       <button class="nav-tab" data-page="prices" type="button">价格表</button>
+      <button class="nav-tab" data-page="prepaid" type="button">预存</button>
       <button class="nav-tab" data-page="customers" type="button">顾客档案</button>
       <button class="nav-tab" data-page="records" type="button">消费记录</button>
       <button class="nav-tab" data-page="receipt" type="button">小票设置</button>
@@ -388,6 +389,18 @@
         <div id="recordList" class="record-list"></div>
         <div id="emptyRecords" class="empty-state hidden">还没有保存过消费记录。</div>
       </div>
+    </section>
+
+    <section id="page-prepaid" class="page">
+      <div class="page-head">
+        <div><small>PREPAID</small><h2>预存</h2><div class="active-shop-chip">当前店铺：<b data-active-shop-name>未选择店铺</b></div></div>
+        <span class="head-heart">♡</span>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><div><b>老板预存管理</b><small>预存套餐、附赠权益与余额明细</small></div></div>
+        <p class="muted" style="margin:0">选择老板后可发放预存套餐；主页面统一显示总余额，详细来源在流水中查看。</p>
+      </div>
+      <div id="prepaidPageMount"></div>
     </section>
 
     <section id="page-customers" class="page">
@@ -685,8 +698,7 @@
   }
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./prepaid-page.js?v=20260926-prepaidfix1"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260926-prepaidfix1"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260926-prepaidstatic2"></script>
   <script type="module" src="./multi-order.js?v=20260926-reportfix1"></script>
 </body>
 </html>
