@@ -2658,6 +2658,20 @@ function showPage(name){
   if(name==="prices"){
     loadFeatureOnce("price-import","./price-import.js?v=20260926-lazy1").catch(()=>toast("图片识别模块加载失败，请刷新重试"));
   }
+  if(name==="prepaid"){
+    Promise.all([
+      loadFeatureOnce("prepaid-manager","./prepaid-manager-safe.js?v=20260926-prepaidfix1"),
+      loadFeatureOnce("prepaid-presets","./prepaid-presets-safe.js?v=20260926-prepaidfix1"),
+      loadFeatureOnce("prepaid-unified","./prepaid-unified-safe.js?v=20260926-prepaidfix1")
+    ]).then(([manager,presets,unified])=>Promise.all([
+      manager.initPrepaidManagerSafe?.(),
+      presets.initPrepaidPresetsSafe?.(),
+      unified.initPrepaidUnifiedSafe?.()
+    ])).catch(error=>{
+      console.error("prepaid lazy load failed",error);
+      toast("预存模块加载失败，请刷新后重试");
+    });
+  }
 }
 
 function bindEvents(){
