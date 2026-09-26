@@ -51,6 +51,53 @@ function downloadCanvas(canvas,filename){
   });
 }
 
+function normalizeExportClone(node){
+  // html2canvas 1.4.x can choke on modern CSS functions such as color-mix().
+  // Freeze the export copy to plain colors so rendering is deterministic.
+  node.style.setProperty('--bg','#fff8f5');
+  node.style.setProperty('--paper','#fffdfa');
+  node.style.setProperty('--ink','#4d413d');
+  node.style.setProperty('--muted','#917f84');
+  node.style.setProperty('--pink','#e58aa7');
+  node.style.setProperty('--pink-deep','#d66f93');
+  node.style.setProperty('--pink-soft','#fff0f5');
+  node.style.setProperty('--line','#f0d7df');
+  node.style.background='#fffdfa';
+  return node;
+}
+
+async function imageToDataUrl(url){
+  const r=await fetch(url,{mode:'cors',cache:'force-cache'});
+  if(!r.ok)throw new Error('image_http_'+r.status);
+  const blob=await r.blob();
+  return await new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>resolve(fr.result);
+    fr.onerror=reject;
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function prepareImages(root){
+  const restores=[];
+  for(const img of [...root.querySelectorAll('img')]){
+    const src=img.getAttribute('src')||'';
+    if(!src || src.startsWith('data:') || src.startsWith('blob:'))continue;
+    try{
+      const absolute=new URL(src,location.href);
+      if(absolute.origin===location.origin)continue;
+      const old=src;
+      img.setAttribute('src',await imageToDataUrl(absolute.href));
+      restores.push(()=>img.setAttribute('src',old));
+    }catch(_){
+      const old=img.style.display;
+      img.style.display='none';
+      restores.push(()=>{img.style.display=old});
+    }
+  }
+  return ()=>restores.forEach(fn=>fn());
+}
+
 function cloneForExport(source){
   const clone=source.cloneNode(true);
   clone.removeAttribute('id');
@@ -59,6 +106,7 @@ function cloneForExport(source){
   clone.style.height='auto';
   clone.style.maxHeight='none';
   clone.style.overflow='visible';
+  normalizeExportClone(clone);
   const host=document.createElement('div');
   host.style.position='fixed';host.style.left='-10000px';host.style.top='0';host.style.zIndex='-1';host.style.background='transparent';host.style.pointerEvents='none';
   host.appendChild(clone);document.body.appendChild(host);
@@ -81,8 +129,8 @@ async function renderOne(html2canvas,node){
   const maxSide=8000;
   const byArea=Math.sqrt(maxArea/(w*h));
   const bySide=Math.min(maxSide/w,maxSide/h);
-  const scale=Math.max(0.85,Math.min(2,byArea,bySide));
-  return html2canvas(node,{scale,useCORS:true,allowTaint:false,backgroundColor:null,logging:false,scrollX:0,scrollY:0,windowWidth:Math.ceil(w),windowHeight:Math.ceil(h)});
+  const scale=Math.max(0.55,Math.min(1.6,byArea,bySide));
+  return html2canvas(node,{scale,useCORS:true,allowTaint:false,backgroundColor:'#fffdfa',logging:false,scrollX:0,scrollY:0,windowWidth:Math.ceil(w),windowHeight:Math.ceil(h)});
 }
 
 async function exportBossStatement(){
@@ -103,17 +151,22 @@ async function exportBossStatement(){
     const rows=[...node.querySelectorAll('.statement-list .statement-row')];
     const totalHeight=node.scrollHeight||0;
     if(totalHeight<=5200 && rows.length<=18){
-      const canvas=await renderOne(html2canvas,node);
-      await downloadCanvas(canvas,`${name}-全部流水-${stamp}.png`);
+      const restoreImages=await prepareImages(node);
+      try{
+        const canvas=await renderOne(html2canvas,node);
+        await downloadCanvas(canvas,`${name}-全部流水-${stamp}.png`);
+      }finally{
+        restoreImages();
+      }
       toast('老板全部流水已导出 ♡');
       return;
     }
 
-    const perPage=12;
+    const perPage=8;
     const pages=Math.ceil(rows.length/perPage);
     const sourceRows=[...capture.querySelectorAll('.statement-list .statement-row')];
     for(let page=0;page<pages;page++){
-      const pageClone=capture.cloneNode(true);pageClone.removeAttribute('id');
+      const pageClone=capture.cloneNode(true);pageClone.removeAttribute('id');normalizeExportClone(pageClone);
       pageClone.style.width=Math.max(560,Math.round(capture.getBoundingClientRect().width||620))+'px';pageClone.style.maxWidth='none';pageClone.style.height='auto';pageClone.style.maxHeight='none';pageClone.style.overflow='visible';
       const list=pageClone.querySelector('.statement-list');if(list)list.innerHTML='';
       sourceRows.slice(page*perPage,(page+1)*perPage).forEach(r=>list?.appendChild(r.cloneNode(true)));
@@ -121,15 +174,23 @@ async function exportBossStatement(){
       const marker=document.createElement('p');marker.style.textAlign='center';marker.style.fontSize='11px';marker.style.opacity='.65';marker.textContent=`第 ${page+1} / ${pages} 页`;
       pageClone.appendChild(marker);
       host.appendChild(pageClone);
-      const canvas=await renderOne(html2canvas,pageClone);
-      await downloadCanvas(canvas,`${name}-全部流水-${stamp}-${page+1}of${pages}.png`);
-      pageClone.remove();
+      const restoreImages=await prepareImages(pageClone);
+      try{
+        const canvas=await renderOne(html2canvas,pageClone);
+        await downloadCanvas(canvas,`${name}-全部流水-${stamp}-${page+1}of${pages}.png`);
+      }catch(error){
+        throw new Error(`第 ${page+1}/${pages} 页：${String(error?.message||error)}`);
+      }finally{
+        restoreImages();
+        pageClone.remove();
+      }
       await new Promise(r=>setTimeout(r,320));
     }
     toast(`流水较长，已分 ${pages} 张导出 ♡`);
   }catch(error){
     console.warn('boss statement safe export failed',error);
-    toast('老板流水图片导出失败，请重试');
+    const detail=String(error?.message||error||'未知错误').slice(0,120);
+    toast('老板流水导出失败：'+detail);
   }finally{
     host?.remove();if(btn){btn.disabled=false;btn.textContent=old||'导出老板全部流水 PNG'}
   }
