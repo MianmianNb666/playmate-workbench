@@ -16,6 +16,10 @@
     (function(){
       try{
         var t=JSON.parse(localStorage.getItem("paimini-theme")||"null");
+        if(t && String(t.bg||"").toLowerCase()==="#fbf8f2" && String(t.accent||"").toLowerCase()==="#e8a0b5" && String(t.paper||"").toLowerCase()==="#ffffff" && String(t.ink||"").toLowerCase()==="#514945"){
+          t={bg:"#fff8f5",accent:"#e58aa7",paper:"#fffdfa",ink:"#4d413d"};
+          localStorage.setItem("paimini-theme",JSON.stringify(t));
+        }
         if(t){
           var r=document.documentElement.style;
           if(t.bg)r.setProperty("--bg",t.bg);
@@ -681,7 +685,7 @@
   }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260926-webfix1"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260926-colorfix2"></script>
   <script type="module" src="./boss-features.js?v=20260925-bossexportclean1"></script>
   <script type="module" src="./price-import.js?v=20260922-v21"></script>
   <script type="module" src="./multi-order.js?v=20260926-reportfix1"></script>
