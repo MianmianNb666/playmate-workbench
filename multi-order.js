@@ -45,12 +45,19 @@ function render(){
   window.paiMiniMultiOrder={lines:[...lines],total,clear,save:saveWholeOrder,report:buildWholeOrderReport,addFromCalculator:add};
 }
 function escapeHtml(v){const d=document.createElement("div");d.textContent=String(v??"");return d.innerHTML}
-function add(){
+function add(options={}){
   const x=currentLine(); if(!x)return null;
   lines.push(x);render();
-  if($("durationInput")) $("durationInput").value="";
-  if($("calcTotal")) $("calcTotal").textContent=money(0);
-  if($("calcFormula")) $("calcFormula").textContent="已加入本单，可继续添加同一陪玩或换一个陪玩";
+
+  // Manual add keeps the old workflow: clear quantity/total for the next item.
+  // Robot imports can preserve the calculator values so the user can visually
+  // verify unit price, quantity and total before saving the whole order.
+  if(!options?.preserveCalculator){
+    if($("durationInput")) $("durationInput").value="";
+    if($("calcTotal")) $("calcTotal").textContent=money(0);
+    if($("calcFormula")) $("calcFormula").textContent="已加入本单，可继续添加同一陪玩或换一个陪玩";
+  }
+
   return x;
 }
 function clear(){lines.splice(0);render()}
