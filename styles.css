@@ -2796,3 +2796,31 @@ body[data-shell-view="app"] #appRoot{
     min-width:0;
   }
 }
+
+
+/* Robot item matching preview */
+.bot-draft-match{
+  display:inline-flex;
+  align-items:center;
+  margin-top:7px;
+  padding:5px 9px;
+  border-radius:10px;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.35;
+}
+.bot-draft-match-matched{
+  background:color-mix(in srgb,var(--good) 13%,var(--paper));
+  color:var(--good);
+  border:1px solid color-mix(in srgb,var(--good) 28%,var(--line));
+}
+.bot-draft-match-missing{
+  background:color-mix(in srgb,var(--bad) 10%,var(--paper));
+  color:var(--bad);
+  border:1px solid color-mix(in srgb,var(--bad) 25%,var(--line));
+}
+.bot-draft-match-ambiguous{
+  background:color-mix(in srgb,#c89542 12%,var(--paper));
+  color:#9b6b20;
+  border:1px solid color-mix(in srgb,#c89542 30%,var(--line));
+}
