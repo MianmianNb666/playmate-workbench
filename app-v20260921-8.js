@@ -709,21 +709,34 @@ async function refreshAdminEntry(){
 
 async function bootstrap(){
   try{
-    await loadProfile();
-    await loadSavedShops();
-    await loadShops();
-    if(!state.shops.length) await createStarterShop();
-    await loadShops();
+    await Promise.all([
+      loadProfile(),
+      loadSavedShops(),
+      loadShops()
+    ]);
+
+    if(!state.shops.length){
+      await createStarterShop();
+      await loadShops();
+    }
+
     state.shopId=state.shopId && state.shops.some(s=>s.id===state.shopId)
       ? state.shopId
       : state.shops[0]?.id || null;
+
     populateShopSelectors();
-    await loadCurrentShopData();
-    await loadRecords();
+
+    await Promise.all([
+      loadCurrentShopData(),
+      loadRecords()
+    ]);
+
     renderAll();
     renderProfile();
     renderDesktopPrefs();
-    await refreshAdminEntry();
+
+    // Admin badge is secondary UI; never hold up the whole workbench for it.
+    refreshAdminEntry().catch(()=>{});
   }catch(error){
     console.error(error);
     toast("数据还没准备好，请确认 V1 SQL 已部署");
@@ -901,7 +914,7 @@ async function loadCurrentShopData(){
     supabase.from("price_categories").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
     supabase.from("price_items").select("*").eq("shop_id",state.shopId).order("sort_order").order("created_at"),
     supabase.from("customers").select("*").eq("shop_id",state.shopId).order("name"),
-    supabase.from("customer_benefits").select("*").order("updated_at",{ascending:false}),
+    supabase.from("customer_benefits").select("*").eq("shop_id",state.shopId).order("updated_at",{ascending:false}),
     supabase.from("report_templates").select("*").eq("shop_id",state.shopId).maybeSingle(),
     supabase.from("receipt_settings").select("*").eq("shop_id",state.shopId).maybeSingle()
   ]);
@@ -2613,9 +2626,29 @@ async function reuseRecord(id){
   toast("已带回计算页");
 }
 
+const lazyFeatureLoads={};
+function loadFeatureOnce(key,path){
+  if(!lazyFeatureLoads[key]){
+    lazyFeatureLoads[key]=import(path).catch(error=>{
+      console.error("lazy feature load failed",key,error);
+      delete lazyFeatureLoads[key];
+      throw error;
+    });
+  }
+  return lazyFeatureLoads[key];
+}
+
 function showPage(name){
   document.querySelectorAll(".page").forEach(el=>el.classList.toggle("active",el.id===`page-${name}`));
   document.querySelectorAll(".nav-tab").forEach(btn=>btn.classList.toggle("active",btn.dataset.page===name));
+
+  // Heavy secondary features load only when actually needed.
+  if(name==="records" || name==="receipt"){
+    loadFeatureOnce("boss-features","./boss-features.js?v=20260926-lazy1").catch(()=>toast("流水扩展加载失败，请刷新重试"));
+  }
+  if(name==="prices"){
+    loadFeatureOnce("price-import","./price-import.js?v=20260926-lazy1").catch(()=>toast("图片识别模块加载失败，请刷新重试"));
+  }
 }
 
 function bindEvents(){
@@ -2663,8 +2696,7 @@ function bindEvents(){
     state.customers=[];state.customerBenefits=[];state.records=[];
     renderCustomerList();renderCustomerProfiles();renderRecords();
     window.dispatchEvent(new CustomEvent("paimini:shop-changing",{detail:{shopId:state.shopId}}));
-    await loadCurrentShopData();
-    await loadRecords();
+    await Promise.all([loadCurrentShopData(),loadRecords()]);
     renderAll();
     window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
   });
@@ -2763,8 +2795,7 @@ function bindEvents(){
     state.customers=[];state.customerBenefits=[];state.records=[];
     renderCustomerList();renderCustomerProfiles();renderRecords();
     window.dispatchEvent(new CustomEvent("paimini:shop-changing",{detail:{shopId:state.shopId}}));
-    await loadCurrentShopData();
-    await loadRecords();
+    await Promise.all([loadCurrentShopData(),loadRecords()]);
     renderAll();
     window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
   });
@@ -2845,12 +2876,7 @@ applyMobileNavLayout();
 registerPaiMiniPwa();
 bindEvents();
 
-const serviceCheck=await checkAuthService();
-if(!serviceCheck.ok){
-  setConnection("注册服务连接失败",false);
-}else{
-  setConnection("Supabase 已连接 ✓",true);
-}
+const authServiceCheckPromise=checkAuthService();
 
 const {data,error}=await supabase.auth.getSession();
 if(error){
@@ -2860,6 +2886,14 @@ if(error){
 }else{
   await applySession(data.session);
   document.body.classList.remove("booting");
+
+  // Diagnostics are useful on the login screen, but must not delay an existing session.
+  if(!data.session){
+    authServiceCheckPromise.then(serviceCheck=>{
+      if(!serviceCheck.ok) setConnection("注册服务连接失败",false);
+      else setConnection("Supabase 已连接 ✓",true);
+    }).catch(()=>{});
+  }
 }
 
 supabase.auth.onAuthStateChange(async (_event,session)=>{
