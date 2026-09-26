@@ -2632,3 +2632,32 @@ html.pre-top body:not(.booting){
 }
 
 .active-shop-chip{display:inline-flex;align-items:center;gap:4px;margin-top:7px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;background:var(--paper);color:var(--muted);font-size:11px;line-height:1.2}.active-shop-chip b{color:var(--text);font-weight:800}
+
+
+/* 2026-09-26 PC layout hardening: prevent grid/flex children from being clipped */
+@media (min-width: 901px){
+  .app-shell{width:min(1360px,calc(100% - 32px))}
+  .two-col{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .calc-grid{grid-template-columns:minmax(0,1fr) minmax(150px,.7fr) minmax(0,1.2fr) minmax(210px,1.2fr)}
+  .two-col>*,
+  .form-grid>*,
+  .calc-grid>*,
+  .record-row>*,
+  .card,
+  .record-main,
+  .record-money{min-width:0}
+  .card-title>div,
+  .record-main,
+  .record-main b,
+  .record-main p,
+  .record-note{overflow-wrap:anywhere;word-break:break-word}
+  .record-money{max-width:220px}
+}
+.record-note{
+  margin:4px 0!important;
+  padding:5px 8px;
+  border-radius:9px;
+  background:var(--pink-soft);
+  color:var(--pink-deep)!important;
+}
