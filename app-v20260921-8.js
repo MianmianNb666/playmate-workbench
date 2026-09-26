@@ -637,15 +637,25 @@ async function redeemRenewal(inputId,hintId){
   }
 }
 
+function setShellView(view){
+  document.body.dataset.shellView=view;
+  const auth=$("authGate");
+  const access=$("accessGate");
+  const root=$("appRoot");
+  if(!auth||!access||!root)return;
+
+  auth.classList.toggle("hidden",view!=="auth");
+  access.classList.toggle("hidden",view!=="access");
+  root.classList.toggle("hidden",view!=="app");
+}
+
 async function applySession(session){
   state.session=session;
   setConnection("Supabase 已连接 ✓",true);
 
   if(!session){
     state.access=null;
-    $("authGate").classList.remove("hidden");
-    $("accessGate").classList.add("hidden");
-    $("appRoot").classList.add("hidden");
+    setShellView("auth");
     return;
   }
 
@@ -658,9 +668,7 @@ async function applySession(session){
     }
   }catch{}
 
-  $("authGate").classList.add("hidden");
-  $("accessGate").classList.add("hidden");
-  $("appRoot").classList.add("hidden");
+  setShellView("loading");
 
   $("accountEmail").textContent=session.user.email||"";
   $("settingsEmail").textContent=session.user.email||"";
@@ -668,13 +676,13 @@ async function applySession(session){
   try{
     const access=await loadAccessStatus();
     if(!access?.has_access){
-      $("accessGate").classList.remove("hidden");
+      setShellView("access");
       return;
     }
   }catch(error){
     console.error(error);
     toast("使用期限系统还没部署，请先运行邀请码 SQL");
-    $("accessGate").classList.remove("hidden");
+    setShellView("access");
     if($("expiredHint")){
       $("expiredHint").textContent="使用期限系统尚未部署。";
       $("expiredHint").style.color="var(--bad)";
@@ -685,7 +693,7 @@ async function applySession(session){
   await bootstrap();
 
   // 数据真正加载好以后再一次性显示整个工作台。
-  $("appRoot").classList.remove("hidden");
+  setShellView("app");
 }
 
 async function refreshAdminEntry(){
@@ -740,6 +748,7 @@ async function bootstrap(){
   }catch(error){
     console.error(error);
     toast("数据还没准备好，请确认 V1 SQL 已部署");
+    if(state.session) setShellView("app");
   }
 }
 
