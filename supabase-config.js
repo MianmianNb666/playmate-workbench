@@ -3,7 +3,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_z
 
 // 派Mini Supabase 多线路兜底：直连 → Vercel 中转 → Cloudflare Worker。
 // 业务层仍然使用同一个 Supabase client；这里只处理网络层，不绕过 Auth / RLS。
-export const SUPABASE_VERCEL_PROXY_URL = "https://playmate-workbench.vercel.app/api/supabase-proxy";
+export const SUPABASE_VERCEL_PROXY_URL = "https://paimini.mianmiannb666.com/api/supabase-proxy";
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
