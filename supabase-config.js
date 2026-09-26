@@ -1,8 +1,9 @@
 export const SUPABASE_URL = "https://hwvtuybkozojypifxjto.supabase.co";
 export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_zXBazZFr";
 
-// 派Mini Supabase 多线路兜底：直连 → Vercel 中转 → Cloudflare Worker。
+// 派Mini Supabase 多线路兜底：直连 → 香港中转 → Vercel 中转 → Cloudflare Worker。
 // 业务层仍然使用同一个 Supabase client；这里只处理网络层，不绕过 Auth / RLS。
+export const SUPABASE_HK_PROXY_URL = "https://api.mianmiannb666.com";
 export const SUPABASE_VERCEL_PROXY_URL = "https://paimini.mianmiannb666.com/api/supabase-proxy";
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
@@ -32,6 +33,20 @@ function isNetworkFailure(error){
 
 function isRetryableStatus(status){
   return [408,425,429,500,502,503,504,520,521,522,523,524].includes(Number(status));
+}
+
+function toHongKongProxyUrl(input){
+  if(!SUPABASE_HK_PROXY_URL) return null;
+  const raw=rawUrl(input);
+  if(!raw) return null;
+  let url;
+  try{url=new URL(raw)}catch{return null}
+  const upstream=new URL(SUPABASE_URL);
+  if(url.origin!==upstream.origin) return null;
+
+  // 香港代理目前只允许正式域名来源，避免旧入口额外等待一次失败重试。
+  if(typeof location!=="undefined" && location.origin!=="https://paimini.mianmiannb666.com") return null;
+  return SUPABASE_HK_PROXY_URL.replace(/\/$/,"")+url.pathname+url.search;
 }
 
 function toWorkerUrl(input){
@@ -124,6 +139,19 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
     }catch(error){
       if(!isNetworkFailure(error)) throw error;
       directError=error;
+    }
+
+    const hongKongUrl=toHongKongProxyUrl(input);
+    if(hongKongUrl){
+      try{
+        const response=await withDeadline(nativeFetch(hongKongUrl,{...forwarded}),PROXY_TIMEOUT_MS,"Hong Kong proxy");
+        if(!isRetryableStatus(response.status) && response.status!==403 && response.status!==404){
+          rememberRoute("hong-kong-proxy",response.status);
+          return response;
+        }
+      }catch(error){
+        if(!isNetworkFailure(error)) console.warn("Hong Kong Supabase proxy failed",error);
+      }
     }
 
     const vercelUrl=toVercelProxyUrl(input);
