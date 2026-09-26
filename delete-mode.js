@@ -71,7 +71,7 @@ function injectCard(){
       </div>
       <button id="toggleDeleteModeBtn" class="btn ghost" type="button">开启删除模式</button>
     </div>
-    <div class="delete-mode-warning">删除店铺仍会保留原来的二次确认。删除预存套餐只删除模板，已经发放给老板的余额、权益和流水不会跟着消失。</div>
+    <div class="delete-mode-warning">删除店铺现在会移入回收站，不会删除价格表、老板、消费记录、预存或权益；可以在“我的店铺”里恢复。删除预存套餐仍只删除模板，已发放的余额、权益和流水不会跟着消失。</div>
   `;
 
   page.querySelector('.page-head')?.insertAdjacentElement('afterend',card);
