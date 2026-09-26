@@ -2661,3 +2661,25 @@ html.pre-top body:not(.booting){
   background:var(--pink-soft);
   color:var(--pink-deep)!important;
 }
+
+
+/* shell-view hard guard: login/access/workbench are mutually exclusive */
+body[data-shell-view="auth"] #accessGate,
+body[data-shell-view="auth"] #appRoot,
+body[data-shell-view="access"] #authGate,
+body[data-shell-view="access"] #appRoot,
+body[data-shell-view="app"] #authGate,
+body[data-shell-view="app"] #accessGate,
+body[data-shell-view="loading"] #authGate,
+body[data-shell-view="loading"] #accessGate,
+body[data-shell-view="loading"] #appRoot{
+  display:none!important;
+}
+body[data-shell-view="auth"] #authGate{display:grid!important}
+body[data-shell-view="access"] #accessGate{display:grid!important}
+body[data-shell-view="app"] #appRoot{
+  display:block!important;
+}
+@media(min-width:961px){
+  body[data-shell-view="app"] #appRoot{display:grid!important}
+}
