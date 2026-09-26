@@ -2683,3 +2683,23 @@ body[data-shell-view="app"] #appRoot{
 @media(min-width:961px){
   body[data-shell-view="app"] #appRoot{display:grid!important}
 }
+
+
+/* boss statement sticky close: keep the X visible while scrolling long statements */
+#bossStatementDialog{
+  max-height:94vh;
+  overflow:hidden;
+}
+#bossStatementDialog .dialog-shell{
+  max-height:94vh;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#bossStatementDialog .dialog-close{
+  position:sticky;
+  top:10px;
+  z-index:30;
+  float:right;
+  margin:0 0 -34px auto;
+  box-shadow:0 4px 14px rgba(73,47,58,.12);
+}
