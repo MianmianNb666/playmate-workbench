@@ -152,6 +152,10 @@ async function loadDraft(id){
       api.toast?.("已带入基础信息，同名项目有多个，请手动选项目");
     }else if(!result.matched){
       api.toast?.("已带入基础信息，项目未匹配，请手动选价格");
+    }else if(result.autoAdded && result.customerMatched){
+      api.toast?.("已匹配老板预存，并自动加入本单项目 ♡");
+    }else if(result.autoAdded){
+      api.toast?.("项目已自动加入本单，老板可继续确认 ♡");
     }else{
       api.toast?.("机器人草稿已载入计算器 ♡");
     }
