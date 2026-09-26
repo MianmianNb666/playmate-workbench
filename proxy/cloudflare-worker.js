@@ -7,7 +7,8 @@ const SUPABASE_ORIGIN = "https://hwvtuybkozojypifxjto.supabase.co";
 
 const EXACT_ORIGINS = new Set([
   "https://mianmiannb666.github.io",
-  "https://playmate-workbench.vercel.app"
+  "https://playmate-workbench.vercel.app",
+  "https://paimini.mianmiannb666.com"
 ]);
 
 function isAllowedOrigin(origin){
