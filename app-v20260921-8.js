@@ -323,6 +323,86 @@ function registerPaiMiniPwa(){
   }
 }
 
+async function loadRobotDraftIntoCalculator(draft){
+  if(!draft) return {ok:false,matched:false,ambiguous:false};
+
+  if(draft.shop_id && draft.shop_id!==state.shopId){
+    const targetShop=state.shops.find(shop=>shop.id===draft.shop_id);
+    if(!targetShop){
+      toast("机器人草稿对应的店铺当前不可用");
+      return {ok:false,matched:false,ambiguous:false};
+    }
+
+    state.shopId=draft.shop_id;
+    resetCustomerProfileForm();
+    state.customers=[];
+    state.customerBenefits=[];
+    state.records=[];
+    window.dispatchEvent(new CustomEvent("paimini:shop-changing",{detail:{shopId:state.shopId}}));
+    await Promise.all([loadCurrentShopData(),loadRecords()]);
+    populateShopSelectors();
+    renderAll();
+    window.dispatchEvent(new CustomEvent("paimini:shop-changed",{detail:{shopId:state.shopId}}));
+  }
+
+  const customer=String(draft.customer_name||"").trim();
+  const companion=String(draft.companion_name||"").trim();
+  const itemName=String(draft.item_name||"").trim();
+  const measure=String(draft.measure||"").trim();
+  const note=String(draft.note||"").trim();
+
+  $("customerName").value=customer;
+  $("companionName").value=companion;
+  $("calcNote").value=note;
+  $("durationInput").value=measure;
+  $("calcItemName").value=itemName;
+
+  state.selectedItem=null;
+  $("calcUnitPrice").value="";
+  $("calcUnitLabel").value="";
+  $("calcUnitMinutes").value="";
+  $("selectedItemText").textContent=itemName?"正在匹配机器人项目…":"还没选择项目";
+
+  const normalized=itemName.toLowerCase();
+  const activeItems=state.items.filter(item=>item.is_active!==false);
+  let matchedItem=null;
+
+  if(draft.matched_item_id){
+    const byId=activeItems.find(item=>item.id===draft.matched_item_id);
+    if(byId && (!normalized || String(byId.name||"").trim().toLowerCase()===normalized)){
+      matchedItem=byId;
+    }
+  }
+
+  const exactMatches=normalized
+    ? activeItems.filter(item=>String(item.name||"").trim().toLowerCase()===normalized)
+    : [];
+
+  if(!matchedItem && exactMatches.length===1){
+    matchedItem=exactMatches[0];
+  }
+
+  if(matchedItem){
+    selectItem(matchedItem.id,{preserveItemName:true});
+  }else{
+    $("selectedItemText").textContent=exactMatches.length>1
+      ? `${itemName} · 找到多个同名项目，请手动选择`
+      : (itemName?`${itemName} · 未匹配到价格表，请手动选择`:"还没选择项目");
+    renderItems();
+  }
+
+  await refreshCustomerTotal();
+  calculate();
+  showPage("calculator");
+  window.scrollTo({top:0,behavior:"smooth"});
+
+  return {
+    ok:true,
+    matched:!!matchedItem,
+    ambiguous:!matchedItem && exactMatches.length>1
+  };
+}
+
 window.paiMiniOrderBridge={
   getContext(){
     return {
@@ -340,6 +420,7 @@ window.paiMiniOrderBridge={
     renderDataSummary();
     await refreshCustomerTotal();
   },
+  loadRobotDraftIntoCalculator,
   toast
 };
 
@@ -805,6 +886,11 @@ async function bootstrap(){
     renderAll();
     renderProfile();
     renderDesktopPrefs();
+
+    // Robot inbox is isolated and optional. Missing bot tables must never block the workbench.
+    loadFeatureOnce("bot-drafts","./bot-drafts.js?v=20260926-bot1")
+      .then(module=>module.initBotDrafts?.())
+      .catch(error=>console.error("robot draft module load failed",error));
 
     // Admin badge is secondary UI; never hold up the whole workbench for it.
     refreshAdminEntry().catch(()=>{});
