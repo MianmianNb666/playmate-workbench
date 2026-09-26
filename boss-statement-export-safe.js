@@ -51,9 +51,47 @@ function downloadCanvas(canvas,filename){
   });
 }
 
+function ensureFlatExportStyle(){
+  if(document.getElementById('paiminiFlatExportStyle'))return;
+  const s=document.createElement('style');
+  s.id='paiminiFlatExportStyle';
+  s.textContent=`
+  .paimini-export-flat,
+  .paimini-export-flat *,
+  .paimini-export-flat *::before,
+  .paimini-export-flat *::after{
+    color:#4d413d!important;
+    border-color:#f0d7df!important;
+    outline-color:#f0d7df!important;
+    text-shadow:none!important;
+    box-shadow:none!important;
+    background-image:none!important;
+  }
+  .paimini-export-flat{background:#fffdfa!important}
+  .paimini-export-flat .receipt-paper,
+  .paimini-export-flat .statement-paper,
+  .paimini-export-flat .statement-row,
+  .paimini-export-flat .statement-meta,
+  .paimini-export-flat .receipt-total,
+  .paimini-export-flat .receipt-message,
+  .paimini-export-flat .receipt-footer{
+    background:#fffdfa!important;
+  }
+  .paimini-export-flat .statement-row time,
+  .paimini-export-flat .statement-row span,
+  .paimini-export-flat small,
+  .paimini-export-flat p{color:#917f84!important}
+  .paimini-export-flat strong,
+  .paimini-export-flat b{color:#4d413d!important}
+  `;
+  document.head.appendChild(s);
+}
+
 function normalizeExportClone(node){
   // html2canvas 1.4.x can choke on modern CSS functions such as color-mix().
   // Freeze the export copy to plain colors so rendering is deterministic.
+  ensureFlatExportStyle();
+  node.classList.add('paimini-export-flat');
   node.style.setProperty('--bg','#fff8f5');
   node.style.setProperty('--paper','#fffdfa');
   node.style.setProperty('--ink','#4d413d');
