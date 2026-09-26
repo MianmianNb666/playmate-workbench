@@ -11,7 +11,7 @@
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon.svg">
   <title>派mini</title>
-  <link rel="stylesheet" href="./styles.css?v=20260926-bossclose1">
+  <link rel="stylesheet" href="./styles.css?v=20260926-bot1">
   <script>
     (function(){
       try{
@@ -141,6 +141,18 @@
       <div class="page-head">
         <div><small>CORE FLOW</small><h2>派单计算</h2></div>
         <span class="head-heart">♡</span>
+      </div>
+
+      <div id="botDraftCard" class="card bot-draft-card hidden">
+        <div class="card-title bot-draft-head">
+          <div>
+            <b>🤖 机器人待载入 <span id="botDraftCount" class="bot-draft-count">0</span></b>
+            <small>机器人只负责把报备送进计算器，正式入账仍由你确认保存</small>
+          </div>
+          <button id="refreshBotDraftsBtn" class="tiny-btn" type="button">刷新</button>
+        </div>
+        <div id="botDraftList" class="bot-draft-list"></div>
+        <div id="botDraftEmpty" class="empty-state">暂时没有机器人草稿。</div>
       </div>
 
       <div class="two-col">
@@ -698,7 +710,7 @@
   }
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260926-exportfix3"></script>
+  <script type="module" src="./app-v20260921-8.js?v=20260926-bot1"></script>
   <script type="module" src="./multi-order.js?v=20260926-reportfix1"></script>
 </body>
 </html>
