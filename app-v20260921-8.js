@@ -351,6 +351,20 @@ async function loadRobotDraftIntoCalculator(draft){
   const measure=String(draft.measure||"").trim();
   const note=String(draft.note||"").trim();
 
+  // Robot draft belongs to one boss/order. If another boss already has staged lines,
+  // clear those lines before loading this draft to prevent cross-boss totals from stacking.
+  const previousCustomer=String($("customerName")?.value||"").trim();
+  const stagedLines=window.paiMiniMultiOrder?.lines;
+  if(
+    customer &&
+    previousCustomer &&
+    customer.toLowerCase()!==previousCustomer.toLowerCase() &&
+    Array.isArray(stagedLines) &&
+    stagedLines.length
+  ){
+    window.paiMiniMultiOrder?.clear?.();
+  }
+
   $("customerName").value=customer;
   $("companionName").value=companion;
   $("calcNote").value=note;
