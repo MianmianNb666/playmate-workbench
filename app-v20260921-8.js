@@ -920,9 +920,15 @@ async function bootstrap(){
     renderDesktopPrefs();
 
     // Robot inbox is isolated and optional. Missing bot tables must never block the workbench.
-    loadFeatureOnce("bot-drafts","./bot-drafts.js?v=20260926-bot1")
+    loadFeatureOnce("bot-drafts","./bot-drafts.js?v=20260926-bot2")
       .then(module=>module.initBotDrafts?.())
       .catch(error=>console.error("robot draft module load failed",error));
+
+    loadFeatureOnce("order-settlement","./order-settlement-safe.js?v=20260926-bot2")
+      .then(module=>module.initOrderSettlementSafe?.())
+      .then(()=>loadFeatureOnce("order-wallet-atomic","./order-wallet-atomic-safe.js?v=20260926-bot2"))
+      .then(module=>module.initOrderWalletAtomicSafe?.())
+      .catch(error=>console.error("order settlement module load failed",error));
 
     // Admin badge is secondary UI; never hold up the whole workbench for it.
     refreshAdminEntry().catch(()=>{});
