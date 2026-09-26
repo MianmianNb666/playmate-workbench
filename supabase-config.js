@@ -8,7 +8,8 @@ export const SUPABASE_VERCEL_PROXY_URL = "https://paimini.mianmiannb666.com/api/
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
 const nativeFetch = globalThis.fetch?.bind(globalThis);
-const DIRECT_TIMEOUT_MS = 5500;
+const DIRECT_TIMEOUT_MS = 3000;
+const HK_TIMEOUT_MS = 4500;
 const PROXY_TIMEOUT_MS = 7000;
 
 function rawUrl(input){
@@ -129,6 +130,24 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
     const forwarded=await requestInit(input,init);
 
     let directError=null;
+    const hongKongUrl=toHongKongProxyUrl(input);
+    const preferHongKong=!!hongKongUrl &&
+      typeof location!=="undefined" &&
+      location.origin==="https://paimini.mianmiannb666.com";
+
+    // 正式域名主要服务国内用户：先走香港，避免每次先等 Supabase 直连超时。
+    if(preferHongKong){
+      try{
+        const response=await withDeadline(nativeFetch(hongKongUrl,{...forwarded}),HK_TIMEOUT_MS,"Hong Kong proxy");
+        if(!isRetryableStatus(response.status) && response.status!==403 && response.status!==404){
+          rememberRoute("hong-kong-proxy",response.status);
+          return response;
+        }
+      }catch(error){
+        if(!isNetworkFailure(error)) console.warn("Hong Kong Supabase proxy failed",error);
+      }
+    }
+
     try{
       const direct=await withDeadline(nativeFetch(input,init),DIRECT_TIMEOUT_MS,"Supabase direct");
       if(!isRetryableStatus(direct.status)){
@@ -141,10 +160,9 @@ if(nativeFetch && !globalThis.__paiMiniSupabaseProxyFetchInstalled){
       directError=error;
     }
 
-    const hongKongUrl=toHongKongProxyUrl(input);
-    if(hongKongUrl){
+    if(hongKongUrl && !preferHongKong){
       try{
-        const response=await withDeadline(nativeFetch(hongKongUrl,{...forwarded}),PROXY_TIMEOUT_MS,"Hong Kong proxy");
+        const response=await withDeadline(nativeFetch(hongKongUrl,{...forwarded}),HK_TIMEOUT_MS,"Hong Kong proxy");
         if(!isRetryableStatus(response.status) && response.status!==403 && response.status!==404){
           rememberRoute("hong-kong-proxy",response.status);
           return response;
