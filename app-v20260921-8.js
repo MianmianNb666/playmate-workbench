@@ -2492,6 +2492,7 @@ function renderRecords(){
         <div class="record-main">
           <b>${safe(r.customer_name_snapshot)} · ${safe(r.item_name_snapshot)}</b>
           <p>陪陪 ${safe(r.companion_name||"-")} · ${safe(r.duration_input||plainNumber(r.quantity))} · ${safe(shop?.name||"已删除店铺")}${Number(r.discount_rate_snapshot??100)<100?" · "+safe(discountLabel(r.discount_rate_snapshot)):""}</p>
+          ${r.note?'<p class="record-note">备注：'+safe(r.note)+'</p>':""}
           <small>${d.date} ${d.time}</small>
           <div class="row-actions">
             <button class="tiny-btn" data-reuse-record="${r.id}" type="button">再次使用</button>
@@ -2539,7 +2540,8 @@ async function deleteRecord(id){
       walletUsed?"预存 ¥"+walletAmount.toFixed(2):"",
       benefitsUsed?"权益 "+settlementRecord.benefits_used.length+" 项":""
     ].filter(Boolean).join("、");
-    restore=confirm("这单使用了"+detail+"。\n\n确定：删除并原路退回余额/权益\n取消：仅删除记录，不退回");
+    if(!confirm("这单使用了"+detail+"。\n\n删除后会自动原路退回对应余额 / 权益，并写入退款流水。\n\n确定继续删除？"))return;
+    restore=true;
   }
 
   let error=null;
@@ -2557,7 +2559,7 @@ async function deleteRecord(id){
   }
   if(error){
     const missing=String(error.message||"").includes("delete_order_with_wallet_restore");
-    toast(missing?"请先运行【赠送余额版】SQL，再使用删除退款功能":"删除失败："+error.message);
+    toast(missing?"删除退款函数还没安装，请先运行 20260924100000_gift_balance_and_order_restore.sql":"删除失败："+error.message);
     return;
   }
   await loadRecords();
@@ -2694,6 +2696,12 @@ function bindEvents(){
   });
 
   $("copyReportBtn").addEventListener("click",()=>{
+    const staged=window.paiMiniMultiOrder?.lines;
+    if(Array.isArray(staged) && staged.length){
+      const report=window.paiMiniMultiOrder?.report?.();
+      if(report) copyText(report);
+      return;
+    }
     const data=reportData();
     if(data) copyText(buildReport(data));
   });
