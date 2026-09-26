@@ -2653,7 +2653,15 @@ function showPage(name){
 
   // Heavy secondary features load only when actually needed.
   if(name==="records" || name==="receipt"){
-    loadFeatureOnce("boss-features","./boss-features.js?v=20260926-lazy1").catch(()=>toast("流水扩展加载失败，请刷新重试"));
+    Promise.all([
+      loadFeatureOnce("boss-features","./boss-features.js?v=20260926-lazy2"),
+      loadFeatureOnce("boss-export-safe","./boss-statement-export-safe.js?v=20260926-exportfix1")
+    ]).then(([,safeExport])=>{
+      safeExport.initBossStatementExportSafe?.();
+    }).catch(error=>{
+      console.error("boss feature load failed",error);
+      toast("流水扩展加载失败，请刷新重试");
+    });
   }
   if(name==="prices"){
     loadFeatureOnce("price-import","./price-import.js?v=20260926-lazy1").catch(()=>toast("图片识别模块加载失败，请刷新重试"));
