@@ -1,18 +1,18 @@
 :root{
-  --ink:#514945;
-  --muted:#968b84;
-  --pink:#e8a0b5;
-  --pink-deep:#d9839e;
-  --pink-soft:#fbf0f3;
+  --ink:#4d413d;
+  --muted:#917f84;
+  --pink:#e58aa7;
+  --pink-deep:#d66f93;
+  --pink-soft:#fff0f5;
   --cream:#fff4dc;
   --mint:#eaf7ef;
   --blue:#eaf4ff;
-  --line:#eee6dc;
-  --paper:#fffefa;
-  --bg:#fbf8f2;
+  --line:#f0d7df;
+  --paper:#fffdfa;
+  --bg:#fff8f5;
   --good:#62a985;
   --bad:#c95b74;
-  --shadow:0 16px 38px rgba(192,95,133,.09);
+  --shadow:0 16px 38px rgba(192,95,133,.13);
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -73,9 +73,9 @@ label>input,label>select,label>textarea{margin-top:7px}
   place-items:center;
   padding:22px;
   background:
-    radial-gradient(circle at 15% 15%,#ffe0eb 0 0,transparent 28%),
-    radial-gradient(circle at 90% 85%,#fff0d5 0 0,transparent 24%),
-    #fff8fb;
+    radial-gradient(circle at 15% 15%,#ffd8e6 0 0,transparent 30%),
+    radial-gradient(circle at 90% 85%,#ffe9d7 0 0,transparent 25%),
+    #fff6f9;
 }
 .auth-panel{
   width:min(430px,100%);
