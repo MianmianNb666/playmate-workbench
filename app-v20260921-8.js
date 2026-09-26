@@ -20,6 +20,7 @@ const state = {
   savedShopIds:[],
   shopSearch:"",
   shops:[],
+  deletedShops:[],
   shopId:null,
   categories:[],
   items:[],
@@ -884,7 +885,13 @@ async function createStarterShop(){
 async function loadShops(){
   const {data,error}=await supabase.from("shops").select("*").order("created_at");
   if(error) throw error;
-  state.shops=data||[];
+  const rows=data||[];
+  state.shops=rows.filter(shop=>!shop.deleted_at);
+  state.deletedShops=rows.filter(shop=>
+    !!shop.deleted_at &&
+    !!state.session &&
+    shop.user_id===state.session.user.id
+  );
 }
 
 async function loadCurrentShopData(){
@@ -964,6 +971,7 @@ function renderAll(){
   renderCustomerList();
   renderPriceManager();
   renderShopList();
+  renderShopRecycleBin();
   renderTemplate();
   renderReceiptSettings();
   renderRecords();
@@ -1404,6 +1412,30 @@ function renderShopList(){
       </div>
     `;
   }).join("") : '<div class="empty-state">没有找到这个店。</div>';
+}
+
+function renderShopRecycleBin(){
+  const box=$("shopRecycleBin");
+  if(!box) return;
+  const shops=[...state.deletedShops].sort((a,b)=>
+    String(b.deleted_at||"").localeCompare(String(a.deleted_at||""))
+  );
+  box.innerHTML=shops.length ? shops.map(shop=>`
+    <div class="shop-card">
+      <div class="shop-card-top">
+        <div>
+          <div class="shop-color" style="background:${safe(shop.brand_color||"#f47ea7")}"></div>
+          <b>${safe(shop.name)}</b>
+        </div>
+        <span class="status-tag off">回收站</span>
+      </div>
+      <p>${safe(shop.currency_symbol||"¥")} · 数据仍保留</p>
+      <p>删除时间：${safe(shop.deleted_at ? new Date(shop.deleted_at).toLocaleString("zh-CN") : "-")}</p>
+      <div class="row-actions">
+        <button class="tiny-btn" data-restore-shop="${shop.id}" type="button">恢复店铺</button>
+      </div>
+    </div>
+  `).join("") : '<div class="empty-state">回收站是空的。</div>';
 }
 
 function renderTemplate(){
@@ -2366,11 +2398,34 @@ async function deleteShop(id){
   if(!ownsShop(shop)){toast("只有创建者可以删除这家店");return}
   const myShopCount=state.shops.filter(s=>ownsShop(s)).length;
   if(myShopCount<=1){toast("至少保留一个自己创建的店铺");return}
-  if(!confirm("删除店铺会一起删除它的价格表、老板和消费记录，确定吗？")) return;
-  const {error}=await supabase.from("shops").delete().eq("id",id);
-  if(error){toast("删除失败："+error.message);return}
+  if(!confirm("把这家店移到回收站吗？价格表、老板、消费记录、预存和权益都会保留，可以随时恢复。")) return;
+  const {error}=await supabase.from("shops")
+    .update({
+      deleted_at:new Date().toISOString(),
+      deleted_was_active:shop.is_active!==false,
+      is_active:false
+    })
+    .eq("id",id);
+  if(error){toast("移入回收站失败："+error.message);return}
   if(state.shopId===id) state.shopId=null;
   await bootstrap();
+  toast("已移到回收站，数据没有删除");
+}
+
+async function restoreShop(id){
+  const shop=state.deletedShops.find(s=>s.id===id);
+  if(!shop || !ownsShop(shop)){toast("只有创建者可以恢复这家店");return}
+  const {error}=await supabase.from("shops")
+    .update({
+      deleted_at:null,
+      is_active:shop.deleted_was_active!==false,
+      deleted_was_active:null
+    })
+    .eq("id",id);
+  if(error){toast("恢复失败："+error.message);return}
+  state.shopId=id;
+  await bootstrap();
+  toast("店铺已恢复，原数据都还在 ♡");
 }
 
 async function loadTemplateFor(shopId){
@@ -2673,6 +2728,10 @@ function bindEvents(){
     if(fav) toggleFavoriteShop(fav.dataset.favoriteShop);
     if(edit) editShop(edit.dataset.editShop);
     if(del) deleteShop(del.dataset.deleteShop);
+  });
+  $("shopRecycleBin")?.addEventListener("click",e=>{
+    const restore=e.target.closest("[data-restore-shop]");
+    if(restore) restoreShop(restore.dataset.restoreShop);
   });
   $("shopSearch").addEventListener("input",()=>{
     state.shopSearch=$("shopSearch").value;
