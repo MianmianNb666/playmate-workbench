@@ -540,16 +540,75 @@ function formatAccessDate(value){
   });
 }
 
-async function loadAccessStatus(){
-  const {data,error}=await supabase.rpc("get_access_status");
-  if(error){
-    console.error(error);
-    state.access=null;
-    throw error;
+function accessCacheKey(){
+  return state.session?.user?.id ? "paimini-access-"+state.session.user.id : "";
+}
+
+function saveAccessCache(access){
+  const key=accessCacheKey();
+  if(!key||!access)return;
+  try{
+    localStorage.setItem(key,JSON.stringify({saved_at:Date.now(),access}));
+  }catch{}
+}
+
+function readRecentAccessCache(maxAgeMs=10*60*1000){
+  const key=accessCacheKey();
+  if(!key)return null;
+  try{
+    const cached=JSON.parse(localStorage.getItem(key)||"null");
+    if(!cached?.access || !cached?.saved_at)return null;
+    if(Date.now()-Number(cached.saved_at)>maxAgeMs)return null;
+    return cached.access;
+  }catch{
+    return null;
   }
-  state.access=data||null;
-  renderAccessStatus();
-  return state.access;
+}
+
+function isMissingAccessRpc(error){
+  const raw=String(error?.message||"")+" "+String(error?.details||"")+" "+String(error?.hint||"")+" "+String(error?.code||"");
+  return /PGRST202|function .*get_access_status.*not found|could not find the function|get_access_status.*schema cache/i.test(raw);
+}
+
+function isTransientAccessError(error){
+  const raw=String(error?.message||"")+" "+String(error?.details||"")+" "+String(error?.code||"");
+  return /load failed|failed to fetch|network|fetch|timeout|timed out|502|503|504|gateway|ECONN|connection/i.test(raw);
+}
+
+function delay(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+
+async function loadAccessStatus(){
+  let lastError=null;
+  for(let attempt=0;attempt<3;attempt++){
+    const {data,error}=await supabase.rpc("get_access_status");
+    if(!error){
+      state.access=data||null;
+      renderAccessStatus();
+      saveAccessCache(state.access);
+      return state.access;
+    }
+    lastError=error;
+    console.warn("get_access_status failed",attempt+1,error);
+
+    if(isMissingAccessRpc(error)) break;
+    if(!isTransientAccessError(error)) break;
+    if(attempt<2) await delay(350*(attempt+1));
+  }
+
+  // A short-lived local copy prevents brief proxy/API wobble from pretending
+  // that a valid account has expired. Never use this for a real missing-RPC error.
+  if(lastError && isTransientAccessError(lastError) && !isMissingAccessRpc(lastError)){
+    const cached=readRecentAccessCache();
+    if(cached?.has_access){
+      state.access=cached;
+      renderAccessStatus();
+      toast("权限校验网络有点慢，已使用刚刚的有效状态");
+      return state.access;
+    }
+  }
+
+  state.access=null;
+  throw lastError||new Error("ACCESS_STATUS_UNAVAILABLE");
 }
 
 function renderAccessStatus(){
@@ -681,12 +740,16 @@ async function applySession(session){
     }
   }catch(error){
     console.error(error);
-    toast("使用期限系统还没部署，请先运行邀请码 SQL");
     setShellView("access");
     if($("expiredHint")){
-      $("expiredHint").textContent="使用期限系统尚未部署。";
+      if(isMissingAccessRpc(error)){
+        $("expiredHint").textContent="使用期限系统尚未部署，请联系管理员。";
+      }else{
+        $("expiredHint").textContent="权限状态读取失败，可能是网络短暂波动。请刷新页面或稍后重试。";
+      }
       $("expiredHint").style.color="var(--bad)";
     }
+    toast(isMissingAccessRpc(error)?"使用期限系统尚未部署":"权限校验暂时失败，请稍后重试");
     return;
   }
 
