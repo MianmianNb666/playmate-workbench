@@ -1250,7 +1250,7 @@ async function useCustomerProfile(id){
 }
 
 const THEME_PRESETS={
-  beige:{bg:"#fbf8f2",accent:"#e8a0b5",paper:"#ffffff",ink:"#514945"},
+  beige:{bg:"#fff8f5",accent:"#e58aa7",paper:"#fffdfa",ink:"#4d413d"},
   pink:{bg:"#fbf8f2",accent:"#ef7fa7",paper:"#ffffff",ink:"#514945"},
   mint:{bg:"#fbf8f2",accent:"#7fb89a",paper:"#ffffff",ink:"#514945"},
   blue:{bg:"#fbf8f2",accent:"#7ea6cf",paper:"#ffffff",ink:"#514945"},
@@ -1284,14 +1284,23 @@ function loadTheme(){
       "#fffdf9","#fffefb","#fffefe","#ffffff"
     ]);
 
-    if(saved
+    const isWashedBeige=saved
+      && String(saved.bg||"").toLowerCase()==="#fbf8f2"
+      && String(saved.accent||"").toLowerCase()==="#e8a0b5"
+      && String(saved.paper||"").toLowerCase()==="#ffffff"
+      && String(saved.ink||"").toLowerCase()==="#514945";
+
+    if(isWashedBeige){
+      saved={...THEME_PRESETS.beige};
+      localStorage.setItem("paimini-theme",JSON.stringify(saved));
+    }else if(saved
       && oldPresetBackgrounds.has(String(saved.bg||"").toLowerCase())
       && oldPresetPapers.has(String(saved.paper||"").toLowerCase())){
       saved={
-        bg:"#fbf8f2",
+        bg:"#fff8f5",
         accent:saved.accent||THEME_PRESETS.beige.accent,
-        paper:"#ffffff",
-        ink:"#514945"
+        paper:"#fffdfa",
+        ink:"#4d413d"
       };
       localStorage.setItem("paimini-theme",JSON.stringify(saved));
     }
