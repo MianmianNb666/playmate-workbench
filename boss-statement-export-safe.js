@@ -77,8 +77,8 @@ async function renderOne(html2canvas,node){
   const w=Math.max(1,node.scrollWidth||node.getBoundingClientRect().width||620);
   const h=Math.max(1,node.scrollHeight||node.getBoundingClientRect().height||800);
   // iOS / 手机浏览器对超大 canvas 很敏感。动态控制像素面积，避免“点了没反应”。
-  const maxArea=14_000_000;
-  const maxSide=14000;
+  const maxArea=8_000_000;
+  const maxSide=8000;
   const byArea=Math.sqrt(maxArea/(w*h));
   const bySide=Math.min(maxSide/w,maxSide/h);
   const scale=Math.max(0.85,Math.min(2,byArea,bySide));
@@ -102,14 +102,14 @@ async function exportBossStatement(){
     // 超长流水拆页导出，避免手机端 canvas 超限。正常长度仍然只导出一张。
     const rows=[...node.querySelectorAll('.statement-list .statement-row')];
     const totalHeight=node.scrollHeight||0;
-    if(totalHeight<=9000 || rows.length<=35){
+    if(totalHeight<=5200 && rows.length<=18){
       const canvas=await renderOne(html2canvas,node);
       await downloadCanvas(canvas,`${name}-全部流水-${stamp}.png`);
       toast('老板全部流水已导出 ♡');
       return;
     }
 
-    const perPage=30;
+    const perPage=12;
     const pages=Math.ceil(rows.length/perPage);
     const sourceRows=[...capture.querySelectorAll('.statement-list .statement-row')];
     for(let page=0;page<pages;page++){
@@ -124,7 +124,7 @@ async function exportBossStatement(){
       const canvas=await renderOne(html2canvas,pageClone);
       await downloadCanvas(canvas,`${name}-全部流水-${stamp}-${page+1}of${pages}.png`);
       pageClone.remove();
-      await new Promise(r=>setTimeout(r,180));
+      await new Promise(r=>setTimeout(r,320));
     }
     toast(`流水较长，已分 ${pages} 张导出 ♡`);
   }catch(error){
