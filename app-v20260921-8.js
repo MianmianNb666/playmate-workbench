@@ -1,4 +1,4 @@
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "./vendor/supabase-js.mjs?v=20260927-cache2";
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260925-bossexportclean1";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -3110,22 +3110,48 @@ bindEvents();
 
 const authServiceCheckPromise=checkAuthService();
 
-const {data,error}=await supabase.auth.getSession();
-if(error){
-  setConnection("Supabase 连接失败",false);
-  setAuthHint(error.message,true);
-  document.body.classList.remove("booting");
-}else{
-  await applySession(data.session);
-  document.body.classList.remove("booting");
+let startupResult;
+try{
+  startupResult=await Promise.race([
+    supabase.auth.getSession(),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error("STARTUP_TIMEOUT")),8000))
+  ]);
 
-  // Diagnostics are useful on the login screen, but must not delay an existing session.
-  if(!data.session){
-    authServiceCheckPromise.then(serviceCheck=>{
-      if(!serviceCheck.ok) setConnection("注册服务连接失败",false);
-      else setConnection("Supabase 已连接 ✓",true);
-    }).catch(()=>{});
+  const {data,error}=startupResult;
+
+  if(error){
+    setConnection("Supabase 连接失败",false);
+    setAuthHint(error.message,true);
+  }else{
+    try{
+      await Promise.race([
+        applySession(data.session),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("SESSION_LOAD_TIMEOUT")),12000))
+      ]);
+    }catch(error){
+      console.error("session startup timeout",error);
+      if(data.session){
+        setShellView("app");
+        toast("数据加载较慢，可稍后刷新");
+      }else{
+        setShellView("auth");
+      }
+    }
+
+    if(!data.session){
+      authServiceCheckPromise.then(serviceCheck=>{
+        if(!serviceCheck.ok) setConnection("注册服务连接失败",false);
+        else setConnection("Supabase 已连接 ✓",true);
+      }).catch(()=>{});
+    }
   }
+}catch(error){
+  console.error("PaiMini startup failed",error);
+  setShellView("auth");
+  setConnection("网络连接较慢",false);
+  setAuthHint("网络连接较慢，请稍后重试或刷新页面。",true);
+}finally{
+  document.body.classList.remove("booting");
 }
 
 supabase.auth.onAuthStateChange(async (_event,session)=>{

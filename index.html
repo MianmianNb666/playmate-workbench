@@ -710,7 +710,43 @@
   }
   </script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script type="module" src="./app-v20260921-8.js?v=20260927-match1"></script>
+  
+<script>
+(function(){
+  var errors=[];
+
+  window.addEventListener("error",function(e){
+    errors.push("ERROR: "+(e.message||"unknown")+" @ "+(e.filename||"")+" :"+(e.lineno||""));
+  });
+
+  window.addEventListener("unhandledrejection",function(e){
+    var r=e.reason;
+    errors.push("PROMISE: "+(r && (r.stack||r.message) || String(r)));
+  });
+
+  setTimeout(function(){
+    if(!document.body.classList.contains("booting")) return;
+
+    document.body.classList.remove("booting");
+
+    var auth=document.getElementById("authGate");
+    if(auth){
+      auth.classList.remove("hidden");
+      auth.style.visibility="visible";
+    }
+
+    var hint=document.getElementById("authHint");
+    if(hint){
+      hint.textContent=errors.length
+        ? "启动失败："+errors.join(" | ")
+        : "启动脚本没有完成，请截图这一页给管理员。";
+      hint.style.color="var(--bad)";
+    }
+  },10000);
+})();
+</script>
+
+<script type="module" src="./app-v20260921-8.js?v=20260927-local4"></script>
   <script type="module" src="./multi-order.js?v=20260927-bot4"></script>
 </body>
 </html>
