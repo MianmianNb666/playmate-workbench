@@ -1680,6 +1680,7 @@ function renderShopRecycleBin(){
       <p>删除时间：${safe(shop.deleted_at ? new Date(shop.deleted_at).toLocaleString("zh-CN") : "-")}</p>
       <div class="row-actions">
         <button class="tiny-btn" data-restore-shop="${shop.id}" type="button">恢复店铺</button>
+        <button class="tiny-btn danger" data-permanent-delete-shop="${shop.id}" type="button">彻底删除</button>
       </div>
     </div>
   `).join("") : '<div class="empty-state">回收站是空的。</div>';
@@ -2675,6 +2676,38 @@ async function restoreShop(id){
   toast("店铺已恢复，原数据都还在 ♡");
 }
 
+async function permanentlyDeleteShop(id){
+  const shop=state.deletedShops.find(s=>s.id===id);
+  if(!shop || !ownsShop(shop)){toast("只有创建者可以彻底删除这家店");return}
+
+  const first=confirm(
+    "彻底删除「"+shop.name+"」吗？\n\n价格表、老板档案、消费记录、预存、权益、小票设置和机器人关联数据都会永久删除，无法恢复。"
+  );
+  if(!first)return;
+
+  const typed=prompt("最后确认：请输入店铺名称「"+shop.name+"」");
+  if(typed===null)return;
+  if(typed.trim()!==String(shop.name||"").trim()){
+    toast("店铺名称不一致，已取消彻底删除");
+    return;
+  }
+
+  const {data,error}=await supabase.rpc("permanently_delete_shop",{p_shop_id:id});
+  if(error){
+    const missing=/permanently_delete_shop|PGRST202|schema cache|could not find the function/i.test(String(error.message||"")+" "+String(error.code||""));
+    toast(missing?"彻底删除功能尚未部署，请先运行配套 SQL":"彻底删除失败："+error.message);
+    return;
+  }
+  if(!data?.success){
+    toast(data?.message||"彻底删除失败，请稍后重试");
+    return;
+  }
+
+  state.deletedShops=state.deletedShops.filter(s=>s.id!==id);
+  renderShopRecycleBin();
+  toast("店铺已彻底删除");
+}
+
 async function loadTemplateFor(shopId){
   const {data,error}=await supabase.from("report_templates").select("*").eq("shop_id",shopId).maybeSingle();
   if(error){toast("读取模板失败");return}
@@ -3027,7 +3060,9 @@ function bindEvents(){
   });
   $("shopRecycleBin")?.addEventListener("click",e=>{
     const restore=e.target.closest("[data-restore-shop]");
+    const permanentDelete=e.target.closest("[data-permanent-delete-shop]");
     if(restore) restoreShop(restore.dataset.restoreShop);
+    if(permanentDelete) permanentlyDeleteShop(permanentDelete.dataset.permanentDeleteShop);
   });
   $("shopSearch").addEventListener("input",()=>{
     state.shopSearch=$("shopSearch").value;
