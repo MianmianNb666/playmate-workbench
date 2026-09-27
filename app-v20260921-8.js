@@ -2870,7 +2870,7 @@ function showPage(name){
   if(name==="prepaid"){
     Promise.all([
       loadFeatureOnce("prepaid-manager","./prepaid-manager-safe.js?v=20260926-prepaidfix1"),
-      loadFeatureOnce("prepaid-presets","./prepaid-presets-safe.js?v=20260926-prepaidfix1"),
+      loadFeatureOnce("prepaid-presets","./prepaid-presets-safe.js?v=20260927-layout2"),
       loadFeatureOnce("prepaid-unified","./prepaid-unified-safe.js?v=20260926-prepaidfix1")
     ]).then(([manager,presets,unified])=>Promise.all([
       manager.initPrepaidManagerSafe?.(),
