@@ -3,7 +3,7 @@ export const SUPABASE_PUBLISHABLE_KEY = "sb_publishable___YrsbZwmyv_3KbYDhZSmw_z
 
 // 派Mini Supabase 多线路兜底：直连 → 香港中转 → Vercel 中转 → Cloudflare Worker。
 // 业务层仍然使用同一个 Supabase client；这里只处理网络层，不绕过 Auth / RLS。
-export const SUPABASE_HK_PROXY_URL = "https://api.mianmiannb666.com";
+export const SUPABASE_HK_PROXY_URL = "https://paimini.mianmiannb666.com/supabase";
 export const SUPABASE_VERCEL_PROXY_URL = ""; // 已迁移到腾讯云，旧 Vercel 代理停用
 export const SUPABASE_PROXY_URL = "https://paimini-proxy.jiaj200405.workers.dev";
 
