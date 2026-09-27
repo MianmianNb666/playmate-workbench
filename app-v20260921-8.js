@@ -1,5 +1,5 @@
 import { createClient } from "./vendor/supabase-js.mjs?v=20260927-cache2";
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260925-bossexportclean1";
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase-config.js?v=20260927-tencent1";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
@@ -742,6 +742,9 @@ function renderAccessStatus(){
   const access=state.access;
   if(!access) return;
 
+  const gateTitle=$("accessGate")?.querySelector(".auth-brand");
+  if(gateTitle) gateTitle.textContent="使用期已到 ♡";
+
   const active=!!access.has_access;
   const days=Math.max(0,Number(access.days_left||0));
   const badge=$("accessStatusBadge");
@@ -868,6 +871,18 @@ async function applySession(session){
   }catch(error){
     console.error(error);
     setShellView("access");
+
+    const gateTitle=$("accessGate")?.querySelector(".auth-brand");
+    if(gateTitle) gateTitle.textContent=isMissingAccessRpc(error)
+      ? "使用期限系统未就绪 ♡"
+      : "权限状态读取失败 ♡";
+
+    if($("expiredAccessText")){
+      $("expiredAccessText").textContent=isMissingAccessRpc(error)
+        ? "当前无法使用期限系统，请联系管理员。"
+        : "当前无法确认账号是否到期。请刷新页面重试，不会按已到期处理。";
+    }
+
     if($("expiredHint")){
       if(isMissingAccessRpc(error)){
         $("expiredHint").textContent="使用期限系统尚未部署，请联系管理员。";
