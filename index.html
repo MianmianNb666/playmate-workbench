@@ -738,6 +738,7 @@
 <script>
 (function(){
   var errors=[];
+  var fallbackShown=false;
 
   window.addEventListener("error",function(e){
     errors.push("ERROR: "+(e.message||"unknown")+" @ "+(e.filename||"")+" :"+(e.lineno||""));
@@ -748,9 +749,81 @@
     errors.push("PROMISE: "+(r && (r.stack||r.message) || String(r)));
   });
 
+  function probe(label,url,timeoutMs){
+    return new Promise(function(resolve){
+      var controller=typeof AbortController!=="undefined" ? new AbortController() : null;
+      var timer=setTimeout(function(){
+        try{controller&&controller.abort()}catch{}
+        resolve(label+" ✕ 超时");
+      },timeoutMs||4500);
+
+      fetch(url,{
+        method:"GET",
+        cache:"no-store",
+        credentials:"omit",
+        signal:controller&&controller.signal
+      }).then(function(response){
+        clearTimeout(timer);
+        resolve(label+" "+(response.ok ? "✓" : "△ HTTP "+response.status));
+      }).catch(function(error){
+        clearTimeout(timer);
+        var msg=String(error&&error.message||error||"连接失败");
+        resolve(label+" ✕ "+msg.slice(0,80));
+      });
+    });
+  }
+
+  async function runFallbackDiagnostics(event){
+    var booting=document.body.classList.contains("booting");
+    if(!booting && !fallbackShown) return;
+
+    if(event){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+
+    var btn=document.getElementById("authDiagBtn");
+    var hint=document.getElementById("authHint");
+    if(btn){
+      btn.disabled=true;
+      btn.textContent="诊断中…";
+    }
+    if(hint){
+      hint.textContent="正在检查页面资源和连接线路…";
+      hint.style.color="";
+    }
+
+    var stamp=Date.now();
+    var results=["网页 ✓"];
+    results.push(await probe("主脚本","./app-v20260921-8.js?v=20260928-robotbind1&diag="+stamp,4000));
+    results.push(await probe("配置脚本","./supabase-config.js?v=20260927-tencent2&diag="+stamp,4000));
+    results.push(await probe("Supabase直连","https://hwvtuybkozojypifxjto.supabase.co/auth/v1/health?diag="+stamp,4500));
+
+    if(location.origin==="https://paimini.mianmiannb666.com"){
+      results.push(await probe("香港中转","/supabase/auth/v1/health?diag="+stamp,5000));
+    }
+
+    results.push(await probe("Cloudflare中转","https://paimini-proxy.jiaj200405.workers.dev/auth/v1/health?diag="+stamp,5500));
+
+    if(hint){
+      hint.textContent=results.join(" · ");
+      hint.style.color=results.some(function(x){return x.indexOf("✕")>=0;}) ? "var(--bad)" : "";
+    }
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="重新连接诊断";
+    }
+  }
+
+  var diagBtn=document.getElementById("authDiagBtn");
+  if(diagBtn){
+    diagBtn.addEventListener("click",runFallbackDiagnostics,true);
+  }
+
   setTimeout(function(){
     if(!document.body.classList.contains("booting")) return;
 
+    fallbackShown=true;
     document.body.classList.remove("booting");
 
     var auth=document.getElementById("authGate");
@@ -763,7 +836,7 @@
     if(hint){
       hint.textContent=errors.length
         ? "启动失败："+errors.join(" | ")
-        : "启动脚本没有完成，请截图这一页给管理员。";
+        : "启动脚本没有完成。现在可点「连接诊断」查看具体卡在哪一层。";
       hint.style.color="var(--bad)";
     }
   },10000);
