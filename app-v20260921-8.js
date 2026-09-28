@@ -955,7 +955,7 @@ async function bootstrap(){
 
     loadFeatureOnce("order-settlement","./order-settlement-safe.js?v=20260926-bot2")
       .then(module=>module.initOrderSettlementSafe?.())
-      .then(()=>loadFeatureOnce("order-wallet-atomic","./order-wallet-atomic-safe.js?v=20260926-bot2"))
+      .then(()=>loadFeatureOnce("order-wallet-atomic","./order-wallet-atomic-safe.js?v=20260928-companionfix1"))
       .then(module=>module.initOrderWalletAtomicSafe?.())
       .catch(error=>console.error("order settlement module load failed",error));
 
