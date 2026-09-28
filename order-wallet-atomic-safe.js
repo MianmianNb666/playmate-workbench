@@ -92,8 +92,12 @@ async function saveAtomic(){
     if(res?.error)throw res.error;
     const data=res?.data||{};
     if(data.prepaid_balance_after!=null){
-      customer.prepaid_balance=num(data.prepaid_balance_after);
-      window.dispatchEvent(new CustomEvent('paimini:prepaid-updated',{detail:{customerId:customer.id,balance:customer.prepaid_balance}}));
+      const paidAfter=data.paid_balance_after!=null?num(data.paid_balance_after):num(data.prepaid_balance_after);
+      const giftAfter=data.gift_balance_after!=null?num(data.gift_balance_after):0;
+      const totalAfter=num(data.prepaid_balance_after);
+      customer.prepaid_balance=paidAfter;
+      customer.gift_balance=giftAfter;
+      window.dispatchEvent(new CustomEvent('paimini:prepaid-updated',{detail:{customerId:customer.id,balance:totalAfter}}));
     }
     window.paiMiniMultiOrder?.clear?.();
     if($('#settlementUsePrepaid'))$('#settlementUsePrepaid').checked=false;
