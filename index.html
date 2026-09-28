@@ -619,6 +619,30 @@
           <p class="muted">派mini · Version 20260922-7</p>
           <button id="settingsSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
         </div>
+        <div class="card robot-binding-settings-card">
+          <div class="card-title">
+            <div><b>🤖 机器人绑定</b><small>一个微信群绑定到当前这一家店</small></div>
+            <button id="refreshBotBindingsBtn" class="tiny-btn" type="button">刷新</button>
+          </div>
+          <p class="muted">当前店铺：<strong id="botBindingShopName">读取中…</strong></p>
+          <button id="generateBotPairingCodeBtn" class="btn primary full-btn" type="button">生成绑定码</button>
+          <div id="botPairingResult" class="hidden" style="margin-top:12px">
+            <div class="access-status-line">
+              <span>绑定码</span>
+              <strong id="botPairingCode" style="letter-spacing:2px">--------</strong>
+            </div>
+            <p class="muted">去目标微信群发送：</p>
+            <div class="mini-actions">
+              <code id="botPairingCommand">绑定 --------</code>
+              <button id="copyBotPairingCommandBtn" class="tiny-btn" type="button">复制</button>
+            </div>
+          </div>
+          <p id="botBindingHint" class="hint"></p>
+          <div style="margin-top:14px">
+            <b>已绑定微信群</b>
+            <div id="botBindingList" style="margin-top:8px"><div class="empty-state">暂时没有绑定。</div></div>
+          </div>
+        </div>
         <div class="card mobile-nav-settings-card">
           <div class="card-title"><div><b>手机导航布局</b></div></div>
           <div class="mobile-nav-mode-row">
@@ -746,7 +770,7 @@
 })();
 </script>
 
-<script type="module" src="./app-v20260921-8.js?v=20260928-local1"></script>
+<script type="module" src="./app-v20260921-8.js?v=20260928-robotbind1"></script>
   <script type="module" src="./multi-order.js?v=20260927-bot4"></script>
 </body>
 </html>
