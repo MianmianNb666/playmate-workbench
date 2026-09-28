@@ -949,6 +949,10 @@ async function bootstrap(){
     renderDesktopPrefs();
 
     // Robot inbox is isolated and optional. Missing bot tables must never block the workbench.
+    loadFeatureOnce("bot-binding","./bot-binding.js?v=20260928-bind1")
+      .then(module=>module.initBotBinding?.())
+      .catch(error=>console.error("robot binding module load failed",error));
+
     loadFeatureOnce("bot-drafts","./bot-drafts.js?v=20260927-match1")
       .then(module=>module.initBotDrafts?.())
       .catch(error=>console.error("robot draft module load failed",error));
