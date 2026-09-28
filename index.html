@@ -619,6 +619,26 @@
           <p class="muted">派mini · Version 20260922-7</p>
           <button id="settingsSignOutBtn" class="btn ghost full-btn" type="button">退出登录</button>
         </div>
+        <div id="botPairingCard" class="card bot-pairing-card">
+          <div class="card-title">
+            <div>
+              <b>🤖 微信机器人</b>
+              <small>给当前店铺生成一次性绑定码，再到对应微信群发送绑定指令</small>
+            </div>
+          </div>
+          <p class="muted">当前店铺：<strong id="botPairingShopName">未选择店铺</strong></p>
+          <div class="access-status-line">
+            <span>绑定码</span>
+            <strong id="botPairingCode" style="letter-spacing:.14em">--------</strong>
+          </div>
+          <p id="botPairingExpires" class="muted">生成后 10 分钟内有效，仅可使用一次</p>
+          <div class="mini-actions">
+            <button id="generateBotPairingCodeBtn" class="btn primary" type="button">生成绑定码</button>
+            <button id="copyBotPairingCodeBtn" class="btn soft" type="button" disabled>复制「绑定 XXXXXXXX」</button>
+          </div>
+          <p id="botPairingHint" class="hint"></p>
+          <p class="muted">一个老板可以有多家店。请先切到要绑定的店铺，再生成该店自己的绑定码。</p>
+        </div>
         <div class="card mobile-nav-settings-card">
           <div class="card-title"><div><b>手机导航布局</b></div></div>
           <div class="mobile-nav-mode-row">
@@ -748,5 +768,6 @@
 
 <script type="module" src="./app-v20260921-8.js?v=20260928-local1"></script>
   <script type="module" src="./multi-order.js?v=20260927-bot4"></script>
+  <script type="module" src="./bot-pairing.js?v=20260929-robot1"></script>
 </body>
 </html>
